@@ -125,8 +125,8 @@ const Title = styled.h1`
 `;
 
 const StatusText = styled.p`
-  font-size: 11px;
-  color: rgba(0, 255, 65, 0.6);
+  font-size: 13px;
+  color: rgba(0, 255, 65, 0.7);
   margin: 0 0 20px;
   text-align: center;
   line-height: 1.6;
@@ -137,12 +137,12 @@ const SystemMessage = styled.div`
   width: 100%;
   background: #0d0d0d;
   border: 1px solid #2a2a2a;
-  padding: 12px;
+  padding: 16px;
   margin-bottom: 20px;
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
-  color: rgba(0, 255, 65, 0.8);
-  line-height: 1.6;
+  font-size: 13px;
+  color: rgba(0, 255, 65, 0.85);
+  line-height: 1.8;
 
   .prompt {
     color: #00ff41;
@@ -183,7 +183,7 @@ const SpotifyButton = styled(Button)`
 const ExecuteButton = styled(Button)`
   width: 100%;
   padding: 12px 20px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -197,14 +197,61 @@ const ExecuteButton = styled(Button)`
   color: #00ff41 !important;
   border-color: #00ff41 !important;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
   }
 
   &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    cursor: wait;
+    /* Keep text visible when loading */
+    color: #00ff41 !important;
+    background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
   }
+`;
+
+const LoadingBar = styled.div`
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  text-align: center;
+`;
+
+const LoadingText = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: #00ff41;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+`;
+
+const ProgressBarContainer = styled.div`
+  width: 100%;
+  height: 20px;
+  background: #1a1a1a;
+  border: 1px solid #00ff41;
+  position: relative;
+  overflow: hidden;
+`;
+
+const ProgressBarFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #00ff41 0%, #00cc33 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+`;
+
+const ProgressPercent = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: #000;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0, 255, 65, 0.8);
 `;
 
 const StyledFieldset = styled(Fieldset)`
@@ -216,7 +263,7 @@ const StyledFieldset = styled(Fieldset)`
 
   legend {
     color: #00ff41 !important;
-    font-size: 10px;
+    font-size: 11px;
     font-family: 'Consolas', 'Courier New', monospace;
     letter-spacing: 1px;
   }
@@ -229,8 +276,8 @@ const ThresholdRow = styled.div`
 `;
 
 const ThresholdLabel = styled.label`
-  color: rgba(0, 255, 65, 0.8);
-  font-size: 11px;
+  color: rgba(0, 255, 65, 0.85);
+  font-size: 13px;
   flex: 1;
   font-family: 'Consolas', 'Courier New', monospace;
 `;
@@ -244,16 +291,16 @@ const StyledSelect = styled(Select)`
 `;
 
 const ThresholdExplainer = styled.p`
-  font-size: 10px;
-  color: rgba(0, 255, 65, 0.5);
+  font-size: 12px;
+  color: rgba(0, 255, 65, 0.6);
   margin: 12px 0 0;
-  line-height: 1.5;
+  line-height: 1.6;
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const Footer = styled.div`
-  font-size: 9px;
-  color: rgba(0, 255, 65, 0.3);
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.4);
   margin-top: 20px;
   text-align: center;
   font-family: 'Consolas', 'Courier New', monospace;
@@ -404,13 +451,31 @@ function LoginModal({
               </ThresholdExplainer>
             </StyledFieldset>
 
-            <ExecuteButton onClick={handleExecute} disabled={isLoading}>
-              {isLoading ? (
-                <>LOADING... {loadingProgress?.loaded || 0}/{loadingProgress?.total || '?'}</>
-              ) : (
-                <>▶ EXECUTE</>
-              )}
-            </ExecuteButton>
+            {isLoading ? (
+              <LoadingBar>
+                <LoadingText>
+                  SCANNING LIBRARY... {loadingProgress?.loaded || 0} / {loadingProgress?.total || '?'} tracks
+                </LoadingText>
+                <ProgressBarContainer>
+                  <ProgressBarFill
+                    style={{
+                      width: loadingProgress?.total
+                        ? `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
+                        : '0%'
+                    }}
+                  />
+                  {loadingProgress?.total > 0 && (
+                    <ProgressPercent>
+                      {Math.round((loadingProgress.loaded / loadingProgress.total) * 100)}%
+                    </ProgressPercent>
+                  )}
+                </ProgressBarContainer>
+              </LoadingBar>
+            ) : (
+              <ExecuteButton onClick={handleExecute}>
+                ▶ EXECUTE
+              </ExecuteButton>
+            )}
 
             <Footer>
               RECORD OS v3.0 // AUDIO VISUALIZATION SYSTEM

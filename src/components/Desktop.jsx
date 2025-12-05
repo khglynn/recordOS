@@ -228,11 +228,46 @@ const TrackCount = styled.div`
   border: 1px solid rgba(0, 255, 65, 0.3);
 `;
 
+const LoadingOverlay = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+`;
+
+const LoadingSpinner = styled.div`
+  font-size: 48px;
+  animation: spin 2s linear infinite;
+  margin-bottom: 16px;
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingStatus = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: #00ff41;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  letter-spacing: 1px;
+`;
+
+const LoadingProgress = styled.div`
+  margin-top: 8px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: rgba(0, 255, 65, 0.7);
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-function Desktop({ albums, isLoggedIn, onAlbumClick, isLoading }) {
+function Desktop({ albums, isLoggedIn, onAlbumClick, isLoading, loadingProgress }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
 
   // Track which images have loaded
@@ -249,15 +284,22 @@ function Desktop({ albums, isLoggedIn, onAlbumClick, isLoading }) {
     );
   }
 
-  // If loading, show placeholder grid
+  // If loading, show the grid background with loading overlay
   if (isLoading) {
+    const progress = loadingProgress?.total
+      ? Math.round((loadingProgress.loaded / loadingProgress.total) * 100)
+      : 0;
+
     return (
       <DesktopContainer>
-        <AlbumGrid>
-          {Array.from({ length: 50 }).map((_, i) => (
-            <AlbumCover key={i} className="loading" />
-          ))}
-        </AlbumGrid>
+        <EmptyGrid />
+        <LoadingOverlay>
+          <LoadingSpinner>💿</LoadingSpinner>
+          <LoadingStatus>SCANNING LIBRARY...</LoadingStatus>
+          <LoadingProgress>
+            {loadingProgress?.loaded || 0} / {loadingProgress?.total || '...'} tracks ({progress}%)
+          </LoadingProgress>
+        </LoadingOverlay>
       </DesktopContainer>
     );
   }

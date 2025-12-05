@@ -6,8 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Handle SPA routing for dev server
-    // Callback will redirect to / with query params
+    host: '127.0.0.1', // Bind to 127.0.0.1 to match Spotify redirect URI
   },
   build: {
     // Copy public files to dist

@@ -118,13 +118,15 @@ function App() {
     }
   }, [isLoggedIn, hasCompletedSetup]);
 
-  // When albums finish loading and we have results, mark setup complete
+  // Mark setup complete once loading starts (show desktop with loading state)
+  // This lets users see the OS immediately while albums load in background
   useEffect(() => {
-    if (isLoggedIn && spotify.albums.length > 0 && !spotify.isLoading) {
+    if (isLoggedIn && spotify.isLoading) {
+      // Start loading - close modal and show desktop
       setHasCompletedSetup(true);
       setLoginModalOpen(false);
     }
-  }, [isLoggedIn, spotify.albums.length, spotify.isLoading]);
+  }, [isLoggedIn, spotify.isLoading]);
 
   // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
@@ -393,6 +395,7 @@ function App() {
         albums={spotify.albums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
         isLoading={spotify.isLoading}
+        loadingProgress={spotify.loadingProgress}
         onAlbumClick={handleAlbumClick}
       />
 
