@@ -160,20 +160,31 @@ const AlbumCover = styled.div`
   aspect-ratio: 1;
   cursor: pointer;
   overflow: hidden;
-  background: #1a1a1a;
+  background: #0a0a0a;
 
-  /* Entrance animation - albums fade/scale in */
-  animation: albumAppear 0.4s ease-out backwards;
+  /* Entrance animation - glitchy matrix-style reveal */
+  animation: albumGlitch 0.35s ease-out backwards;
   animation-delay: ${props => props.$delay || 0}ms;
 
-  @keyframes albumAppear {
-    from {
+  @keyframes albumGlitch {
+    0% {
       opacity: 0;
-      transform: scale(0.8);
+      filter: brightness(2) saturate(0) contrast(1.5);
+      clip-path: inset(0 100% 0 0);
     }
-    to {
+    30% {
       opacity: 1;
-      transform: scale(1);
+      filter: brightness(1.5) saturate(0.5) contrast(1.2);
+      clip-path: inset(0 50% 0 0);
+    }
+    60% {
+      filter: brightness(1.2) saturate(0.8);
+      clip-path: inset(0 20% 0 0);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1) saturate(1) contrast(1);
+      clip-path: inset(0 0 0 0);
     }
   }
 
@@ -209,21 +220,33 @@ const AlbumCover = styled.div`
     pointer-events: none;
   }
 
-  /* Loading state */
+  /* Loading state - matrix-style scan line */
   &.loading {
-    background: linear-gradient(
-      90deg,
-      #1a1a1a 0%,
-      #2a2a2a 50%,
-      #1a1a1a 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    background: #0a0a0a;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0, 255, 65, 0.1) 45%,
+        rgba(0, 255, 65, 0.2) 50%,
+        rgba(0, 255, 65, 0.1) 55%,
+        transparent 100%
+      );
+      animation: scanLoad 1.2s ease-in-out infinite;
+    }
   }
 
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+  @keyframes scanLoad {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
   }
 `;
 
@@ -235,10 +258,15 @@ const AlbumInfo = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 8px 6px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  padding: 8px;
+  background: linear-gradient(
+    transparent 0%,
+    rgba(0, 0, 0, 0.7) 30%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
+  font-family: 'Consolas', 'Courier New', monospace;
 
   ${AlbumCover}:hover & {
     opacity: 1;
@@ -246,18 +274,19 @@ const AlbumInfo = styled.div`
 `;
 
 const AlbumTitle = styled.div`
-  font-size: 10px;
+  font-size: 11px;
   font-weight: bold;
   color: #00ff41;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+  margin-bottom: 2px;
 `;
 
 const AlbumArtist = styled.div`
-  font-size: 9px;
-  color: rgba(0, 255, 65, 0.7);
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -265,15 +294,21 @@ const AlbumArtist = styled.div`
 
 const TrackCount = styled.div`
   position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.8);
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.9);
   color: #00ff41;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: bold;
-  padding: 2px 5px;
-  border-radius: 2px;
-  border: 1px solid rgba(0, 255, 65, 0.3);
+  font-family: 'Consolas', 'Courier New', monospace;
+  padding: 3px 6px;
+  border-radius: 0;
+  border: 1px solid rgba(0, 255, 65, 0.5);
+  box-shadow:
+    0 0 4px rgba(0, 255, 65, 0.3),
+    inset 0 0 2px rgba(0, 255, 65, 0.1);
+  text-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+  letter-spacing: 0.5px;
 `;
 
 // ============================================================================
