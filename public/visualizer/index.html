@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trippy Graphics</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Start overlay */
+    #start-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      cursor: pointer;
+    }
+
+    #start-overlay.hidden {
+      display: none;
+    }
+
+    #start-overlay h1 {
+      color: #00ff41;
+      font-size: 24px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+      letter-spacing: 4px;
+    }
+
+    #start-overlay p {
+      color: rgba(0, 255, 65, 0.7);
+      font-size: 12px;
+      margin-bottom: 30px;
+    }
+
+    #start-btn {
+      background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%);
+      color: #00ff41;
+      border: 2px solid #00ff41;
+      padding: 16px 40px;
+      font-size: 14px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      letter-spacing: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+      transition: all 0.2s;
+    }
+
+    #start-btn:hover {
+      background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%);
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+    }
+
+    /* Error overlay */
+    #error-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #error-overlay.visible {
+      display: flex;
+    }
+
+    #error-overlay h2 {
+      color: #00ff41;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    #error-overlay p {
+      color: rgba(0, 255, 65, 0.7);
+      font-size: 12px;
+      max-width: 300px;
+      line-height: 1.6;
+    }
+
+    #retry-btn {
+      margin-top: 20px;
+      background: #1a1a1a;
+      color: #00ff41;
+      border: 1px solid #00ff41;
+      padding: 10px 24px;
+      font-size: 12px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      cursor: pointer;
+    }
+
+    /* Preset name */
+    #preset-name {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      color: rgba(0, 255, 65, 0.5);
+      font-size: 10px;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      max-width: calc(100% - 16px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    /* Controls hint */
+    #controls-hint {
+      position: fixed;
+      bottom: 8px;
+      left: 8px;
+      color: rgba(0, 255, 65, 0.4);
+      font-size: 9px;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="start-overlay">
+    <h1>TRIPPY GRAPHICS</h1>
+    <p>Microphone input required for audio visualization</p>
+    <button id="start-btn">CLICK TO START</button>
+  </div>
+
+  <div id="error-overlay">
+    <h2>MICROPHONE ACCESS DENIED</h2>
+    <p>Enable microphone access in your browser settings to use the visualizer.</p>
+    <button id="retry-btn">RETRY</button>
+  </div>
+
+  <div id="preset-name"></div>
+  <div id="controls-hint">SPACE: next preset | R: random</div>
+
+  <!-- Load Butterchurn from CDN -->
+  <script src="https://unpkg.com/butterchurn@2.6.7/lib/butterchurn.min.js"></script>
+  <script src="https://unpkg.com/butterchurn-presets@2.4.7/lib/butterchurnPresets.min.js"></script>
+
+  <script>
+    // Curated presets that look good
+    const GOOD_PRESETS = [
+      'Flexi - when monopoly goes wrong',
+      'Geiss - Cauldron - painterly 2',
+      'martin - castle in the air',
+      'Unchained - Beat Demo 2.3',
+      'Zylot - The Inner Workings of my New Computer',
+      'Rovastar - Fractopia (Galaxy Quest Mix)',
+      'Geiss - Cauldron',
+      'ORB - Waaa',
+      'shifter - tumbling cubes (ripples)',
+      'Unchained - Unified Drag',
+    ];
+
+    let visualizer = null;
+    let audioContext = null;
+    let presets = {};
+    let presetNames = [];
+    let currentPresetIndex = 0;
+    let animationFrame = null;
+
+    const canvas = document.getElementById('canvas');
+    const startOverlay = document.getElementById('start-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const errorOverlay = document.getElementById('error-overlay');
+    const retryBtn = document.getElementById('retry-btn');
+    const presetNameEl = document.getElementById('preset-name');
+
+    // Resize canvas to fill window
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      if (visualizer) {
+        visualizer.setRendererSize(canvas.width, canvas.height);
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Initialize visualizer
+    async function init() {
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          video: false,
+        });
+
+        // Create audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+
+        // Create visualizer
+        visualizer = butterchurn.default.createVisualizer(audioContext, canvas, {
+          width: canvas.width,
+          height: canvas.height,
+          pixelRatio: window.devicePixelRatio || 1,
+        });
+
+        // Connect audio
+        visualizer.connectAudio(source);
+
+        // Load presets
+        presets = butterchurnPresets.default.getPresets();
+        presetNames = Object.keys(presets);
+
+        // Find a good preset to start with
+        let initialPreset = GOOD_PRESETS.find(name => presetNames.includes(name));
+        if (!initialPreset) {
+          initialPreset = presetNames[Math.floor(Math.random() * presetNames.length)];
+        }
+
+        loadPreset(initialPreset);
+
+        // Hide start overlay
+        startOverlay.classList.add('hidden');
+
+        // Start render loop
+        render();
+
+        // Notify parent window that we're ready
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: 'visualizer-ready' }, '*');
+        }
+
+      } catch (err) {
+        console.error('Failed to initialize:', err);
+
+        if (err.name === 'NotAllowedError') {
+          errorOverlay.classList.add('visible');
+          startOverlay.classList.add('hidden');
+        } else {
+          alert('Error: ' + err.message);
+        }
+      }
+    }
+
+    function loadPreset(name) {
+      if (!visualizer || !presets[name]) return;
+      visualizer.loadPreset(presets[name], 2.0); // 2 second transition
+      presetNameEl.textContent = name;
+      currentPresetIndex = presetNames.indexOf(name);
+    }
+
+    function nextPreset() {
+      // Try curated presets first
+      const curatedIndex = GOOD_PRESETS.findIndex(p => p === presetNames[currentPresetIndex]);
+      if (curatedIndex >= 0 && curatedIndex < GOOD_PRESETS.length - 1) {
+        const nextName = GOOD_PRESETS[curatedIndex + 1];
+        if (presetNames.includes(nextName)) {
+          loadPreset(nextName);
+          return;
+        }
+      }
+      // Fall back to random
+      randomPreset();
+    }
+
+    function randomPreset() {
+      const randomName = presetNames[Math.floor(Math.random() * presetNames.length)];
+      loadPreset(randomName);
+    }
+
+    function render() {
+      if (visualizer) {
+        visualizer.render();
+      }
+      animationFrame = requestAnimationFrame(render);
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', init);
+    startOverlay.addEventListener('click', (e) => {
+      if (e.target === startOverlay) init();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      errorOverlay.classList.remove('visible');
+      startOverlay.classList.remove('hidden');
+    });
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowRight') {
+        e.preventDefault();
+        nextPreset();
+      } else if (e.code === 'KeyR') {
+        randomPreset();
+      } else if (e.code === 'ArrowLeft' || e.code === 'Backspace') {
+        e.preventDefault();
+        // Previous preset
+        currentPresetIndex = (currentPresetIndex - 1 + presetNames.length) % presetNames.length;
+        loadPreset(presetNames[currentPresetIndex]);
+      }
+    });
+
+    // Listen for messages from parent window
+    window.addEventListener('message', (e) => {
+      if (e.data.type === 'next-preset') {
+        nextPreset();
+      } else if (e.data.type === 'random-preset') {
+        randomPreset();
+      }
+    });
+  </script>
+</body>
+</html>
