@@ -19,6 +19,7 @@ import {
   WindowContent,
   Button,
 } from 'react95';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // GAME SOURCES
@@ -27,27 +28,27 @@ import {
 const GAME_CONFIG = {
   minesweeper: {
     title: 'Minesweeper',
-    icon: '💣',
+    iconName: 'zap',
     url: '/games/minesweeper/index.html',
-    width: 320,
-    height: 400,
+    width: 300,
+    height: 380,
   },
   solitaire: {
     title: 'Solitaire',
-    icon: '🃏',
+    iconName: 'gamepad',
     url: '/games/solitaire/index.html',
     width: 580,
     height: 480,
-    scale: 0.6, // Scale down the game to fit
-    innerWidth: 960, // Actual game width before scaling
-    innerHeight: 750, // Actual game height before scaling
+    scale: 0.6,
+    innerWidth: 960,
+    innerHeight: 750,
   },
   snake: {
     title: 'Snake',
-    icon: '🐍',
+    iconName: 'gamepad',
     url: '/games/snake/index.html',
-    width: 400,
-    height: 450,
+    width: 340,
+    height: 500,
   },
 };
 
@@ -156,6 +157,7 @@ function GameWindow({
 
   return (
     <StyledWindow
+      data-window
       $zIndex={zIndex}
       style={{
         left: position?.x ?? 200,
@@ -167,12 +169,16 @@ function GameWindow({
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
-          <span>{config.icon}</span>
+          <PixelIcon name={config.iconName} size={14} />
           <span>{config.title}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={onMinimize}>_</HeaderButton>
-          <HeaderButton onClick={onClose}>×</HeaderButton>
+          <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>
+            <PixelIcon name="minus" size={10} />
+          </HeaderButton>
+          <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>
+            <PixelIcon name="close" size={10} />
+          </HeaderButton>
         </HeaderButtons>
       </StyledWindowHeader>
 

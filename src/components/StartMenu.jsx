@@ -4,10 +4,10 @@
  * ============================================================================
  *
  * Windows 95-style Start Menu with options:
- * - Sort (with submenu for sort options + direction toggle)
- * - Info (contact info + donation button)
+ * - Decade filter (Top 48 from each decade)
  * - Media Player
- * - Games (submenu: Minesweeper, Solitaire, Snake)
+ * - Games (submenu: Minesweeper, Snake)
+ * - Info (contact info)
  * - Log Out (only when logged in)
  *
  * Opens above the taskbar Start button.
@@ -17,9 +17,10 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { MenuList, MenuListItem, Separator } from 'react95';
 import {
-  SORT_OPTIONS,
-  SORT_LABELS,
+  DECADE_OPTIONS,
+  DECADE_LABELS,
 } from '../utils/constants';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -27,7 +28,7 @@ import {
 
 const MenuContainer = styled.div`
   position: fixed;
-  bottom: 39px;
+  bottom: 50px; /* Updated for taller taskbar */
   left: 4px;
   z-index: 10000;
 
@@ -63,24 +64,19 @@ const StyledMenuList = styled(MenuList)`
 const StyledMenuItem = styled(MenuListItem)`
   color: #00ff41 !important;
   background: transparent !important;
-  padding: 6px 20px 6px 30px;
+  padding: 6px 20px 6px 12px;
   position: relative;
   font-size: 11px;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
   &:hover {
     background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
     color: #00ff41 !important;
     text-shadow: 0 0 5px rgba(0, 255, 65, 0.4);
-  }
-
-  /* Icon placeholder */
-  &::before {
-    content: attr(data-icon);
-    position: absolute;
-    left: 8px;
-    font-size: 12px;
   }
 
   /* Arrow for submenus */
@@ -93,12 +89,24 @@ const StyledMenuItem = styled(MenuListItem)`
   }
 
   /* Checkmark for selected items */
+  &[data-checked="true"] .menu-icon {
+    display: none;
+  }
   &[data-checked="true"]::before {
     content: '[*]';
-    left: 6px;
     font-size: 9px;
     font-family: 'Consolas', 'Courier New', monospace;
+    width: 14px;
   }
+`;
+
+const MenuIcon = styled.span.attrs({ className: 'menu-icon' })`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 `;
 
 const StyledSeparator = styled(Separator)`
@@ -144,11 +152,8 @@ const BannerText = styled.span`
 
 function StartMenu({
   isLoggedIn,
-  sortBy,
-  sortDesc,
-  threshold,
-  onSortChange,
-  onThresholdChange,
+  decade,
+  onDecadeChange,
   onLogout,
   onOpenMediaPlayer,
   onOpenGame,
@@ -163,10 +168,6 @@ function StartMenu({
     onClose();
   };
 
-  const toggleSortDirection = () => {
-    onSortChange(sortBy, !sortDesc);
-  };
-
   return (
     <MenuContainer data-start-menu onClick={(e) => e.stopPropagation()}>
       <StyledMenuList>
@@ -176,39 +177,33 @@ function StartMenu({
 
         {/* Media Player - Always available */}
         <StyledMenuItem
-          data-icon="🎵"
           onClick={() => handleMenuItemClick(onOpenMediaPlayer)}
         >
+          <MenuIcon><PixelIcon name="music" size={14} /></MenuIcon>
           Media Player
         </StyledMenuItem>
 
         {/* Games Submenu - Always available */}
         <StyledMenuItem
-          data-icon="🎮"
           data-submenu
           onMouseEnter={() => setActiveSubmenu('games')}
           onMouseLeave={() => setActiveSubmenu(null)}
         >
+          <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
           Games
           {activeSubmenu === 'games' && (
             <Submenu>
               <StyledMenuList>
                 <StyledMenuItem
-                  data-icon="💣"
                   onClick={() => handleMenuItemClick(() => onOpenGame('minesweeper'))}
                 >
+                  <MenuIcon><PixelIcon name="zap" size={14} /></MenuIcon>
                   Minesweeper
                 </StyledMenuItem>
                 <StyledMenuItem
-                  data-icon="🃏"
-                  onClick={() => handleMenuItemClick(() => onOpenGame('solitaire'))}
-                >
-                  Solitaire
-                </StyledMenuItem>
-                <StyledMenuItem
-                  data-icon="🐍"
                   onClick={() => handleMenuItemClick(() => onOpenGame('snake'))}
                 >
+                  <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
                   Snake
                 </StyledMenuItem>
               </StyledMenuList>
@@ -218,68 +213,29 @@ function StartMenu({
 
         <StyledSeparator />
 
-        {/* Sort Options - Only when logged in */}
+        {/* Decade Filter - Only when logged in */}
         {isLoggedIn && (
           <>
             <StyledMenuItem
-              data-icon="📊"
               data-submenu
-              onMouseEnter={() => setActiveSubmenu('sort')}
+              onMouseEnter={() => setActiveSubmenu('decade')}
               onMouseLeave={() => setActiveSubmenu(null)}
             >
-              Sort
-              {activeSubmenu === 'sort' && (
+              <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
+              Decade: {DECADE_LABELS[decade] || 'All'}
+              {activeSubmenu === 'decade' && (
                 <Submenu>
                   <StyledMenuList>
-                    {Object.entries(SORT_OPTIONS).map(([key, value]) => (
+                    {Object.entries(DECADE_OPTIONS).map(([key, value]) => (
                       <StyledMenuItem
                         key={key}
-                        data-checked={sortBy === value}
-                        onClick={() => handleMenuItemClick(() => onSortChange(value, sortDesc))}
+                        data-checked={decade === value}
+                        onClick={() => handleMenuItemClick(() => onDecadeChange(value))}
                       >
-                        {SORT_LABELS[value]}
+                        <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
+                        {DECADE_LABELS[value]}
                       </StyledMenuItem>
                     ))}
-                    <StyledSeparator />
-                    <StyledMenuItem
-                      data-checked={sortDesc}
-                      onClick={() => handleMenuItemClick(toggleSortDirection)}
-                    >
-                      {sortBy === SORT_OPTIONS.RELEASE_DATE
-                        ? (sortDesc ? 'Newest First' : 'Oldest First')
-                        : sortBy === SORT_OPTIONS.TRACK_COUNT
-                          ? (sortDesc ? 'Most First' : 'Least First')
-                          : (sortDesc ? 'Z → A' : 'A → Z')
-                      }
-                    </StyledMenuItem>
-                  </StyledMenuList>
-                </Submenu>
-              )}
-            </StyledMenuItem>
-
-            {/* Album Filter */}
-            <StyledMenuItem
-              data-icon="🎚️"
-              data-submenu
-              onMouseEnter={() => setActiveSubmenu('filter')}
-              onMouseLeave={() => setActiveSubmenu(null)}
-            >
-              Filter: {threshold === 'all' ? 'Show All' : 'Top 50'}
-              {activeSubmenu === 'filter' && (
-                <Submenu>
-                  <StyledMenuList>
-                    <StyledMenuItem
-                      data-checked={threshold !== 'all'}
-                      onClick={() => handleMenuItemClick(() => onThresholdChange('auto'))}
-                    >
-                      Top 50 Albums
-                    </StyledMenuItem>
-                    <StyledMenuItem
-                      data-checked={threshold === 'all'}
-                      onClick={() => handleMenuItemClick(() => onThresholdChange('all'))}
-                    >
-                      Show All Albums
-                    </StyledMenuItem>
                   </StyledMenuList>
                 </Submenu>
               )}
@@ -291,9 +247,9 @@ function StartMenu({
 
         {/* Info */}
         <StyledMenuItem
-          data-icon="ℹ️"
           onClick={() => handleMenuItemClick(onOpenInfo)}
         >
+          <MenuIcon><PixelIcon name="info" size={14} /></MenuIcon>
           Info
         </StyledMenuItem>
 
@@ -302,16 +258,16 @@ function StartMenu({
         {/* Connect / Log Out */}
         {isLoggedIn ? (
           <StyledMenuItem
-            data-icon="🚪"
             onClick={() => handleMenuItemClick(onLogout)}
           >
+            <MenuIcon><PixelIcon name="logout" size={14} /></MenuIcon>
             Log Out
           </StyledMenuItem>
         ) : (
           <StyledMenuItem
-            data-icon="◉"
             onClick={() => handleMenuItemClick(onOpenLogin)}
           >
+            <MenuIcon><PixelIcon name="login" size={14} /></MenuIcon>
             Connect
           </StyledMenuItem>
         )}

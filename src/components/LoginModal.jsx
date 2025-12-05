@@ -10,6 +10,7 @@
  * Voice: Retro-corporate with alien computer undertones
  */
 
+import { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import {
   Window,
@@ -29,11 +30,8 @@ const Overlay = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  bottom: 37px; /* Leave room for taskbar! */
+  bottom: 48px; /* Leave room for taskbar! */
   background: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 10000;
 
   /* Scanline effect */
@@ -56,9 +54,9 @@ const Overlay = styled.div`
 `;
 
 const StyledWindow = styled(Window)`
-  width: 420px;
-  max-width: 90vw;
-  animation: windowAppear 0.2s ease-out;
+  position: fixed;
+  width: 340px;
+  max-width: 95vw;
 
   background: #1a1a1a !important;
   box-shadow:
@@ -66,17 +64,6 @@ const StyledWindow = styled(Window)`
     inset -1px -1px 0 #0a0a0a,
     0 0 30px rgba(0, 255, 65, 0.15),
     0 10px 40px rgba(0, 0, 0, 0.6) !important;
-
-  @keyframes windowAppear {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
@@ -347,6 +334,90 @@ function LoginModal({
   loadingProgress,
   canClose,
 }) {
+  // Window position state
+  const [position, setPosition] = useState(null);
+  const [dragging, setDragging] = useState(null);
+  const windowRef = useRef(null);
+  const dragOutlineRef = useRef(null);
+
+  // Calculate centered position on mount
+  useEffect(() => {
+    if (isOpen && !position) {
+      const centerX = Math.max(0, (window.innerWidth - 420) / 2);
+      const centerY = Math.max(0, (window.innerHeight - 500) / 2);
+      setPosition({ x: centerX, y: centerY });
+    }
+  }, [isOpen, position]);
+
+  // Reset position when modal reopens
+  useEffect(() => {
+    if (!isOpen) {
+      setPosition(null);
+    }
+  }, [isOpen]);
+
+  // Handle drag start
+  const handleDragStart = useCallback((e) => {
+    if (!position) return;
+
+    const rect = windowRef.current?.getBoundingClientRect();
+    setDragging({
+      startX: e.clientX - position.x,
+      startY: e.clientY - position.y,
+      width: rect?.width || 420,
+      height: rect?.height || 500,
+      initialX: position.x,
+      initialY: position.y,
+    });
+  }, [position]);
+
+  // Outline drag effect
+  useEffect(() => {
+    if (!dragging) return;
+
+    // Create outline element (pure DOM, no React)
+    const outline = document.createElement('div');
+    outline.style.cssText = `
+      position: fixed;
+      border: 2px dashed #00ff41;
+      pointer-events: none;
+      z-index: 999999;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+      left: ${dragging.initialX}px;
+      top: ${dragging.initialY}px;
+      width: ${dragging.width}px;
+      height: ${dragging.height}px;
+    `;
+    document.body.appendChild(outline);
+    dragOutlineRef.current = outline;
+
+    let currentX = dragging.initialX;
+    let currentY = dragging.initialY;
+
+    const handleMouseMove = (e) => {
+      currentX = Math.max(0, e.clientX - dragging.startX);
+      currentY = Math.max(0, e.clientY - dragging.startY);
+      outline.style.left = `${currentX}px`;
+      outline.style.top = `${currentY}px`;
+    };
+
+    const handleMouseUp = () => {
+      outline.remove();
+      dragOutlineRef.current = null;
+      setPosition({ x: currentX, y: currentY });
+      setDragging(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      outline.remove();
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging]);
+
   const handleLogin = async () => {
     try {
       await loginWithSpotify();
@@ -359,14 +430,20 @@ function LoginModal({
     onExecute?.();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !position) return null;
 
   // STEP 2: Post-auth configuration
   if (isPostAuth) {
     return (
       <Overlay>
-        <StyledWindow>
-          <StyledWindowHeader>
+        <StyledWindow
+          ref={windowRef}
+          style={{ left: position.x, top: position.y }}
+        >
+          <StyledWindowHeader
+            onMouseDown={handleDragStart}
+            style={{ cursor: 'grab' }}
+          >
             <HeaderTitle>
               <span>⚙</span>
               <span>SYSTEM CONFIGURATION</span>
@@ -443,8 +520,15 @@ function LoginModal({
   // STEP 1: Initial connection
   return (
     <Overlay onClick={canClose ? onClose : undefined}>
-      <StyledWindow onClick={(e) => e.stopPropagation()}>
-        <StyledWindowHeader>
+      <StyledWindow
+        ref={windowRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{ left: position.x, top: position.y }}
+      >
+        <StyledWindowHeader
+          onMouseDown={handleDragStart}
+          style={{ cursor: 'grab' }}
+        >
           <HeaderTitle>
             <span>◉</span>
             <span>RECORD OS // INITIALIZE</span>

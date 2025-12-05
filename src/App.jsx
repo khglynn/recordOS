@@ -16,7 +16,7 @@
  * - Local state for window management (open, position, z-index)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ThemeProvider } from 'styled-components';
 import { styleReset } from 'react95';
 import { createGlobalStyle } from 'styled-components';
@@ -133,6 +133,43 @@ function App() {
   }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount]);
 
   // -------------------------------------------------------------------------
+  // PRE-LOGIN: Open initial windows (Minesweeper, Media Player muted)
+  // -------------------------------------------------------------------------
+  const [hasOpenedInitialWindows, setHasOpenedInitialWindows] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn && !hasOpenedInitialWindows) {
+      // Open Minesweeper and Media Player on first load
+      const minesweeperWindow = {
+        id: generateWindowId(),
+        type: 'minesweeper',
+        title: 'Minesweeper',
+        data: {},
+        position: { x: 50, y: 80 },
+        minimized: false,
+      };
+
+      const mediaPlayerWindow = {
+        id: generateWindowId(),
+        type: 'mediaPlayer',
+        title: 'Media Player',
+        data: {},
+        position: { x: 400, y: 120 },
+        minimized: false,
+      };
+
+      setWindows([minesweeperWindow, mediaPlayerWindow]);
+      setActiveWindowId(mediaPlayerWindow.id);
+      setHasOpenedInitialWindows(true);
+
+      // Start local audio muted
+      if (localAudio.setVolume) {
+        localAudio.setVolume(0);
+      }
+    }
+  }, [isLoggedIn, hasOpenedInitialWindows, localAudio]);
+
+  // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
   // -------------------------------------------------------------------------
 
@@ -190,12 +227,21 @@ function App() {
   }, [windows]);
 
   const closeWindow = useCallback((windowId) => {
+    // Check if closing media player - stop music
+    const windowToClose = windows.find(w => w.id === windowId);
+    if (windowToClose?.type === 'mediaPlayer') {
+      // Stop playback
+      if (audio.isPlaying) {
+        audio.pause?.();
+      }
+    }
+
     setWindows(prev => prev.filter(w => w.id !== windowId));
 
     if (activeWindowId === windowId) {
       setActiveWindowId(windows.length > 1 ? windows[windows.length - 2]?.id : null);
     }
-  }, [activeWindowId, windows]);
+  }, [activeWindowId, windows, audio]);
 
   const minimizeWindow = useCallback((windowId) => {
     setWindows(prev => prev.map(w =>
@@ -229,38 +275,72 @@ function App() {
   }, [windows, activeWindowId, focusWindow, minimizeWindow]);
 
   // -------------------------------------------------------------------------
-  // WINDOW DRAGGING
+  // WINDOW DRAGGING - Win95 Outline Style
   // -------------------------------------------------------------------------
+  // Shows a dotted outline during drag, snaps window on release.
+  // No React state updates during drag = no performance issues.
+
+  const dragOutlineRef = useRef(null);
 
   const handleDragStart = useCallback((windowId, e) => {
-    const window = windows.find(w => w.id === windowId);
-    if (!window) return;
+    const win = windows.find(w => w.id === windowId);
+    if (!win) return;
+
+    // Get window element dimensions
+    const windowEl = e.target.closest('[data-window]');
+    const rect = windowEl?.getBoundingClientRect();
 
     setDragging({
       windowId,
-      startX: e.clientX - window.position.x,
-      startY: e.clientY - window.position.y,
+      startX: e.clientX - win.position.x,
+      startY: e.clientY - win.position.y,
+      width: rect?.width || 400,
+      height: rect?.height || 300,
+      initialX: win.position.x,
+      initialY: win.position.y,
     });
   }, [windows]);
 
   useEffect(() => {
     if (!dragging) return;
 
+    // Create outline element (pure DOM, no React)
+    const outline = document.createElement('div');
+    outline.style.cssText = `
+      position: fixed;
+      border: 2px dashed #00ff41;
+      pointer-events: none;
+      z-index: 999999;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+      left: ${dragging.initialX}px;
+      top: ${dragging.initialY}px;
+      width: ${dragging.width}px;
+      height: ${dragging.height}px;
+    `;
+    document.body.appendChild(outline);
+    dragOutlineRef.current = outline;
+
+    let currentX = dragging.initialX;
+    let currentY = dragging.initialY;
+
     const handleMouseMove = (e) => {
-      setWindows(prev => prev.map(w =>
-        w.id === dragging.windowId
-          ? {
-              ...w,
-              position: {
-                x: Math.max(0, e.clientX - dragging.startX),
-                y: Math.max(0, e.clientY - dragging.startY),
-              },
-            }
-          : w
-      ));
+      currentX = Math.max(0, e.clientX - dragging.startX);
+      currentY = Math.max(0, e.clientY - dragging.startY);
+      outline.style.left = `${currentX}px`;
+      outline.style.top = `${currentY}px`;
     };
 
     const handleMouseUp = () => {
+      // Remove outline
+      outline.remove();
+      dragOutlineRef.current = null;
+
+      // Update window position (single state update)
+      setWindows(prev => prev.map(w =>
+        w.id === dragging.windowId
+          ? { ...w, position: { x: currentX, y: currentY } }
+          : w
+      ));
       setDragging(null);
     };
 
@@ -268,6 +348,7 @@ function App() {
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      outline.remove();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -288,14 +369,30 @@ function App() {
   useEffect(() => {
     if (!loadingDragging) return;
 
+    let frameId = null;
+    let lastX = 0;
+    let lastY = 0;
+
     const handleMouseMove = (e) => {
-      setLoadingWindowPos({
-        x: Math.max(0, e.clientX - loadingDragging.startX),
-        y: Math.max(0, e.clientY - loadingDragging.startY),
-      });
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      // Use RAF to throttle state updates
+      if (!frameId) {
+        frameId = requestAnimationFrame(() => {
+          setLoadingWindowPos({
+            x: Math.max(0, lastX - loadingDragging.startX),
+            y: Math.max(0, lastY - loadingDragging.startY),
+          });
+          frameId = null;
+        });
+      }
     };
 
     const handleMouseUp = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
       setLoadingDragging(null);
     };
 
@@ -303,6 +400,9 @@ function App() {
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -557,17 +657,14 @@ function App() {
       {/* Taskbar */}
       <Taskbar
         albumCount={spotify.albums.length}
-        threshold={spotify.threshold}
         openWindows={taskbarWindows}
         activeWindow={activeWindowId}
         onWindowClick={toggleWindowFromTaskbar}
         onStartClick={handleStartClick}
         isStartMenuOpen={isStartMenuOpen}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
-        sortBy={spotify.sortBy}
-        sortDesc={spotify.sortDesc}
-        onSortChange={spotify.setSortOptions}
-        onThresholdChange={spotify.setThreshold}
+        decade={spotify.decade}
+        onDecadeChange={spotify.setDecade}
         onLogout={handleLogout}
         onOpenMediaPlayer={handleOpenMediaPlayer}
         onOpenGame={handleOpenGame}

@@ -14,7 +14,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { GRID_ALBUM_SIZE, GRID_GAP } from '../utils/constants';
+import { GRID_ALBUM_MIN_SIZE, GRID_ALBUM_MAX_SIZE, GRID_GAP } from '../utils/constants';
 
 // Sample album art URLs for loading animation
 const SAMPLE_ALBUM_ART = [
@@ -28,7 +28,6 @@ const SAMPLE_ALBUM_ART = [
 
 const GAME_LINKS = [
   { icon: '[ MINESWEEPER ]', type: 'minesweeper' },
-  { icon: '[ SOLITAIRE ]', type: 'solitaire' },
   { icon: '[ SNAKE ]', type: 'snake' },
 ];
 
@@ -41,7 +40,7 @@ const DesktopContainer = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  bottom: 37px; /* Leave room for taskbar */
+  bottom: 48px; /* Leave room for taskbar */
   overflow: hidden;
   background: #0a0a0a;
 `;
@@ -73,7 +72,7 @@ const EmptyGrid = styled.div`
     );
 
   /* Grid size matches album grid */
-  background-size: ${GRID_ALBUM_SIZE + GRID_GAP}px ${GRID_ALBUM_SIZE + GRID_GAP}px;
+  background-size: ${GRID_ALBUM_MIN_SIZE + GRID_GAP}px ${GRID_ALBUM_MIN_SIZE + GRID_GAP}px;
 
   /* Center the grid */
   background-position: center center;
@@ -96,7 +95,7 @@ const EmptyGrid = styled.div`
     }
   }
 
-  /* Scanline overlay for CRT feel - animated! */
+  /* Scanline overlay for CRT feel - subtle static effect */
   &::after {
     content: '';
     position: absolute;
@@ -106,22 +105,13 @@ const EmptyGrid = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       0deg,
-      rgba(0, 0, 0, 0.1) 0px,
-      rgba(0, 0, 0, 0.1) 1px,
+      rgba(0, 0, 0, 0.03) 0px,
+      rgba(0, 0, 0, 0.03) 1px,
       transparent 1px,
-      transparent 3px
+      transparent 4px
     );
     pointer-events: none;
-    animation: scanlines 0.1s linear infinite;
-  }
-
-  @keyframes scanlines {
-    0% {
-      background-position: 0 0;
-    }
-    100% {
-      background-position: 0 3px;
-    }
+    /* Removed animation - static scanlines are more subtle */
   }
 
   /* Glowing corners effect - adds depth */
@@ -144,6 +134,7 @@ const EmptyGrid = styled.div`
 
 /**
  * Album grid container (post-login state)
+ * Edge-to-edge album grid, tiles stretch to fill screen width
  */
 const AlbumGrid = styled.div`
   position: absolute;
@@ -151,12 +142,13 @@ const AlbumGrid = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  overflow: auto;
-  padding: ${GRID_GAP}px;
+  overflow-y: auto;
+  overflow-x: hidden;
 
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_SIZE}px, 1fr));
-  gap: ${GRID_GAP}px;
+  /* Edge-to-edge: tiles stretch between min and max size to fill screen */
+  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+  gap: 0;
   align-content: start;
 
   /* Fade in when albums load */
@@ -170,37 +162,28 @@ const AlbumGrid = styled.div`
 
 /**
  * Individual album cover with entrance animation
+ * Uses aspect-ratio to maintain square shape with flexible width
  */
 const AlbumCover = styled.div`
   position: relative;
-  aspect-ratio: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1; /* Square tiles */
   cursor: pointer;
   overflow: hidden;
   background: #0a0a0a;
 
-  /* Entrance animation - glitchy matrix-style reveal */
-  animation: albumGlitch 0.35s ease-out backwards;
+  /* Entrance animation - simplified for performance */
+  animation: albumReveal 0.3s ease-out backwards;
   animation-delay: ${props => props.$delay || 0}ms;
 
-  @keyframes albumGlitch {
+  @keyframes albumReveal {
     0% {
       opacity: 0;
-      filter: brightness(2) saturate(0) contrast(1.5);
-      clip-path: inset(0 100% 0 0);
-    }
-    30% {
-      opacity: 1;
-      filter: brightness(1.5) saturate(0.5) contrast(1.2);
-      clip-path: inset(0 50% 0 0);
-    }
-    60% {
-      filter: brightness(1.2) saturate(0.8);
-      clip-path: inset(0 20% 0 0);
+      transform: scale(0.95);
     }
     100% {
       opacity: 1;
-      filter: brightness(1) saturate(1) contrast(1);
-      clip-path: inset(0 0 0 0);
+      transform: scale(1);
     }
   }
 
@@ -211,7 +194,7 @@ const AlbumCover = styled.div`
     object-fit: cover;
   }
 
-  /* CRT scanline overlay - always visible */
+  /* CRT scanline overlay - subtle effect */
   &::before {
     content: '';
     position: absolute;
@@ -219,9 +202,9 @@ const AlbumCover = styled.div`
     background: repeating-linear-gradient(
       0deg,
       transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.15) 2px,
-      rgba(0, 0, 0, 0.15) 4px
+      transparent 3px,
+      rgba(0, 0, 0, 0.04) 3px,
+      rgba(0, 0, 0, 0.04) 4px
     );
     pointer-events: none;
     z-index: 1;
@@ -324,37 +307,22 @@ const AlbumArtist = styled.div`
   text-overflow: ellipsis;
 `;
 
-// Loading grid animations
+// Loading grid animations - simplified for performance
 const glitchIn = keyframes`
   0% {
     opacity: 0;
-    filter: brightness(2) saturate(0);
-    transform: scale(1.02);
-  }
-  20% {
-    opacity: 1;
-    filter: brightness(1.5) saturate(0.5);
   }
   100% {
     opacity: 1;
-    filter: brightness(1) saturate(1);
-    transform: scale(1);
   }
 `;
 
 const glitchOut = keyframes`
   0% {
     opacity: 1;
-    filter: brightness(1) saturate(1);
-  }
-  80% {
-    opacity: 0.8;
-    filter: brightness(1.5) saturate(0.5);
   }
   100% {
     opacity: 0;
-    filter: brightness(2) saturate(0);
-    transform: scale(0.98);
   }
 `;
 
@@ -374,22 +342,23 @@ const LoadingGrid = styled.div`
   right: 0;
   bottom: 0;
   overflow: hidden;
-  padding: ${GRID_GAP}px;
 
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_SIZE}px, 1fr));
-  gap: ${GRID_GAP}px;
+  /* Match album grid sizing - edge to edge */
+  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+  gap: 0;
   align-content: start;
 `;
 
 const LoadingCell = styled.div`
-  aspect-ratio: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   background: #0a0a0a;
   border: 1px solid rgba(0, 255, 65, 0.2);
   position: relative;
   overflow: hidden;
 
-  /* Scanning effect */
+  /* Scanning effect - optimized: CSS-only, no per-cell delay */
   &::after {
     content: '';
     position: absolute;
@@ -400,13 +369,13 @@ const LoadingCell = styled.div`
     background: linear-gradient(
       180deg,
       transparent 0%,
-      rgba(0, 255, 65, 0.1) 45%,
-      rgba(0, 255, 65, 0.15) 50%,
-      rgba(0, 255, 65, 0.1) 55%,
+      rgba(0, 255, 65, 0.08) 45%,
+      rgba(0, 255, 65, 0.12) 50%,
+      rgba(0, 255, 65, 0.08) 55%,
       transparent 100%
     );
-    animation: scanLoad 1.5s ease-in-out infinite;
-    animation-delay: ${props => props.$scanDelay || 0}ms;
+    animation: scanLoad 2s ease-in-out infinite;
+    /* Removed per-cell delay - single unified scan is more performant */
   }
 
   @keyframes scanLoad {
@@ -421,30 +390,15 @@ const GlitchContent = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: ${props => props.$visible ? glitchIn : glitchOut} 0.4s ease-out forwards;
-
-  /* CRT overlay */
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.15) 2px,
-      rgba(0, 0, 0, 0.15) 4px
-    );
-    pointer-events: none;
-    z-index: 1;
-  }
+  animation: ${props => props.$visible ? glitchIn : glitchOut} 0.3s ease-out forwards;
+  /* Removed CRT overlay from loading cells for performance */
 `;
 
 const GlitchImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(0.8) contrast(1.1);
+  /* Removed filter for performance */
 `;
 
 const GameLink = styled.div`
@@ -498,14 +452,15 @@ function Desktop({ albums, isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
   }, []);
 
   // Randomly toggle cell visibility for glitch effect
+  // Optimized: longer interval, fewer state updates
   useEffect(() => {
     if (!isLoading) return;
 
     const interval = setInterval(() => {
       setCellStates(prev => {
         const newStates = { ...prev };
-        // Toggle 3-5 random cells each interval
-        const toggleCount = 3 + Math.floor(Math.random() * 3);
+        // Toggle 2-3 random cells each interval (reduced from 3-5)
+        const toggleCount = 2 + Math.floor(Math.random() * 2);
         for (let i = 0; i < toggleCount; i++) {
           const cellIndex = Math.floor(Math.random() * GRID_CELL_COUNT);
           const cell = loadingCells[cellIndex];
@@ -515,7 +470,7 @@ function Desktop({ albums, isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
         }
         return newStates;
       });
-    }, 800);
+    }, 1200); // Increased from 800ms to 1200ms
 
     return () => clearInterval(interval);
   }, [isLoading, loadingCells]);
@@ -545,7 +500,7 @@ function Desktop({ albums, isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
       <DesktopContainer>
         <LoadingGrid>
           {loadingCells.map((cell, index) => (
-            <LoadingCell key={cell.id} $scanDelay={index * 50}>
+            <LoadingCell key={cell.id}>
               {cell.type === 'game' && (
                 <GlitchContent $visible={cellStates[index] !== false}>
                   <GameLink onClick={() => onOpenGame?.(cell.game.type)}>
@@ -576,12 +531,14 @@ function Desktop({ albums, isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
 
   // Show album grid
   // Calculate staggered delay for new albums (only animate unseen ones)
+  // Optimized: max delay cap to prevent long animation chains
   const getAnimationDelay = (album, index) => {
     if (seenAlbums.has(album.id)) return 0; // Already seen, no delay
     // Find position among new albums for stagger effect
     const newAlbums = albums.filter(a => !seenAlbums.has(a.id));
     const newIndex = newAlbums.findIndex(a => a.id === album.id);
-    return newIndex * 30; // 30ms stagger between each new album
+    // Cap at 500ms total animation time, reduce stagger
+    return Math.min(newIndex * 15, 500);
   };
 
   return (

@@ -31,7 +31,8 @@ import {
   getCurrentUser,
 } from '../utils/spotify';
 import {
-  SORT_OPTIONS,
+  DECADE_OPTIONS,
+  getDecadeFromDate,
   DEFAULT_THRESHOLD,
   TARGET_ALBUM_COUNT,
   MIN_SAVED_TRACKS,
@@ -76,19 +77,8 @@ export function useSpotify() {
   const [audioAnalysis, setAudioAnalysis] = useState(null);
 
   // Settings
-  const [threshold, setThreshold] = useState(
-    () => {
-      const saved = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-      if (saved === 'all' || saved === 'auto') return saved;
-      // If a numeric value was saved from old version, use 'auto' instead
-      return saved && !isNaN(parseInt(saved)) ? 'auto' : DEFAULT_THRESHOLD;
-    }
-  );
-  const [sortBy, setSortBy] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.SORT_BY) || SORT_OPTIONS.RELEASE_DATE
-  );
-  const [sortDesc, setSortDesc] = useState(
-    () => localStorage.getItem(STORAGE_KEYS.SORT_DESC) !== 'false'
+  const [decade, setDecade] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.DECADE) || DECADE_OPTIONS.ALL
   );
 
   // Refs for cleanup
@@ -253,103 +243,53 @@ export function useSpotify() {
   }, [fetchLibrary]);
 
   // -------------------------------------------------------------------------
-  // FILTER & SORT ALBUMS - "TOP 50" ALGORITHM
+  // FILTER ALBUMS - TOP 48 BY LIKED TRACKS, OPTIONALLY BY DECADE
   // -------------------------------------------------------------------------
 
   /**
-   * Top 50 Algorithm:
-   * 1. Start with albums that have 100% liked tracks
-   * 2. If we don't have enough, add albums with lower percentage
-   * 3. Stop once we reach TARGET_ALBUM_COUNT
-   *
-   * This gives a meaningful collection of your "most loved" albums
-   * without requiring manual threshold picking.
+   * Album Selection Algorithm:
+   * 1. Filter by decade (if selected)
+   * 2. Sort by saved track count (most saved = most loved)
+   * 3. Take the top N albums, prioritizing those with MIN_SAVED_TRACKS
+   *    but filling up to TARGET_ALBUM_COUNT even with fewer liked tracks
    */
   const filteredAlbums = useCallback(() => {
     if (albums.length === 0) return [];
 
-    // If 'all' mode, show everything (legacy behavior)
-    if (threshold === 'all') {
-      let result = [...albums];
-      result.sort((a, b) => {
-        let comparison = 0;
-        switch (sortBy) {
-          case SORT_OPTIONS.RELEASE_DATE:
-            comparison = new Date(a.releaseDate) - new Date(b.releaseDate);
-            break;
-          case SORT_OPTIONS.ARTIST:
-            comparison = a.artist.localeCompare(b.artist);
-            break;
-          case SORT_OPTIONS.ALBUM:
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case SORT_OPTIONS.TRACK_COUNT:
-            comparison = a.likedTracks - b.likedTracks;
-            break;
-          default:
-            comparison = 0;
-        }
-        return sortDesc ? -comparison : comparison;
-      });
-      return result;
+    // Step 1: Filter by decade if not "all"
+    let candidates = albums;
+    if (decade !== DECADE_OPTIONS.ALL) {
+      candidates = albums.filter(a => getDecadeFromDate(a.releaseDate) === decade);
     }
 
-    // Top N algorithm (default 'auto' mode)
-    // 1. Filter albums with minimum saved track count
-    // 2. Sort by saved track count (most saved = most loved)
-    // 3. Take the top N albums
-    const qualifyingAlbums = albums.filter(a => a.likedTracks >= MIN_SAVED_TRACKS);
+    // Step 2: Sort all candidates by liked track count (highest first)
+    const sorted = [...candidates].sort((a, b) => b.likedTracks - a.likedTracks);
 
-    // Sort by liked track count (highest first)
-    qualifyingAlbums.sort((a, b) => b.likedTracks - a.likedTracks);
+    // Step 3: Get albums with minimum saved track count first
+    const qualifyingAlbums = sorted.filter(a => a.likedTracks >= MIN_SAVED_TRACKS);
 
-    // Take the top N albums
-    let result = qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
-
-    console.log(`Top ${TARGET_ALBUM_COUNT} algorithm: ${albums.length} total -> ${qualifyingAlbums.length} with ${MIN_SAVED_TRACKS}+ tracks -> ${result.length} selected`);
-    if (result.length > 0) {
-      console.log(`  Range: ${result[0].likedTracks} to ${result[result.length - 1].likedTracks} saved tracks`);
+    // Step 4: If we don't have enough qualifying albums, fill with remaining candidates
+    let result;
+    if (qualifyingAlbums.length >= TARGET_ALBUM_COUNT) {
+      result = qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
+    } else {
+      // Take all qualifying albums, then fill with next best candidates
+      const remaining = sorted.filter(a => a.likedTracks < MIN_SAVED_TRACKS);
+      result = [...qualifyingAlbums, ...remaining].slice(0, TARGET_ALBUM_COUNT);
     }
 
-    // Now sort the selected albums by user preference
-    result.sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case SORT_OPTIONS.RELEASE_DATE:
-          comparison = new Date(a.releaseDate) - new Date(b.releaseDate);
-          break;
-        case SORT_OPTIONS.ARTIST:
-          comparison = a.artist.localeCompare(b.artist);
-          break;
-        case SORT_OPTIONS.ALBUM:
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case SORT_OPTIONS.TRACK_COUNT:
-          comparison = a.likedTracks - b.likedTracks;
-          break;
-        default:
-          comparison = 0;
-      }
-      return sortDesc ? -comparison : comparison;
-    });
+    console.log(`Top ${TARGET_ALBUM_COUNT} (${decade}): ${albums.length} total -> ${candidates.length} in decade -> ${qualifyingAlbums.length} qualifying (${MIN_SAVED_TRACKS}+ tracks) -> ${result.length} selected`);
 
     return result;
-  }, [albums, threshold, sortBy, sortDesc]);
+  }, [albums, decade]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
   // -------------------------------------------------------------------------
 
-  const handleThresholdChange = useCallback((newThreshold) => {
-    setThreshold(newThreshold);
-    localStorage.setItem(STORAGE_KEYS.THRESHOLD, newThreshold.toString());
-  }, []);
-
-  const handleSortChange = useCallback((newSortBy, newSortDesc) => {
-    setSortBy(newSortBy);
-    setSortDesc(newSortDesc);
-    localStorage.setItem(STORAGE_KEYS.SORT_BY, newSortBy);
-    localStorage.setItem(STORAGE_KEYS.SORT_DESC, newSortDesc.toString());
+  const handleDecadeChange = useCallback((newDecade) => {
+    setDecade(newDecade);
+    localStorage.setItem(STORAGE_KEYS.DECADE, newDecade);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -578,11 +518,8 @@ export function useSpotify() {
     refreshLibrary: fetchLibrary,
 
     // Settings
-    threshold,
-    setThreshold: handleThresholdChange,
-    sortBy,
-    sortDesc,
-    setSortOptions: handleSortChange,
+    decade,
+    setDecade: handleDecadeChange,
 
     // Playback
     isPlaying,

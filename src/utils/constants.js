@@ -39,8 +39,8 @@ export const LOCAL_TRACKS = [
 // ============================================================================
 
 // Target number of albums to show (Top N algorithm)
-// 72 divides cleanly by 2,3,4,6,8,9,12,18,24,36
-export const TARGET_ALBUM_COUNT = 72;
+// 48 divides cleanly by 2,3,4,6,8,12,16,24 - good for responsive grids
+export const TARGET_ALBUM_COUNT = 48;
 
 // Minimum saved tracks required to include album in Top N
 export const MIN_SAVED_TRACKS = 8;
@@ -50,30 +50,51 @@ export const THRESHOLD_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 'all'];
 export const DEFAULT_THRESHOLD = 'auto'; // 'auto' uses Top 50 algorithm
 
 // ============================================================================
-// SORT OPTIONS
+// DECADE FILTER OPTIONS
 // ============================================================================
 
-export const SORT_OPTIONS = {
-  RELEASE_DATE: 'release_date',
-  ARTIST: 'artist',
-  ALBUM: 'album',
-  TRACK_COUNT: 'track_count',
+export const DECADE_OPTIONS = {
+  ALL: 'all',
+  D2020: '2020s',
+  D2010: '2010s',
+  D2000: '2000s',
+  D1990: '1990s',
+  D1980: '1980s',
+  CLASSIC: 'classic', // Pre-1980
 };
 
-export const SORT_LABELS = {
-  [SORT_OPTIONS.RELEASE_DATE]: 'Release Date',
-  [SORT_OPTIONS.ARTIST]: 'Artist Name',
-  [SORT_OPTIONS.ALBUM]: 'Album Name',
-  [SORT_OPTIONS.TRACK_COUNT]: '# of Liked Songs',
+export const DECADE_LABELS = {
+  [DECADE_OPTIONS.ALL]: 'All Decades',
+  [DECADE_OPTIONS.D2020]: '2020s',
+  [DECADE_OPTIONS.D2010]: '2010s',
+  [DECADE_OPTIONS.D2000]: '2000s',
+  [DECADE_OPTIONS.D1990]: '1990s',
+  [DECADE_OPTIONS.D1980]: '1980s',
+  [DECADE_OPTIONS.CLASSIC]: 'Pre-1980',
+};
+
+// Helper to get decade from release date
+export const getDecadeFromDate = (releaseDate) => {
+  if (!releaseDate) return null;
+  const year = parseInt(releaseDate.split('-')[0]);
+  if (year >= 2020) return DECADE_OPTIONS.D2020;
+  if (year >= 2010) return DECADE_OPTIONS.D2010;
+  if (year >= 2000) return DECADE_OPTIONS.D2000;
+  if (year >= 1990) return DECADE_OPTIONS.D1990;
+  if (year >= 1980) return DECADE_OPTIONS.D1980;
+  return DECADE_OPTIONS.CLASSIC;
 };
 
 // ============================================================================
 // GRID CONFIGURATION
 // ============================================================================
 
-// Album grid sizing - larger tiles, clear gaps, full album art visible
-export const GRID_ALBUM_SIZE = 150; // px - base size for album covers
-export const GRID_GAP = 8; // px - gap between albums
+// Album grid sizing
+// iPhone width ~375px, so 2 albums = ~180px each (with minimal gap)
+export const GRID_ALBUM_SIZE = 175; // px - tile size (2x fits iPhone width)
+export const GRID_ALBUM_MIN_SIZE = 175; // px - alias for consistency
+export const GRID_ALBUM_MAX_SIZE = 200; // px - legacy
+export const GRID_GAP = 0; // px - no gap between albums (edge to edge)
 
 // ============================================================================
 // GAME URLS (classic 90s versions via iframes)
@@ -103,9 +124,7 @@ export const VISUALIZER_PRESETS = [
 // ============================================================================
 
 export const STORAGE_KEYS = {
-  THRESHOLD: 'recordos_threshold',
-  SORT_BY: 'recordos_sort_by',
-  SORT_DESC: 'recordos_sort_desc',
+  DECADE: 'recordos_decade',
   VOLUME: 'recordos_volume',
   MUTED: 'recordos_muted',
   ALBUMS_CACHE: 'recordos_albums_cache',

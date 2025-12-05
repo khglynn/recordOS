@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(export PATH=\"/usr/local/opt/node@20/bin:$PATH\")",
+      "Bash(node:*)",
+      "Bash(/usr/local/opt/node@20/bin/npm run build)",
+      "Bash(/usr/local/opt/node@20/bin/node --version)",
+      "Bash(/usr/local/opt/node@20/bin/node /usr/local/opt/node@20/bin/npm run build:*)",
+      "Bash(/usr/local/opt/node@20/bin/npx vite build)",
+      "Bash(env -i HOME=\"$HOME\" PATH=\"/usr/local/opt/node@20/bin:/usr/bin:/bin\" /usr/local/opt/node@20/bin/node /usr/local/opt/node@20/lib/node_modules/npm/bin/npm-cli.js run build:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(env -i HOME=\"$HOME\" PATH=\"/usr/local/opt/node@20/bin:/usr/bin:/bin\" /usr/local/opt/node@20/bin/node /usr/local/opt/node@20/lib/node_modules/npm/bin/npm-cli.js install:*)",
+      "Bash(/usr/local/opt/node@20/bin/node /usr/local/opt/node@20/lib/node_modules/npm/bin/npm-cli.js run build)",
+      "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS status)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

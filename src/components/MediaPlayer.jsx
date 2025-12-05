@@ -409,6 +409,7 @@ function MediaPlayer({
 
   return (
     <StyledWindow
+      data-window
       $zIndex={zIndex}
       style={{
         left: windowPosition?.x ?? 150,

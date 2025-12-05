@@ -15,6 +15,7 @@ import { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { Button, Toolbar } from 'react95';
 import StartMenu from './StartMenu';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -25,7 +26,7 @@ const TaskbarContainer = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  height: 37px;
+  height: 48px;
   z-index: 100000; /* Higher than LoginModal (10000) to always be visible */
 
   /* Win95 raised border effect */
@@ -37,18 +38,18 @@ const TaskbarContainer = styled.div`
 
   display: flex;
   align-items: center;
-  padding: 2px 4px;
-  gap: 4px;
+  padding: 4px 6px;
+  gap: 6px;
 `;
 
 const StartButton = styled(Button)`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
-  height: 28px;
+  gap: 8px;
+  padding: 4px 14px;
+  height: 36px;
   font-weight: bold;
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 1px;
 
@@ -70,14 +71,14 @@ const StartButton = styled(Button)`
 `;
 
 const StartLogo = styled.img`
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 `;
 
 const TaskbarDivider = styled.div`
   width: 2px;
-  height: 24px;
+  height: 32px;
   background: linear-gradient(
     180deg,
     #0a0a0a 0%,
@@ -98,10 +99,10 @@ const WindowTab = styled(Button)`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px;
-  height: 26px;
-  max-width: 180px;
-  font-size: 10px;
+  padding: 4px 12px;
+  height: 32px;
+  max-width: 200px;
+  font-size: 11px;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 0.5px;
 
@@ -132,8 +133,8 @@ const TabIcon = styled.span`
 const TrayArea = styled.div`
   display: flex;
   align-items: center;
-  padding: 2px 8px;
-  height: 26px;
+  padding: 4px 12px;
+  height: 32px;
 
   /* Sunken border effect */
   background: #0d0d0d;
@@ -155,17 +156,14 @@ const TrayText = styled.span`
 
 function Taskbar({
   albumCount,
-  threshold,
   openWindows,
   activeWindow,
   onWindowClick,
   onStartClick,
   isStartMenuOpen,
   isLoggedIn,
-  sortBy,
-  sortDesc,
-  onSortChange,
-  onThresholdChange,
+  decade,
+  onDecadeChange,
   onLogout,
   onOpenMediaPlayer,
   onOpenGame,
@@ -177,15 +175,25 @@ function Taskbar({
   // Window icons
   const getWindowIcon = (type) => {
     switch (type) {
-      case 'trackList': return '💿';
-      case 'mediaPlayer': return '🎵';
-      case 'minesweeper': return '💣';
-      case 'solitaire': return '🃏';
-      case 'snake': return '🐍';
-      case 'info': return 'ℹ️';
-      default: return '📁';
+      case 'trackList': return <PixelIcon name="disc" size={14} />;
+      case 'mediaPlayer': return <PixelIcon name="music" size={14} />;
+      case 'minesweeper': return <PixelIcon name="zap" size={14} />;
+      case 'solitaire': return <PixelIcon name="gamepad" size={14} />;
+      case 'snake': return <PixelIcon name="gamepad" size={14} />;
+      case 'info': return <PixelIcon name="info" size={14} />;
+      default: return <PixelIcon name="folder" size={14} />;
     }
   };
+
+  // Decade display for tray
+  const getDecadeDisplay = () => {
+    if (!isLoggedIn) return '--:--';
+    if (decade === 'classic') return 'circa: pre-80';
+    if (!decade || decade === 'all') return null; // Will show icon instead
+    return `circa: ${decade}`;
+  };
+
+  const showInfinityIcon = isLoggedIn && (!decade || decade === 'all');
 
   return (
     <>
@@ -217,14 +225,14 @@ function Taskbar({
           ))}
         </WindowTabs>
 
-        {/* Tray Area - Album Count Display */}
+        {/* Tray Area - Decade Display */}
         <TrayArea>
           <TrayText>
-            {isLoggedIn
-              ? threshold === 'all'
-                ? `${albumCount} albums`
-                : `Top ${albumCount}`
-              : '--:--'}
+            {showInfinityIcon ? (
+              <>circa: <PixelIcon name="repeat" size={12} /></>
+            ) : (
+              getDecadeDisplay()
+            )}
           </TrayText>
         </TrayArea>
       </TaskbarContainer>
@@ -233,11 +241,8 @@ function Taskbar({
       {isStartMenuOpen && (
         <StartMenu
           isLoggedIn={isLoggedIn}
-          sortBy={sortBy}
-          sortDesc={sortDesc}
-          threshold={threshold}
-          onSortChange={onSortChange}
-          onThresholdChange={onThresholdChange}
+          decade={decade}
+          onDecadeChange={onDecadeChange}
           onLogout={onLogout}
           onOpenMediaPlayer={onOpenMediaPlayer}
           onOpenGame={onOpenGame}

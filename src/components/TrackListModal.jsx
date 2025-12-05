@@ -28,6 +28,7 @@ import {
   TableHeadCell,
   ScrollView,
 } from 'react95';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -35,9 +36,9 @@ import {
 
 const StyledWindow = styled(Window)`
   position: fixed;
-  width: 450px;
+  width: 360px;
   max-width: 95vw;
-  max-height: 80vh;
+  max-height: 70vh;
   z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
@@ -112,15 +113,15 @@ const StyledWindowContent = styled(WindowContent)`
 
 const AlbumHeader = styled.div`
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
   background: #0d0d0d;
   border-bottom: 1px solid #2a2a2a;
 `;
 
 const AlbumArt = styled.img`
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   object-fit: cover;
   border: 2px solid #2a2a2a;
   box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
@@ -182,7 +183,7 @@ const PlayAllButton = styled(Button)`
 const TrackListContainer = styled.div`
   flex: 1;
   overflow: auto;
-  padding: 8px;
+  padding: 4px;
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
@@ -212,18 +213,18 @@ const StyledHeadCell = styled(TableHeadCell)`
   background: #0d0d0d !important;
   color: rgba(0, 255, 65, 0.6) !important;
   font-size: 10px;
-  padding: 6px 8px !important;
+  padding: 6px 4px !important;
   border-bottom: 1px solid #2a2a2a !important;
 `;
 
 const StyledRow = styled(TableRow)`
   background: ${props => props.$isLiked
-    ? 'rgba(0, 255, 65, 0.1)'
+    ? 'rgba(0, 255, 65, 0.08)'
     : 'transparent'} !important;
   cursor: pointer;
 
   &:hover {
-    background: rgba(0, 255, 65, 0.15) !important;
+    background: rgba(0, 255, 65, 0.18) !important;
   }
 
   /* Highlight currently playing */
@@ -240,16 +241,18 @@ const StyledCell = styled(TableDataCell)`
   background: transparent !important;
   color: ${props => props.$isLiked
     ? '#00ff41'
-    : 'rgba(0, 255, 65, 0.7)'} !important;
+    : 'rgba(0, 255, 65, 0.6)'} !important;
   font-size: 11px;
-  padding: 8px !important;
+  padding: 6px 4px !important;
   border-bottom: 1px solid #1a1a1a !important;
+  vertical-align: middle;
 `;
 
 const TrackNumber = styled.span`
   color: rgba(0, 255, 65, 0.4);
-  width: 24px;
+  width: 20px;
   display: inline-block;
+  font-size: 9px;
 `;
 
 const TrackName = styled.span`
@@ -257,17 +260,17 @@ const TrackName = styled.span`
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
-const LikedIcon = styled.span`
+const CheckIcon = styled.span`
   color: #00ff41;
-  font-size: 9px;
-  margin-left: 6px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  text-shadow: 0 0 4px rgba(0, 255, 65, 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
 `;
 
 const Duration = styled.span`
   color: rgba(0, 255, 65, 0.5);
-  font-size: 10px;
+  font-size: 9px;
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
@@ -330,6 +333,7 @@ function TrackListModal({
 
   return (
     <StyledWindow
+      data-window
       $zIndex={zIndex}
       style={{
         left: position?.x ?? 100,
@@ -343,8 +347,8 @@ function TrackListModal({
           <span>{album.name}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={onMinimize}>_</HeaderButton>
-          <HeaderButton onClick={onClose}>×</HeaderButton>
+          <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>_</HeaderButton>
+          <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>×</HeaderButton>
         </HeaderButtons>
       </StyledWindowHeader>
 
@@ -367,10 +371,11 @@ function TrackListModal({
           <StyledTable>
             <StyledTableHead>
               <TableRow>
-                <StyledHeadCell style={{ width: '40px' }}>#</StyledHeadCell>
+                <StyledHeadCell style={{ width: '20px' }}></StyledHeadCell>
+                <StyledHeadCell style={{ width: '28px' }}>#</StyledHeadCell>
                 <StyledHeadCell>Title</StyledHeadCell>
-                <StyledHeadCell style={{ width: '50px' }}>Time</StyledHeadCell>
-                <StyledHeadCell style={{ width: '40px' }}></StyledHeadCell>
+                <StyledHeadCell style={{ width: '44px' }}>Time</StyledHeadCell>
+                <StyledHeadCell style={{ width: '28px' }}></StyledHeadCell>
               </TableRow>
             </StyledTableHead>
             <TableBody>
@@ -382,13 +387,17 @@ function TrackListModal({
                   onClick={() => onPlayTrack?.(track, album)}
                 >
                   <StyledCell $isLiked={track.isLiked}>
+                    <CheckIcon>
+                      {track.isLiked && <PixelIcon name="check" size={12} />}
+                    </CheckIcon>
+                  </StyledCell>
+                  <StyledCell $isLiked={track.isLiked}>
                     <TrackNumber>{track.trackNumber}</TrackNumber>
                   </StyledCell>
                   <StyledCell $isLiked={track.isLiked}>
                     <TrackName $isLiked={track.isLiked}>
                       {track.name}
                     </TrackName>
-                    {track.isLiked && <LikedIcon>[SAVED]</LikedIcon>}
                   </StyledCell>
                   <StyledCell $isLiked={track.isLiked}>
                     <Duration>{formatDuration(track.duration)}</Duration>
@@ -398,7 +407,7 @@ function TrackListModal({
                       e.stopPropagation();
                       onPlayTrack?.(track, album);
                     }}>
-                      ▶
+                      <PixelIcon name="play" size={10} />
                     </PlayButton>
                   </StyledCell>
                 </StyledRow>

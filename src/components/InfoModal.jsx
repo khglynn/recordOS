@@ -21,15 +21,20 @@ import {
   Fieldset,
   Anchor,
 } from 'react95';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
 
+// Standard modal width for mobile compatibility
+const MODAL_WIDTH = 340;
+
 const StyledWindow = styled(Window)`
   position: fixed;
-  width: 340px;
+  width: ${MODAL_WIDTH}px;
   max-width: 95vw;
+  max-height: 85vh;
   z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
@@ -84,19 +89,21 @@ const HeaderButton = styled(Button)`
 
 const StyledWindowContent = styled(WindowContent)`
   background: #1a1a1a !important;
-  padding: 16px !important;
+  padding: 12px !important;
+  overflow-y: auto;
+  max-height: calc(85vh - 30px);
 `;
 
 const LogoSection = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
 `;
 
 const Logo = styled.img`
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.3));
 `;
@@ -110,11 +117,31 @@ const Title = styled.h1`
   color: #00ff41;
   margin: 0 0 4px;
   text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 2px;
 `;
 
 const Version = styled.span`
   font-size: 10px;
   color: rgba(0, 255, 65, 0.5);
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
+const SystemMessage = styled.div`
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.85);
+  line-height: 1.6;
+
+  .prompt {
+    color: #00ff41;
+    margin-right: 6px;
+  }
 `;
 
 const Description = styled.p`
@@ -122,33 +149,36 @@ const Description = styled.p`
   color: rgba(0, 255, 65, 0.8);
   line-height: 1.5;
   margin: 0 0 16px;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const StyledFieldset = styled(Fieldset)`
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   background: #0d0d0d !important;
   border-color: #2a2a2a !important;
+  padding: 8px !important;
 
   legend {
     color: #00ff41 !important;
-    font-size: 11px;
+    font-size: 10px;
   }
 `;
 
 const ContactItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 11px;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 10px;
   color: rgba(0, 255, 65, 0.8);
+  font-family: 'Consolas', 'Courier New', monospace;
 
   &:last-child {
     margin-bottom: 0;
   }
 
   span:first-child {
-    width: 20px;
+    width: 16px;
     text-align: center;
   }
 `;
@@ -165,23 +195,52 @@ const StyledLink = styled.a`
 const DonateButton = styled(Button)`
   width: 100%;
   padding: 10px;
-  font-size: 12px;
+  font-size: 11px;
   margin-top: 8px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
 
-  background: linear-gradient(180deg, #3a2a5a 0%, #2a1a4a 100%) !important;
-  color: #b88aff !important;
-  border-color: #5a4a7a !important;
+  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
+  color: #00ff41 !important;
+  border-color: #00ff41 !important;
 
   &:hover {
-    background: linear-gradient(180deg, #4a3a6a 0%, #3a2a5a 100%) !important;
+    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+  }
+`;
+
+const CreditsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const CreditItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.7);
+  font-family: 'Consolas', 'Courier New', monospace;
+
+  .lib-name {
+    color: #00ff41;
+  }
+
+  .lib-license {
+    color: rgba(0, 255, 65, 0.4);
+    font-size: 9px;
   }
 `;
 
 const Footer = styled.div`
-  font-size: 9px;
+  font-size: 8px;
   color: rgba(0, 255, 65, 0.4);
   text-align: center;
-  margin-top: 16px;
+  margin-top: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
 `;
 
 // ============================================================================
@@ -209,6 +268,7 @@ function InfoModal({
 
   return (
     <StyledWindow
+      data-window
       $zIndex={zIndex}
       style={{
         left: position?.x ?? 200,
@@ -229,67 +289,114 @@ function InfoModal({
           <Logo src="/logo.png" alt="Record OS" />
           <TitleSection>
             <Title>RECORD OS</Title>
-            <Version>Version 3.0</Version>
+            <Version>BUILD 3.0.48 // STABLE</Version>
           </TitleSection>
         </LogoSection>
 
-        <Description>
-          A nostalgic trip through your music collection.
-          See your most-loved Spotify albums ranked by saved tracks,
-          wrapped in Windows 95 aesthetics and 90s computer vibes.
-        </Description>
+        <SystemMessage>
+          <span className="prompt">&gt;</span>
+          Audio visualization terminal.
+          <br />
+          <span className="prompt">&gt;</span>
+          Displays your most-loved albums,
+          <br />
+          <span className="prompt">&gt;</span>
+          ranked by saved track count.
+          <br />
+          <span className="prompt">&gt;</span>
+          All data processed locally.
+        </SystemMessage>
 
-        <StyledFieldset label="Contact">
+        <StyledFieldset label="SYSTEM ADMINISTRATOR">
           <ContactItem>
-            <span>🐦</span>
+            <span>◉</span>
             <StyledLink
-              href="https://twitter.com/kevinhg"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="mailto:hello@kevinhg.com"
             >
-              @kevinhg
+              hello@kevinhg.com
             </StyledLink>
           </ContactItem>
           <ContactItem>
-            <span>🌐</span>
+            <span>◉</span>
             <StyledLink
-              href="https://kevin.fyi"
+              href="https://kevinhg.com"
               target="_blank"
               rel="noopener noreferrer"
             >
-              kevin.fyi
+              kevinhg.com
             </StyledLink>
           </ContactItem>
           <ContactItem>
-            <span>💻</span>
+            <span>◉</span>
             <StyledLink
-              href="https://github.com/khglynn"
+              href="https://github.com/khglynn/recordOS"
               target="_blank"
               rel="noopener noreferrer"
             >
-              github.com/khglynn
+              github.com/khglynn/recordOS
             </StyledLink>
           </ContactItem>
         </StyledFieldset>
 
-        <StyledFieldset label="Support">
-          <Description style={{ margin: 0 }}>
-            If you enjoy Record OS, consider buying me a coffee!
+        <StyledFieldset label="LIBRARIES & CREDITS">
+          <CreditsList>
+            <CreditItem>
+              <StyledLink href="https://github.com/react95-org/react95" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">React95</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://pixelarticons.com" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Pixelarticons</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/nicholasyager/minesweeper" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Minesweeper</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/Two9A/solitaire-js" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Solitaire</span>
+              </StyledLink>
+              <span className="lib-license">Unlicense</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/cribbles/snake" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Snake</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/jberg/butterchurn" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Butterchurn</span>
+              </StyledLink>
+              <span className="lib-license">MIT (planned)</span>
+            </CreditItem>
+          </CreditsList>
+        </StyledFieldset>
+
+        <StyledFieldset label="SYSTEM MAINTENANCE">
+          <Description style={{ margin: '0 0 12px 0' }}>
+            Servers require caffeine.
           </Description>
           <DonateButton
             as="a"
-            href="https://buy.stripe.com/test_placeholder"
+            href="https://donate.stripe.com/placeholder"
             target="_blank"
             rel="noopener noreferrer"
           >
-            ☕ Buy Me a Coffee
+            <PixelIcon name="dollar" size={12} /> FUND OPERATIONS
           </DonateButton>
         </StyledFieldset>
 
         <Footer>
-          Built with React, React95, and Spotify API
+          WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS
           <br />
-          © 2025 Kevin Glynn
+          © 2025 // ALL RIGHTS RESERVED
         </Footer>
       </StyledWindowContent>
     </StyledWindow>
