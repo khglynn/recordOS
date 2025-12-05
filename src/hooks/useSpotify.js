@@ -53,6 +53,7 @@ export function useSpotify() {
   // Auth state
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState(null);
 
   // Library state
   const [albums, setAlbums] = useState([]);
@@ -103,6 +104,13 @@ export function useSpotify() {
 
       if (error) {
         console.error('Spotify auth error:', error);
+        // Map common Spotify errors to user-friendly messages
+        const errorMessages = {
+          'access_denied': 'ACCESS DENIED // User cancelled login',
+          'invalid_client': 'INVALID CLIENT // Check app configuration',
+          'invalid_request': 'INVALID REQUEST // Try again',
+        };
+        setAuthError(errorMessages[error] || `AUTH ERROR // ${error}`);
         return;
       }
 
@@ -111,12 +119,13 @@ export function useSpotify() {
           console.log('Exchanging auth code for tokens...');
           await exchangeCodeForTokens(code);
           console.log('Token exchange successful!');
+          setAuthError(null); // Clear any previous error
           setLoggedIn(true);
         } catch (err) {
           console.error('Failed to exchange code:', err);
-          // Don't show alert for "invalid code" - user likely just refreshed
+          // Don't set error for "invalid code" - user likely just refreshed
           if (!err.message.includes('Invalid authorization code')) {
-            alert(`Login failed: ${err.message}`);
+            setAuthError(`LOGIN FAILED // ${err.message}`);
           }
         }
       }
@@ -528,6 +537,8 @@ export function useSpotify() {
     // Auth
     loggedIn,
     user,
+    authError,
+    clearAuthError: () => setAuthError(null),
     logout: handleLogout,
 
     // Library

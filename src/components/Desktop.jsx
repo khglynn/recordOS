@@ -523,6 +523,40 @@ const LoadingStatus = styled.div`
   pointer-events: none;
 `;
 
+/**
+ * Empty library message (logged in but no liked songs)
+ */
+const EmptyLibraryMessage = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: rgba(0, 255, 65, 0.7);
+  max-width: 400px;
+  padding: 20px;
+
+  h2 {
+    font-size: 16px;
+    color: #00ff41;
+    margin: 0 0 16px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+  }
+
+  p {
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+    opacity: 0.7;
+  }
+
+  .prompt {
+    color: #00ff41;
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -669,11 +703,20 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
     );
   }
 
-  // Post-login but no albums yet: show empty grid
+  // Post-login but no albums: show message
   if (albums.length === 0) {
     return (
       <DesktopContainer>
         <EmptyGrid />
+        <EmptyLibraryMessage>
+          <h2>NO DATA FOUND</h2>
+          <p>
+            <span className="prompt">&gt;</span> Your library scan returned 0 albums.
+          </p>
+          <p>
+            <span className="prompt">&gt;</span> Like some songs on Spotify first, then refresh.
+          </p>
+        </EmptyLibraryMessage>
       </DesktopContainer>
     );
   }

@@ -32,7 +32,8 @@
       "Bash(tree:*)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:jlogical-apps.github.io)"
     ],
     "deny": [],
     "ask": []

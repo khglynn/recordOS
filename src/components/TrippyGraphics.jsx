@@ -215,6 +215,9 @@ function TrippyGraphics({
         // Try to initialize audio context if not already done
         if (!audioContext && initAudioContext) {
           initAudioContext();
+          // Wait for audio context to be ready (state update is async)
+          // If it's not ready, the microphone fallback will be used
+          return;
         }
 
         // Use external audio source if available, otherwise falls back to mic

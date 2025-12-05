@@ -221,9 +221,7 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn && !hasOpenedInitialWindows) {
-      // Calculate positions: Minesweeper upper right, Media Player lower right
-      // Minesweeper is ~280px wide, Media Player is ~320px wide
-      const minesweeperX = window.innerWidth - 280 - 24; // 24px inset from right
+      // Calculate positions: Minesweeper upper left, Media Player lower right
       const mediaPlayerX = window.innerWidth - 320 - 24;
       const mediaPlayerY = window.innerHeight - 48 - 200 - 24; // 48px taskbar, ~200px player height, 24px inset
 
@@ -232,7 +230,7 @@ function App() {
         type: 'minesweeper',
         title: 'Minesweeper',
         data: {},
-        position: { x: minesweeperX, y: 24 }, // Upper right, 24px from top
+        position: { x: 24, y: 24 }, // Upper left, 24px from edges
         minimized: false,
       };
 
@@ -249,9 +247,9 @@ function App() {
       setActiveWindowId(mediaPlayerWindow.id);
       setHasOpenedInitialWindows(true);
 
-      // Start local audio muted
+      // Start local audio at middle volume (not muted) so play works immediately
       if (localAudio.setVolume) {
-        localAudio.setVolume(0);
+        localAudio.setVolume(50);
       }
     }
   }, [isLoggedIn, hasOpenedInitialWindows, localAudio]);
@@ -672,13 +670,15 @@ function App() {
             );
 
           case 'trippyGraphics':
+            // Always use localAudio for visualizer (Spotify DRM blocks audio access)
+            // Falls back to microphone if no audio context available
             return (
               <TrippyGraphics
                 {...commonProps}
                 size={w.size || { width: 600, height: 450 }}
-                audioContext={audio.audioContext}
-                audioAnalyser={audio.analyzer}
-                initAudioContext={audio.initAudioContext}
+                audioContext={localAudio.audioContext}
+                audioAnalyser={localAudio.analyzer}
+                initAudioContext={localAudio.initAudioContext}
               />
             );
 
