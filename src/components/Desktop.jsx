@@ -12,9 +12,25 @@
  * Style: Dark with green grid lines, grungy/Alien computer aesthetic.
  */
 
-import { useEffect, useState } from 'react';
-import styled from 'styled-components';
+import { useEffect, useState, useMemo } from 'react';
+import styled, { keyframes } from 'styled-components';
 import { GRID_ALBUM_SIZE, GRID_GAP } from '../utils/constants';
+
+// Sample album art URLs for loading animation
+const SAMPLE_ALBUM_ART = [
+  'https://i.scdn.co/image/ab67616d0000b2732c5b24ecfa39523a75c993c4', // Queen
+  'https://i.scdn.co/image/ab67616d0000b273c8a11e48c91a982d086afc69', // Michael Jackson
+  'https://i.scdn.co/image/ab67616d0000b273e3e3b64cea45265469d4cafa', // Motown
+  'https://i.scdn.co/image/ab67616d0000b27384243a01af3c77b56f4b6e3e', // The Beatles
+  'https://i.scdn.co/image/ab67616d0000b273e319baafd16e84f0408af2a0', // Prince
+  'https://i.scdn.co/image/ab67616d0000b273a7865e686c36a4adda6c9978', // Elton John
+];
+
+const GAME_LINKS = [
+  { icon: '[ MINESWEEPER ]', type: 'minesweeper' },
+  { icon: '[ SOLITAIRE ]', type: 'solitaire' },
+  { icon: '[ SNAKE ]', type: 'snake' },
+];
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -308,17 +324,201 @@ const AlbumArtist = styled.div`
   text-overflow: ellipsis;
 `;
 
+// Loading grid animations
+const glitchIn = keyframes`
+  0% {
+    opacity: 0;
+    filter: brightness(2) saturate(0);
+    transform: scale(1.02);
+  }
+  20% {
+    opacity: 1;
+    filter: brightness(1.5) saturate(0.5);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    transform: scale(1);
+  }
+`;
+
+const glitchOut = keyframes`
+  0% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+  }
+  80% {
+    opacity: 0.8;
+    filter: brightness(1.5) saturate(0.5);
+  }
+  100% {
+    opacity: 0;
+    filter: brightness(2) saturate(0);
+    transform: scale(0.98);
+  }
+`;
+
+const scanPulse = keyframes`
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+`;
+
+const LoadingGrid = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  padding: ${GRID_GAP}px;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_SIZE}px, 1fr));
+  gap: ${GRID_GAP}px;
+  align-content: start;
+`;
+
+const LoadingCell = styled.div`
+  aspect-ratio: 1;
+  background: #0a0a0a;
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  position: relative;
+  overflow: hidden;
+
+  /* Scanning effect */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 255, 65, 0.1) 45%,
+      rgba(0, 255, 65, 0.15) 50%,
+      rgba(0, 255, 65, 0.1) 55%,
+      transparent 100%
+    );
+    animation: scanLoad 1.5s ease-in-out infinite;
+    animation-delay: ${props => props.$scanDelay || 0}ms;
+  }
+
+  @keyframes scanLoad {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+`;
+
+const GlitchContent = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ${props => props.$visible ? glitchIn : glitchOut} 0.4s ease-out forwards;
+
+  /* CRT overlay */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+`;
+
+const GlitchImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.8) contrast(1.1);
+`;
+
+const GameLink = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  color: #00ff41;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+  letter-spacing: 1px;
+  text-align: center;
+  animation: ${scanPulse} 2s ease-in-out infinite;
+  cursor: pointer;
+  padding: 8px;
+
+  &:hover {
+    color: #00ff41;
+    text-shadow: 0 0 12px rgba(0, 255, 65, 0.8);
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-function Desktop({ albums, isLoggedIn, onAlbumClick }) {
+function Desktop({ albums, isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
+  const [cellStates, setCellStates] = useState({});
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
+
+  // Generate random grid content for loading state
+  const GRID_CELL_COUNT = 72; // Match target album count
+  const loadingCells = useMemo(() => {
+    return Array.from({ length: GRID_CELL_COUNT }, (_, i) => {
+      const rand = Math.random();
+      if (rand < 0.15) {
+        // 15% chance: game link
+        const game = GAME_LINKS[Math.floor(Math.random() * GAME_LINKS.length)];
+        return { type: 'game', game, id: i };
+      } else if (rand < 0.35) {
+        // 20% chance: album art preview
+        const art = SAMPLE_ALBUM_ART[Math.floor(Math.random() * SAMPLE_ALBUM_ART.length)];
+        return { type: 'album', art, id: i };
+      } else {
+        // 65% chance: empty scanning cell
+        return { type: 'empty', id: i };
+      }
+    });
+  }, []);
+
+  // Randomly toggle cell visibility for glitch effect
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const interval = setInterval(() => {
+      setCellStates(prev => {
+        const newStates = { ...prev };
+        // Toggle 3-5 random cells each interval
+        const toggleCount = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < toggleCount; i++) {
+          const cellIndex = Math.floor(Math.random() * GRID_CELL_COUNT);
+          const cell = loadingCells[cellIndex];
+          if (cell.type !== 'empty') {
+            newStates[cellIndex] = !prev[cellIndex];
+          }
+        }
+        return newStates;
+      });
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, [isLoading, loadingCells]);
 
   useEffect(() => {
     const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
@@ -330,8 +530,43 @@ function Desktop({ albums, isLoggedIn, onAlbumClick }) {
     }
   }, [albums, seenAlbums]);
 
-  // If not logged in or no albums, show the empty grid
-  if (!isLoggedIn || albums.length === 0) {
+  // Pre-login: show empty grid
+  if (!isLoggedIn) {
+    return (
+      <DesktopContainer>
+        <EmptyGrid />
+      </DesktopContainer>
+    );
+  }
+
+  // Loading state: show glitchy grid with game links and album previews
+  if (isLoading && albums.length === 0) {
+    return (
+      <DesktopContainer>
+        <LoadingGrid>
+          {loadingCells.map((cell, index) => (
+            <LoadingCell key={cell.id} $scanDelay={index * 50}>
+              {cell.type === 'game' && (
+                <GlitchContent $visible={cellStates[index] !== false}>
+                  <GameLink onClick={() => onOpenGame?.(cell.game.type)}>
+                    {cell.game.icon}
+                  </GameLink>
+                </GlitchContent>
+              )}
+              {cell.type === 'album' && (
+                <GlitchContent $visible={cellStates[index] !== false}>
+                  <GlitchImage src={cell.art} alt="" />
+                </GlitchContent>
+              )}
+            </LoadingCell>
+          ))}
+        </LoadingGrid>
+      </DesktopContainer>
+    );
+  }
+
+  // Post-login but no albums yet: show empty grid
+  if (albums.length === 0) {
     return (
       <DesktopContainer>
         <EmptyGrid />

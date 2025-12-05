@@ -454,7 +454,9 @@ function App() {
       <Desktop
         albums={spotify.albums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
+        isLoading={spotify.isLoading}
         onAlbumClick={handleAlbumClick}
+        onOpenGame={handleOpenGame}
       />
 
       {/* Loading Window (shown while scanning library) */}
