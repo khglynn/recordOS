@@ -34,6 +34,7 @@ import {
   SORT_OPTIONS,
   DEFAULT_THRESHOLD,
   TARGET_ALBUM_COUNT,
+  MIN_SAVED_TRACKS,
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
 } from '../utils/constants';
@@ -293,28 +294,21 @@ export function useSpotify() {
       return result;
     }
 
-    // Top 50 algorithm (default 'auto' mode or any other value)
-    // Calculate liked percentage for each album
-    const albumsWithPercent = albums.map(a => ({
-      ...a,
-      likedPercent: a.totalTracks > 0 ? a.likedTracks / a.totalTracks : 0,
-    }));
+    // Top N algorithm (default 'auto' mode)
+    // 1. Filter albums with minimum saved track count
+    // 2. Sort by saved track count (most saved = most loved)
+    // 3. Take the top N albums
+    const qualifyingAlbums = albums.filter(a => a.likedTracks >= MIN_SAVED_TRACKS);
 
-    // Sort by liked percentage (highest first), then by total liked tracks as tiebreaker
-    albumsWithPercent.sort((a, b) => {
-      const percentDiff = b.likedPercent - a.likedPercent;
-      if (Math.abs(percentDiff) > 0.001) return percentDiff;
-      return b.likedTracks - a.likedTracks;
-    });
+    // Sort by liked track count (highest first)
+    qualifyingAlbums.sort((a, b) => b.likedTracks - a.likedTracks);
 
     // Take the top N albums
-    let result = albumsWithPercent.slice(0, TARGET_ALBUM_COUNT);
+    let result = qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
 
-    console.log(`Top ${TARGET_ALBUM_COUNT} algorithm: ${albums.length} total -> ${result.length} selected`);
+    console.log(`Top ${TARGET_ALBUM_COUNT} algorithm: ${albums.length} total -> ${qualifyingAlbums.length} with ${MIN_SAVED_TRACKS}+ tracks -> ${result.length} selected`);
     if (result.length > 0) {
-      const minPercent = Math.round(result[result.length - 1].likedPercent * 100);
-      const maxPercent = Math.round(result[0].likedPercent * 100);
-      console.log(`  Range: ${maxPercent}% to ${minPercent}% liked`);
+      console.log(`  Range: ${result[0].likedTracks} to ${result[result.length - 1].likedTracks} saved tracks`);
     }
 
     // Now sort the selected albums by user preference

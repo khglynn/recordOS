@@ -292,25 +292,6 @@ const AlbumArtist = styled.div`
   text-overflow: ellipsis;
 `;
 
-const TrackCount = styled.div`
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0, 0, 0, 0.9);
-  color: #00ff41;
-  font-size: 12px;
-  font-weight: bold;
-  font-family: 'Consolas', 'Courier New', monospace;
-  padding: 3px 6px;
-  border-radius: 0;
-  border: 1px solid rgba(0, 255, 65, 0.5);
-  box-shadow:
-    0 0 4px rgba(0, 255, 65, 0.3),
-    inset 0 0 2px rgba(0, 255, 65, 0.1);
-  text-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
-  letter-spacing: 0.5px;
-`;
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -369,7 +350,6 @@ function Desktop({ albums, isLoggedIn, onAlbumClick }) {
               loading="lazy"
               onLoad={() => handleImageLoad(album.id)}
             />
-            <TrackCount>{album.likedTracks}</TrackCount>
             <AlbumInfo>
               <AlbumTitle>{album.name}</AlbumTitle>
               <AlbumArtist>{album.artist}</AlbumArtist>

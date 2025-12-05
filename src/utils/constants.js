@@ -39,7 +39,10 @@ export const LOCAL_TRACKS = [
 // ============================================================================
 
 // Target number of albums to show (Top N algorithm)
-export const TARGET_ALBUM_COUNT = 50;
+export const TARGET_ALBUM_COUNT = 48;
+
+// Minimum saved tracks required to include album in Top N
+export const MIN_SAVED_TRACKS = 8;
 
 // Legacy threshold options (kept for backwards compatibility)
 export const THRESHOLD_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 'all'];
@@ -67,8 +70,8 @@ export const SORT_LABELS = {
 // GRID CONFIGURATION
 // ============================================================================
 
-// Album grid sizing
-export const GRID_ALBUM_SIZE = 100; // px - base size for album covers
+// Album grid sizing - 120px divides cleanly (2,3,4,5,6,8,10,12)
+export const GRID_ALBUM_SIZE = 120; // px - base size for album covers
 export const GRID_GAP = 4; // px - gap between albums
 
 // ============================================================================
