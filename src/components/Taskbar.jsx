@@ -26,7 +26,7 @@ const TaskbarContainer = styled.div`
   left: 0;
   right: 0;
   height: 37px;
-  z-index: 9999;
+  z-index: 100000; /* Higher than LoginModal (10000) to always be visible */
 
   /* Win95 raised border effect */
   background: #1a1a1a;
@@ -188,6 +188,7 @@ function Taskbar({
           ref={startButtonRef}
           $active={isStartMenuOpen}
           onClick={onStartClick}
+          data-start-button
         >
           <StartLogo src="/logo.png" alt="Record OS" />
           <span>RECORD OS</span>
@@ -209,10 +210,14 @@ function Taskbar({
           ))}
         </WindowTabs>
 
-        {/* Tray Area - Album Count : Threshold */}
+        {/* Tray Area - Album Count Display */}
         <TrayArea>
           <TrayText>
-            {isLoggedIn ? `${albumCount} : ${threshold === 'all' ? 'ALL' : threshold}` : '--:--'}
+            {isLoggedIn
+              ? threshold === 'all'
+                ? `${albumCount} albums`
+                : `Top ${albumCount}`
+              : '--:--'}
           </TrayText>
         </TrayArea>
       </TaskbarContainer>

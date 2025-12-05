@@ -5,10 +5,10 @@
  *
  * Windows 95-style window containing embedded classic games.
  *
- * Games are loaded via iframes from external sources:
- * - Minesweeper: minesweeper.online (classic 90s style)
- * - Solitaire: solitr.com (classic Windows look)
- * - Snake: playsnake.org (Nokia-style)
+ * Self-hosted games:
+ * - Minesweeper: michaelbutler/minesweeper (GPL)
+ * - Solitaire: Two9A/solitaire-js (Unlicense)
+ * - Snake: cribbles/snake (MIT) - dark/green themed
  */
 
 import { useRef } from 'react';
@@ -28,23 +28,26 @@ const GAME_CONFIG = {
   minesweeper: {
     title: 'Minesweeper',
     icon: '💣',
-    url: 'https://minesweeper.online/game/1',
+    url: '/games/minesweeper/index.html',
     width: 320,
-    height: 420,
+    height: 400,
   },
   solitaire: {
     title: 'Solitaire',
     icon: '🃏',
-    url: 'https://www.solitr.com/',
-    width: 700,
-    height: 520,
+    url: '/games/solitaire/index.html',
+    width: 580,
+    height: 480,
+    scale: 0.6, // Scale down the game to fit
+    innerWidth: 960, // Actual game width before scaling
+    innerHeight: 750, // Actual game height before scaling
   },
   snake: {
     title: 'Snake',
     icon: '🐍',
-    url: 'https://playsnake.org/',
-    width: 500,
-    height: 520,
+    url: '/games/snake/index.html',
+    width: 400,
+    height: 450,
   },
 };
 
@@ -54,7 +57,7 @@ const GAME_CONFIG = {
 
 const StyledWindow = styled(Window)`
   position: fixed;
-  z-index: 1000;
+  z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
   background: #1a1a1a !important;
@@ -118,39 +121,9 @@ const StyledWindowContent = styled(WindowContent)`
 `;
 
 const GameFrame = styled.iframe`
-  width: 100%;
-  height: 100%;
   border: none;
-  background: #000;
-`;
-
-const LoadingOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   background: #0a0a0a;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #00ff41;
-`;
-
-const LoadingIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
-  animation: pulse 1s ease-in-out infinite;
-
-  @keyframes pulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.1); }
-  }
-`;
-
-const LoadingText = styled.div`
-  font-size: 12px;
+  transform-origin: top left;
 `;
 
 // ============================================================================
@@ -160,6 +133,7 @@ const LoadingText = styled.div`
 function GameWindow({
   gameType,
   isActive,
+  zIndex,
   onClose,
   onMinimize,
   onFocus,
@@ -182,6 +156,7 @@ function GameWindow({
 
   return (
     <StyledWindow
+      $zIndex={zIndex}
       style={{
         left: position?.x ?? 200,
         top: position?.y ?? 50,
@@ -205,8 +180,14 @@ function GameWindow({
         <GameFrame
           src={config.url}
           title={config.title}
-          allow="autoplay"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          style={config.scale ? {
+            width: config.innerWidth,
+            height: config.innerHeight,
+            transform: `scale(${config.scale})`,
+          } : {
+            width: '100%',
+            height: '100%',
+          }}
         />
       </StyledWindowContent>
     </StyledWindow>

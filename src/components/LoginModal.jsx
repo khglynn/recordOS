@@ -10,18 +10,14 @@
  * Voice: Retro-corporate with alien computer undertones
  */
 
-import { useState } from 'react';
 import styled from 'styled-components';
 import {
   Window,
   WindowHeader,
   WindowContent,
   Button,
-  Select,
   Fieldset,
-  ProgressBar,
 } from 'react95';
-import { THRESHOLD_OPTIONS, DEFAULT_THRESHOLD } from '../utils/constants';
 import { loginWithSpotify } from '../utils/spotify';
 
 // ============================================================================
@@ -33,8 +29,8 @@ const Overlay = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  bottom: 37px; /* Leave room for taskbar! */
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,27 +265,6 @@ const StyledFieldset = styled(Fieldset)`
   }
 `;
 
-const ThresholdRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ThresholdLabel = styled.label`
-  color: rgba(0, 255, 65, 0.85);
-  font-size: 13px;
-  flex: 1;
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const StyledSelect = styled(Select)`
-  width: 90px;
-
-  background: #0d0d0d !important;
-  color: #00ff41 !important;
-  border-color: #2a2a2a !important;
-`;
-
 const ThresholdExplainer = styled.p`
   font-size: 12px;
   color: rgba(0, 255, 65, 0.6);
@@ -365,8 +340,6 @@ const UserStatus = styled.div`
 function LoginModal({
   isOpen,
   onClose,
-  threshold,
-  onThresholdChange,
   onExecute,
   user,
   isPostAuth,
@@ -374,8 +347,6 @@ function LoginModal({
   loadingProgress,
   canClose,
 }) {
-  const [localThreshold, setLocalThreshold] = useState(threshold);
-
   const handleLogin = async () => {
     try {
       await loginWithSpotify();
@@ -385,14 +356,8 @@ function LoginModal({
   };
 
   const handleExecute = () => {
-    onThresholdChange(localThreshold);
     onExecute?.();
   };
-
-  const thresholdOptions = THRESHOLD_OPTIONS.map(opt => ({
-    value: opt,
-    label: opt === 'all' ? 'ALL' : `${opt}+`,
-  }));
 
   if (!isOpen) return null;
 
@@ -426,28 +391,17 @@ function LoginModal({
               Audio library access granted.
               <br />
               <span className="prompt">&gt;</span>
-              Configure <span className="highlight">display threshold</span> to filter album results.
+              Analyzing your <span className="highlight">saved tracks</span>...
               <br />
               <span className="prompt">&gt;</span>
-              Only albums with <span className="highlight">N+ saved tracks</span> will be rendered.
+              Building your <span className="highlight">Top 50</span> most loved albums.
             </SystemMessage>
 
-            <StyledFieldset label="THRESHOLD PARAMETER">
-              <ThresholdRow>
-                <ThresholdLabel>
-                  Minimum saved tracks per album:
-                </ThresholdLabel>
-                <StyledSelect
-                  value={localThreshold}
-                  options={thresholdOptions}
-                  onChange={(e) => setLocalThreshold(e.value)}
-                  width={90}
-                />
-              </ThresholdRow>
+            <StyledFieldset label="TOP 50 ALGORITHM">
               <ThresholdExplainer>
-                Higher values = fewer albums displayed.
-                <br />
-                Recommended: 7+ for curated collection view.
+                Your most loved albums, ranked by how many tracks you've saved from each.
+                <br /><br />
+                Albums with 100% saved tracks appear first, working down until we have your Top 50.
               </ThresholdExplainer>
             </StyledFieldset>
 

@@ -35,12 +35,15 @@ export const LOCAL_TRACKS = [
 ];
 
 // ============================================================================
-// ALBUM THRESHOLD OPTIONS
+// ALBUM SELECTION CONFIG
 // ============================================================================
 
-// Minimum number of liked tracks for an album to appear
+// Target number of albums to show (Top N algorithm)
+export const TARGET_ALBUM_COUNT = 50;
+
+// Legacy threshold options (kept for backwards compatibility)
 export const THRESHOLD_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 'all'];
-export const DEFAULT_THRESHOLD = 7;
+export const DEFAULT_THRESHOLD = 'auto'; // 'auto' uses Top 50 algorithm
 
 // ============================================================================
 // SORT OPTIONS

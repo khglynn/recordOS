@@ -20,8 +20,6 @@ import {
   getAccessToken,
   logout as spotifyLogout,
   getAllSavedTracks,
-  getAlbum,
-  getAlbums,
   getAudioAnalysis,
   play,
   pause,
@@ -35,6 +33,7 @@ import {
 import {
   SORT_OPTIONS,
   DEFAULT_THRESHOLD,
+  TARGET_ALBUM_COUNT,
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
 } from '../utils/constants';
@@ -79,8 +78,9 @@ export function useSpotify() {
   const [threshold, setThreshold] = useState(
     () => {
       const saved = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-      if (saved === 'all') return 'all';
-      return saved ? parseInt(saved) : DEFAULT_THRESHOLD;
+      if (saved === 'all' || saved === 'auto') return saved;
+      // If a numeric value was saved from old version, use 'auto' instead
+      return saved && !isNaN(parseInt(saved)) ? 'auto' : DEFAULT_THRESHOLD;
     }
   );
   const [sortBy, setSortBy] = useState(
@@ -104,9 +104,13 @@ export function useSpotify() {
       const code = params.get('code');
       const error = params.get('error');
 
+      // Clean up URL IMMEDIATELY to prevent stale code issues on refresh
+      if (code || error) {
+        window.history.replaceState({}, '', '/');
+      }
+
       if (error) {
         console.error('Spotify auth error:', error);
-        window.history.replaceState({}, '', '/');
         return;
       }
 
@@ -116,13 +120,12 @@ export function useSpotify() {
           await exchangeCodeForTokens(code);
           console.log('Token exchange successful!');
           setLoggedIn(true);
-          // Clean up URL
-          window.history.replaceState({}, '', '/');
         } catch (err) {
           console.error('Failed to exchange code:', err);
-          // Clean up URL even on error
-          window.history.replaceState({}, '', '/');
-          alert(`Login failed: ${err.message}`);
+          // Don't show alert for "invalid code" - user likely just refreshed
+          if (!err.message.includes('Invalid authorization code')) {
+            alert(`Login failed: ${err.message}`);
+          }
         }
       }
     };
@@ -158,37 +161,44 @@ export function useSpotify() {
   const fetchLibrary = useCallback(async () => {
     if (!loggedIn) return;
 
+    // Check cache first - load immediately if valid
+    const cachedAlbums = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE);
+    const cacheTime = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
+
+    if (cachedAlbums && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age < ALBUMS_CACHE_DURATION) {
+        console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
+        setAlbums(JSON.parse(cachedAlbums));
+        return;
+      }
+    }
+
     setIsLoading(true);
     setLoadingProgress({ loaded: 0, total: 0 });
 
     try {
-      // Check cache first
-      const cachedAlbums = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE);
-      const cacheTime = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
+      // Map to accumulate album data and liked track counts
+      const albumDataMap = new Map();
 
-      if (cachedAlbums && cacheTime) {
-        const age = Date.now() - parseInt(cacheTime);
-        if (age < ALBUMS_CACHE_DURATION) {
-          setAlbums(JSON.parse(cachedAlbums));
-          setIsLoading(false);
-          return;
-        }
-      }
+      // Fetch all saved tracks with progress updates
+      const savedTracks = await getAllSavedTracks(
+        // Progress callback - update loading bar
+        (progress) => {
+          setLoadingProgress(progress);
+        },
+        // Album batch callback - called as new albums are discovered
+        // We DON'T show albums here because likedTracks count is incomplete
+        null
+      );
 
-      // Fetch all saved tracks
-      const savedTracks = await getAllSavedTracks((progress) => {
-        setLoadingProgress(progress);
-      });
-
-      // Group tracks by album
-      const albumMap = new Map();
-
+      // Process all tracks to build album data with accurate liked counts
       for (const item of savedTracks) {
         const track = item.track;
         const album = track.album;
 
-        if (!albumMap.has(album.id)) {
-          albumMap.set(album.id, {
+        if (!albumDataMap.has(album.id)) {
+          albumDataMap.set(album.id, {
             id: album.id,
             name: album.name,
             artist: album.artists.map(a => a.name).join(', '),
@@ -198,58 +208,41 @@ export function useSpotify() {
             uri: album.uri,
             likedTracks: 0,
             tracks: [],
-            likedTrackIds: new Set(),
           });
         }
 
-        const albumData = albumMap.get(album.id);
+        const albumData = albumDataMap.get(album.id);
         albumData.likedTracks += 1;
-        albumData.likedTrackIds.add(track.id);
+        albumData.tracks.push({
+          id: track.id,
+          name: track.name,
+          duration: track.duration_ms,
+          trackNumber: track.track_number,
+          uri: track.uri,
+          artist: track.artists.map(a => a.name).join(', '),
+          isLiked: true, // All tracks in this list are liked
+        });
       }
 
-      // Convert to array and fetch full track lists for albums
-      const albumsArray = Array.from(albumMap.values());
-
-      // Fetch full album details in batches of 20
-      const batchSize = 20;
-      for (let i = 0; i < albumsArray.length; i += batchSize) {
-        const batch = albumsArray.slice(i, i + batchSize);
-        const ids = batch.map(a => a.id);
-
-        try {
-          const { albums: fullAlbums } = await getAlbums(ids);
-
-          for (const fullAlbum of fullAlbums) {
-            if (!fullAlbum) continue;
-
-            const albumData = albumMap.get(fullAlbum.id);
-            if (albumData) {
-              albumData.tracks = fullAlbum.tracks.items.map(t => ({
-                id: t.id,
-                name: t.name,
-                duration: t.duration_ms,
-                trackNumber: t.track_number,
-                uri: t.uri,
-                isLiked: albumData.likedTrackIds.has(t.id),
-              }));
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to fetch album batch:', err);
-        }
+      // Sort tracks within each album by track number
+      for (const album of albumDataMap.values()) {
+        album.tracks.sort((a, b) => a.trackNumber - b.trackNumber);
       }
 
-      // Clean up the Set (not serializable)
-      albumsArray.forEach(a => delete a.likedTrackIds);
+      // Sort albums by liked track count (descending)
+      const albumsArray = Array.from(albumDataMap.values())
+        .sort((a, b) => b.likedTracks - a.likedTracks);
+
+      console.log(`Found ${albumsArray.length} albums from ${savedTracks.length} liked tracks`);
 
       // Cache the results
       localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE, JSON.stringify(albumsArray));
       localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE_TIME, Date.now().toString());
 
       setAlbums(albumsArray);
+      setIsLoading(false);
     } catch (err) {
       console.error('Failed to fetch library:', err);
-    } finally {
       setIsLoading(false);
     }
   }, [loggedIn]);
@@ -259,21 +252,74 @@ export function useSpotify() {
   }, [fetchLibrary]);
 
   // -------------------------------------------------------------------------
-  // FILTER & SORT ALBUMS
+  // FILTER & SORT ALBUMS - "TOP 50" ALGORITHM
   // -------------------------------------------------------------------------
 
+  /**
+   * Top 50 Algorithm:
+   * 1. Start with albums that have 100% liked tracks
+   * 2. If we don't have enough, add albums with lower percentage
+   * 3. Stop once we reach TARGET_ALBUM_COUNT
+   *
+   * This gives a meaningful collection of your "most loved" albums
+   * without requiring manual threshold picking.
+   */
   const filteredAlbums = useCallback(() => {
-    let result = [...albums];
+    if (albums.length === 0) return [];
 
-    // Filter by threshold
-    if (threshold !== 'all') {
-      result = result.filter(a => a.likedTracks >= threshold);
+    // If 'all' mode, show everything (legacy behavior)
+    if (threshold === 'all') {
+      let result = [...albums];
+      result.sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case SORT_OPTIONS.RELEASE_DATE:
+            comparison = new Date(a.releaseDate) - new Date(b.releaseDate);
+            break;
+          case SORT_OPTIONS.ARTIST:
+            comparison = a.artist.localeCompare(b.artist);
+            break;
+          case SORT_OPTIONS.ALBUM:
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case SORT_OPTIONS.TRACK_COUNT:
+            comparison = a.likedTracks - b.likedTracks;
+            break;
+          default:
+            comparison = 0;
+        }
+        return sortDesc ? -comparison : comparison;
+      });
+      return result;
     }
 
-    // Sort
+    // Top 50 algorithm (default 'auto' mode or any other value)
+    // Calculate liked percentage for each album
+    const albumsWithPercent = albums.map(a => ({
+      ...a,
+      likedPercent: a.totalTracks > 0 ? a.likedTracks / a.totalTracks : 0,
+    }));
+
+    // Sort by liked percentage (highest first), then by total liked tracks as tiebreaker
+    albumsWithPercent.sort((a, b) => {
+      const percentDiff = b.likedPercent - a.likedPercent;
+      if (Math.abs(percentDiff) > 0.001) return percentDiff;
+      return b.likedTracks - a.likedTracks;
+    });
+
+    // Take the top N albums
+    let result = albumsWithPercent.slice(0, TARGET_ALBUM_COUNT);
+
+    console.log(`Top ${TARGET_ALBUM_COUNT} algorithm: ${albums.length} total -> ${result.length} selected`);
+    if (result.length > 0) {
+      const minPercent = Math.round(result[result.length - 1].likedPercent * 100);
+      const maxPercent = Math.round(result[0].likedPercent * 100);
+      console.log(`  Range: ${maxPercent}% to ${minPercent}% liked`);
+    }
+
+    // Now sort the selected albums by user preference
     result.sort((a, b) => {
       let comparison = 0;
-
       switch (sortBy) {
         case SORT_OPTIONS.RELEASE_DATE:
           comparison = new Date(a.releaseDate) - new Date(b.releaseDate);
@@ -290,7 +336,6 @@ export function useSpotify() {
         default:
           comparison = 0;
       }
-
       return sortDesc ? -comparison : comparison;
     });
 

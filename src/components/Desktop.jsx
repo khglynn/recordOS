@@ -12,7 +12,7 @@
  * Style: Dark with green grid lines, grungy/Alien computer aesthetic.
  */
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { GRID_ALBUM_SIZE, GRID_GAP } from '../utils/constants';
 
@@ -32,7 +32,7 @@ const DesktopContainer = styled.div`
 
 /**
  * Empty grid background (pre-login state)
- * Shows a grid of squares with subtle flickering animation
+ * Shows a grid of squares with glitchy Matrix-style animation
  */
 const EmptyGrid = styled.div`
   position: absolute;
@@ -46,13 +46,13 @@ const EmptyGrid = styled.div`
     /* Vertical lines */
     linear-gradient(
       to right,
-      rgba(0, 255, 65, 0.25) 1px,
+      rgba(0, 255, 65, 0.3) 1px,
       transparent 1px
     ),
     /* Horizontal lines */
     linear-gradient(
       to bottom,
-      rgba(0, 255, 65, 0.25) 1px,
+      rgba(0, 255, 65, 0.3) 1px,
       transparent 1px
     );
 
@@ -62,19 +62,25 @@ const EmptyGrid = styled.div`
   /* Center the grid */
   background-position: center center;
 
-  /* Subtle pulse animation */
-  animation: gridPulse 4s ease-in-out infinite;
+  /* Subtle pulse animation - gentle breathing effect */
+  animation: gridPulse 6s ease-in-out infinite;
 
   @keyframes gridPulse {
     0%, 100% {
-      opacity: 0.6;
+      opacity: 0.4;
+    }
+    25% {
+      opacity: 0.55;
     }
     50% {
-      opacity: 1;
+      opacity: 0.65;
+    }
+    75% {
+      opacity: 0.5;
     }
   }
 
-  /* Scanline overlay for CRT feel */
+  /* Scanline overlay for CRT feel - animated! */
   &::after {
     content: '';
     position: absolute;
@@ -84,10 +90,37 @@ const EmptyGrid = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       0deg,
-      rgba(0, 0, 0, 0.05) 0px,
-      rgba(0, 0, 0, 0.05) 1px,
+      rgba(0, 0, 0, 0.1) 0px,
+      rgba(0, 0, 0, 0.1) 1px,
       transparent 1px,
-      transparent 2px
+      transparent 3px
+    );
+    pointer-events: none;
+    animation: scanlines 0.1s linear infinite;
+  }
+
+  @keyframes scanlines {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 0 3px;
+    }
+  }
+
+  /* Glowing corners effect - adds depth */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 50%,
+      rgba(0, 255, 65, 0.03) 100%
     );
     pointer-events: none;
   }
@@ -120,7 +153,7 @@ const AlbumGrid = styled.div`
 `;
 
 /**
- * Individual album cover
+ * Individual album cover with entrance animation
  */
 const AlbumCover = styled.div`
   position: relative;
@@ -128,6 +161,21 @@ const AlbumCover = styled.div`
   cursor: pointer;
   overflow: hidden;
   background: #1a1a1a;
+
+  /* Entrance animation - albums fade/scale in */
+  animation: albumAppear 0.4s ease-out backwards;
+  animation-delay: ${props => props.$delay || 0}ms;
+
+  @keyframes albumAppear {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 
   /* Album art */
   img {
@@ -228,91 +276,57 @@ const TrackCount = styled.div`
   border: 1px solid rgba(0, 255, 65, 0.3);
 `;
 
-const LoadingOverlay = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  z-index: 10;
-`;
-
-const LoadingSpinner = styled.div`
-  font-size: 48px;
-  animation: spin 2s linear infinite;
-  margin-bottom: 16px;
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-
-const LoadingStatus = styled.div`
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 14px;
-  color: #00ff41;
-  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-  letter-spacing: 1px;
-`;
-
-const LoadingProgress = styled.div`
-  margin-top: 8px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
-  color: rgba(0, 255, 65, 0.7);
-`;
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-function Desktop({ albums, isLoggedIn, onAlbumClick, isLoading, loadingProgress }) {
+function Desktop({ albums, isLoggedIn, onAlbumClick }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
+  const [seenAlbums, setSeenAlbums] = useState(new Set());
 
-  // Track which images have loaded
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // If not logged in, show the empty grid
-  if (!isLoggedIn) {
+  useEffect(() => {
+    const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
+    if (newIds.length > 0) {
+      const timer = setTimeout(() => {
+        setSeenAlbums(prev => new Set([...prev, ...newIds]));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [albums, seenAlbums]);
+
+  // If not logged in or no albums, show the empty grid
+  if (!isLoggedIn || albums.length === 0) {
     return (
       <DesktopContainer>
         <EmptyGrid />
-      </DesktopContainer>
-    );
-  }
-
-  // If loading, show the grid background with loading overlay
-  if (isLoading) {
-    const progress = loadingProgress?.total
-      ? Math.round((loadingProgress.loaded / loadingProgress.total) * 100)
-      : 0;
-
-    return (
-      <DesktopContainer>
-        <EmptyGrid />
-        <LoadingOverlay>
-          <LoadingSpinner>💿</LoadingSpinner>
-          <LoadingStatus>SCANNING LIBRARY...</LoadingStatus>
-          <LoadingProgress>
-            {loadingProgress?.loaded || 0} / {loadingProgress?.total || '...'} tracks ({progress}%)
-          </LoadingProgress>
-        </LoadingOverlay>
       </DesktopContainer>
     );
   }
 
   // Show album grid
+  // Calculate staggered delay for new albums (only animate unseen ones)
+  const getAnimationDelay = (album, index) => {
+    if (seenAlbums.has(album.id)) return 0; // Already seen, no delay
+    // Find position among new albums for stagger effect
+    const newAlbums = albums.filter(a => !seenAlbums.has(a.id));
+    const newIndex = newAlbums.findIndex(a => a.id === album.id);
+    return newIndex * 30; // 30ms stagger between each new album
+  };
+
   return (
     <DesktopContainer>
       <AlbumGrid>
-        {albums.map((album) => (
+        {albums.map((album, index) => (
           <AlbumCover
             key={album.id}
             onClick={() => onAlbumClick(album)}
             className={!loadedImages.has(album.id) ? 'loading' : ''}
+            $delay={getAnimationDelay(album, index)}
+            style={seenAlbums.has(album.id) ? { animation: 'none' } : {}}
           >
             <img
               src={album.image}

@@ -323,8 +323,14 @@ export async function getSavedTracks(limit = 50, offset = 0) {
 /**
  * Get ALL saved tracks (handles pagination)
  */
-export async function getAllSavedTracks(onProgress) {
+/**
+ * Get all saved tracks with progressive album callback
+ * @param {Function} onProgress - Called with { loaded, total } after each batch
+ * @param {Function} onAlbumBatch - Called with array of album objects as they're discovered
+ */
+export async function getAllSavedTracks(onProgress, onAlbumBatch) {
   const tracks = [];
+  const seenAlbumIds = new Set();
   let offset = 0;
   const limit = 50;
   let total = null;
@@ -334,6 +340,29 @@ export async function getAllSavedTracks(onProgress) {
     tracks.push(...response.items);
     total = response.total;
     offset += limit;
+
+    // Extract new albums from this batch and notify immediately
+    if (onAlbumBatch) {
+      const newAlbums = [];
+      for (const item of response.items) {
+        const album = item.track.album;
+        if (!seenAlbumIds.has(album.id)) {
+          seenAlbumIds.add(album.id);
+          newAlbums.push({
+            id: album.id,
+            name: album.name,
+            artist: album.artists.map(a => a.name).join(', '),
+            image: album.images[0]?.url || '',
+            releaseDate: album.release_date,
+            totalTracks: album.total_tracks,
+            uri: album.uri,
+          });
+        }
+      }
+      if (newAlbums.length > 0) {
+        onAlbumBatch(newAlbums);
+      }
+    }
 
     if (onProgress) {
       onProgress({ loaded: tracks.length, total });

@@ -29,6 +29,7 @@ import TrackListModal from './components/TrackListModal';
 import MediaPlayer from './components/MediaPlayer';
 import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
+import LoadingWindow from './components/LoadingWindow';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -88,6 +89,10 @@ function App() {
   // Track selected album for track list
   const [selectedAlbum, setSelectedAlbum] = useState(null);
 
+  // Loading window position (separate from managed windows for simplicity)
+  const [loadingWindowPos, setLoadingWindowPos] = useState(null);
+  const [loadingDragging, setLoadingDragging] = useState(null);
+
   // -------------------------------------------------------------------------
   // LOGIN FLOW STATE
   // -------------------------------------------------------------------------
@@ -118,15 +123,14 @@ function App() {
     }
   }, [isLoggedIn, hasCompletedSetup]);
 
-  // Mark setup complete once loading starts (show desktop with loading state)
-  // This lets users see the OS immediately while albums load in background
+  // Mark setup complete once loading starts OR albums are loaded (from cache)
   useEffect(() => {
-    if (isLoggedIn && spotify.isLoading) {
-      // Start loading - close modal and show desktop
+    if (isLoggedIn && (spotify.isLoading || spotify.allAlbumsCount > 0)) {
+      // Loading or albums ready - close modal and show desktop
       setHasCompletedSetup(true);
       setLoginModalOpen(false);
     }
-  }, [isLoggedIn, spotify.isLoading]);
+  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount]);
 
   // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
@@ -269,6 +273,41 @@ function App() {
     };
   }, [dragging]);
 
+  // Loading window dragging
+  const handleLoadingDragStart = useCallback((e) => {
+    const currentPos = loadingWindowPos || {
+      x: window.innerWidth / 2 - 180,
+      y: window.innerHeight / 2 - 80,
+    };
+    setLoadingDragging({
+      startX: e.clientX - currentPos.x,
+      startY: e.clientY - currentPos.y,
+    });
+  }, [loadingWindowPos]);
+
+  useEffect(() => {
+    if (!loadingDragging) return;
+
+    const handleMouseMove = (e) => {
+      setLoadingWindowPos({
+        x: Math.max(0, e.clientX - loadingDragging.startX),
+        y: Math.max(0, e.clientY - loadingDragging.startY),
+      });
+    };
+
+    const handleMouseUp = () => {
+      setLoadingDragging(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [loadingDragging]);
+
   // -------------------------------------------------------------------------
   // EVENT HANDLERS
   // -------------------------------------------------------------------------
@@ -283,8 +322,12 @@ function App() {
   }, [openWindow]);
 
   const handleOpenGame = useCallback((gameType) => {
+    // Games work before login - minimize modal if open
+    if (loginModalOpen && !isLoggedIn) {
+      setLoginModalOpen(false);
+    }
     openWindow(gameType);
-  }, [openWindow]);
+  }, [openWindow, loginModalOpen, isLoggedIn]);
 
   const handleOpenInfo = useCallback(() => {
     openWindow('info');
@@ -314,15 +357,31 @@ function App() {
   }, [spotify]);
 
   // Close start menu when clicking elsewhere
+  // Using mousedown instead of click, and checking target
   useEffect(() => {
-    const handleClick = () => {
-      if (isStartMenuOpen) {
-        setIsStartMenuOpen(false);
+    if (!isStartMenuOpen) return;
+
+    const handleClickOutside = (e) => {
+      // Don't close if clicking inside start menu or start button
+      const startMenu = document.querySelector('[data-start-menu]');
+      const startButton = document.querySelector('[data-start-button]');
+
+      if (startMenu?.contains(e.target) || startButton?.contains(e.target)) {
+        return;
       }
+
+      setIsStartMenuOpen(false);
     };
 
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
+    // Small delay to avoid closing immediately on the opening click
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isStartMenuOpen]);
 
   // -------------------------------------------------------------------------
@@ -382,8 +441,9 @@ function App() {
     title: w.title,
   }));
 
-  // Determine if login modal can be closed (only after setup is complete)
-  const canCloseLogin = hasCompletedSetup;
+  // Login modal can always be closed - user can explore before logging in
+  // They can reopen it from Start menu -> Connect
+  const canCloseLogin = true;
 
   return (
     <ThemeProvider theme={recordOSTheme}>
@@ -394,19 +454,29 @@ function App() {
       <Desktop
         albums={spotify.albums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
-        isLoading={spotify.isLoading}
-        loadingProgress={spotify.loadingProgress}
         onAlbumClick={handleAlbumClick}
       />
 
+      {/* Loading Window (shown while scanning library) */}
+      {spotify.isLoading && (
+        <LoadingWindow
+          loadingProgress={spotify.loadingProgress}
+          position={loadingWindowPos}
+          onDragStart={handleLoadingDragStart}
+        />
+      )}
+
       {/* Windows */}
-      {windows.map((w) => {
+      {windows.map((w, index) => {
         if (w.minimized) return null;
 
         const isActive = activeWindowId === w.id;
+        // Active window gets highest z-index (1100), others stack by order
+        const zIndex = isActive ? 1100 : 1000 + index;
         const commonProps = {
           key: w.id,
           isActive,
+          zIndex,
           position: w.position,
           onClose: () => closeWindow(w.id),
           onMinimize: () => minimizeWindow(w.id),
@@ -475,8 +545,6 @@ function App() {
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
         canClose={canCloseLogin}
-        threshold={spotify.threshold}
-        onThresholdChange={spotify.setThreshold}
         onExecute={handleExecute}
         user={spotify.user}
         isPostAuth={isLoggedIn && showConfigStep}

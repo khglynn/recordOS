@@ -19,7 +19,6 @@ import { MenuList, MenuListItem, Separator } from 'react95';
 import {
   SORT_OPTIONS,
   SORT_LABELS,
-  THRESHOLD_OPTIONS,
 } from '../utils/constants';
 
 // ============================================================================
@@ -161,7 +160,7 @@ function StartMenu({
   };
 
   return (
-    <MenuContainer onClick={(e) => e.stopPropagation()}>
+    <MenuContainer data-start-menu onClick={(e) => e.stopPropagation()}>
       <StyledMenuList>
         <MenuBanner>
           <BannerText>RECORD OS</BannerText>
@@ -250,26 +249,29 @@ function StartMenu({
               )}
             </StyledMenuItem>
 
-            {/* Threshold Submenu */}
+            {/* Album Filter */}
             <StyledMenuItem
               data-icon="🎚️"
               data-submenu
-              onMouseEnter={() => setActiveSubmenu('threshold')}
+              onMouseEnter={() => setActiveSubmenu('filter')}
               onMouseLeave={() => setActiveSubmenu(null)}
             >
-              Threshold: {threshold === 'all' ? 'ALL' : threshold}
-              {activeSubmenu === 'threshold' && (
+              Filter: {threshold === 'all' ? 'Show All' : 'Top 50'}
+              {activeSubmenu === 'filter' && (
                 <Submenu>
                   <StyledMenuList>
-                    {THRESHOLD_OPTIONS.map((opt) => (
-                      <StyledMenuItem
-                        key={opt}
-                        data-checked={threshold === opt}
-                        onClick={() => handleMenuItemClick(() => onThresholdChange(opt))}
-                      >
-                        {opt === 'all' ? 'ALL tracks' : `${opt}+ tracks`}
-                      </StyledMenuItem>
-                    ))}
+                    <StyledMenuItem
+                      data-checked={threshold !== 'all'}
+                      onClick={() => handleMenuItemClick(() => onThresholdChange('auto'))}
+                    >
+                      Top 50 Albums
+                    </StyledMenuItem>
+                    <StyledMenuItem
+                      data-checked={threshold === 'all'}
+                      onClick={() => handleMenuItemClick(() => onThresholdChange('all'))}
+                    >
+                      Show All Albums
+                    </StyledMenuItem>
                   </StyledMenuList>
                 </Submenu>
               )}

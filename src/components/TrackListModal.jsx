@@ -38,7 +38,7 @@ const StyledWindow = styled(Window)`
   width: 450px;
   max-width: 95vw;
   max-height: 80vh;
-  z-index: 1000;
+  z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
   background: #1a1a1a !important;
@@ -291,6 +291,7 @@ function formatDuration(ms) {
 function TrackListModal({
   album,
   isActive,
+  zIndex,
   currentTrackId,
   onClose,
   onMinimize,
@@ -315,6 +316,7 @@ function TrackListModal({
 
   return (
     <StyledWindow
+      $zIndex={zIndex}
       style={{
         left: position?.x ?? 100,
         top: position?.y ?? 100,
@@ -358,7 +360,7 @@ function TrackListModal({
               </TableRow>
             </StyledTableHead>
             <TableBody>
-              {album.tracks?.map((track, index) => (
+              {album.tracks?.map((track) => (
                 <StyledRow
                   key={track.id}
                   $isLiked={track.isLiked}
@@ -366,7 +368,7 @@ function TrackListModal({
                   onClick={() => onPlayTrack?.(track, album)}
                 >
                   <StyledCell $isLiked={track.isLiked}>
-                    <TrackNumber>{index + 1}</TrackNumber>
+                    <TrackNumber>{track.trackNumber}</TrackNumber>
                   </StyledCell>
                   <StyledCell $isLiked={track.isLiked}>
                     <TrackName $isLiked={track.isLiked}>

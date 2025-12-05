@@ -30,7 +30,7 @@ const StyledWindow = styled(Window)`
   position: fixed;
   width: 340px;
   max-width: 95vw;
-  z-index: 1000;
+  z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
   background: #1a1a1a !important;
@@ -190,6 +190,7 @@ const Footer = styled.div`
 
 function InfoModal({
   isActive,
+  zIndex,
   onClose,
   onFocus,
   position,
@@ -208,6 +209,7 @@ function InfoModal({
 
   return (
     <StyledWindow
+      $zIndex={zIndex}
       style={{
         left: position?.x ?? 200,
         top: position?.y ?? 100,

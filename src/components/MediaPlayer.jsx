@@ -36,7 +36,7 @@ const StyledWindow = styled(Window)`
   position: fixed;
   width: 400px;
   max-width: 95vw;
-  z-index: 1000;
+  z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
   background: #1a1a1a !important;
@@ -348,6 +348,7 @@ function formatTime(ms) {
 
 function MediaPlayer({
   isActive,
+  zIndex,
   isPlaying,
   currentTrack,
   position,
@@ -408,6 +409,7 @@ function MediaPlayer({
 
   return (
     <StyledWindow
+      $zIndex={zIndex}
       style={{
         left: windowPosition?.x ?? 150,
         top: windowPosition?.y ?? 150,
