@@ -174,7 +174,7 @@ const ErrorOverlay = styled.div`
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #ff4141;
+  color: rgba(0, 255, 65, 0.7);
   font-size: 12px;
   text-align: center;
   font-family: 'Consolas', 'Courier New', monospace;

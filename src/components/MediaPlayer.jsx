@@ -380,7 +380,7 @@ function MediaPlayer({
                 <TrackAlbum>{currentTrack.album}</TrackAlbum>
               </>
             ) : (
-              <IdleMessage>No track playing</IdleMessage>
+              <IdleMessage>IDLE // NO TRACK</IdleMessage>
             )}
           </TrackInfo>
         </NowPlayingArea>
@@ -421,7 +421,7 @@ function MediaPlayer({
                 $muted={isMuted}
                 onClick={onMuteToggle}
               >
-                <PixelIcon name={isMuted || volume === 0 ? "volume-minus" : "volume"} size={14} />
+                <PixelIcon name={isMuted || volume === 0 ? "volumeMute" : "volume"} size={14} />
               </VolumeIcon>
               <VolumeSlider
                 type="range"

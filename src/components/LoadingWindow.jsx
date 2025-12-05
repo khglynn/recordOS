@@ -244,7 +244,7 @@ function LoadingWindow({
       <StyledWindowHeader ref={headerRef}>
         <HeaderTitle>
           <PixelIcon name="disc" size={14} />
-          <span>Scanning Library</span>
+          <span>SCANNING LIBRARY...</span>
         </HeaderTitle>
       </StyledWindowHeader>
 

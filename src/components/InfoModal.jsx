@@ -381,7 +381,7 @@ function InfoModal({
 
         <StyledFieldset label="SYSTEM MAINTENANCE">
           <Description style={{ margin: '0 0 12px 0' }}>
-            Servers require caffeine.
+            SYSTEM MAINTENANCE REQUIRED.
           </Description>
           <DonateButton
             as="a"
