@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Record OS - Authenticating...</title>
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #00ff41;
+      font-family: 'MS Sans Serif', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .loading {
+      text-align: center;
+    }
+    .spinner {
+      font-size: 48px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading">
+    <div class="spinner">💿</div>
+    <p>Authenticating with Spotify...</p>
+  </div>
+  <script>
+    // Forward the OAuth callback to the main app
+    // The code parameter will be processed by useSpotify hook
+    const params = window.location.search;
+    window.location.href = '/' + params;
+  </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+/**
+ * ============================================================================
+ * useLocalAudio HOOK
+ * ============================================================================
+ *
+ * Handles local audio playback for pre-login demo tracks.
+ *
+ * Uses the Web Audio API for:
+ * - Playing local MP3 files
+ * - Exposing audio data for visualizer
+ */
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { LOCAL_TRACKS, STORAGE_KEYS } from '../utils/constants';
+
+export function useLocalAudio() {
+  // State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(
+    parseInt(localStorage.getItem(STORAGE_KEYS.VOLUME) || '80')
+  );
+  const [isMuted, setIsMuted] = useState(
+    localStorage.getItem(STORAGE_KEYS.MUTED) === 'true'
+  );
+
+  // Refs
+  const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyzerRef = useRef(null);
+  const positionIntervalRef = useRef(null);
+
+  // Current track
+  const currentTrack = LOCAL_TRACKS[currentTrackIndex];
+
+  // -------------------------------------------------------------------------
+  // INITIALIZE AUDIO ELEMENT
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audioRef.current = audio;
+
+    // Event handlers
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration * 1000);
+    });
+
+    audio.addEventListener('ended', () => {
+      // Auto-advance to next track
+      setCurrentTrackIndex((prev) => (prev + 1) % LOCAL_TRACKS.length);
+    });
+
+    audio.addEventListener('play', () => setIsPlaying(true));
+    audio.addEventListener('pause', () => setIsPlaying(false));
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // LOAD TRACK WHEN INDEX CHANGES
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!audioRef.current || !currentTrack) return;
+
+    const audio = audioRef.current;
+    const wasPlaying = !audio.paused;
+
+    audio.src = currentTrack.src;
+    audio.volume = isMuted ? 0 : volume / 100;
+
+    if (wasPlaying) {
+      audio.play().catch(console.error);
+    }
+  }, [currentTrackIndex, currentTrack]);
+
+  // -------------------------------------------------------------------------
+  // UPDATE POSITION WHILE PLAYING
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (isPlaying) {
+      positionIntervalRef.current = setInterval(() => {
+        if (audioRef.current) {
+          setPosition(audioRef.current.currentTime * 1000);
+        }
+      }, 100);
+    } else {
+      clearInterval(positionIntervalRef.current);
+    }
+
+    return () => clearInterval(positionIntervalRef.current);
+  }, [isPlaying]);
+
+  // -------------------------------------------------------------------------
+  // AUDIO CONTEXT FOR VISUALIZER
+  // -------------------------------------------------------------------------
+
+  const initAudioContext = useCallback(() => {
+    if (audioContextRef.current || !audioRef.current) return;
+
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyzer = audioContext.createAnalyser();
+      analyzer.fftSize = 256;
+
+      const source = audioContext.createMediaElementSource(audioRef.current);
+      source.connect(analyzer);
+      analyzer.connect(audioContext.destination);
+
+      audioContextRef.current = audioContext;
+      analyzerRef.current = analyzer;
+    } catch (err) {
+      console.error('Failed to init audio context:', err);
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // PLAYBACK CONTROLS
+  // -------------------------------------------------------------------------
+
+  const play = useCallback(() => {
+    if (!audioRef.current) return;
+
+    // Initialize audio context on first play (requires user interaction)
+    initAudioContext();
+
+    // Resume audio context if suspended
+    if (audioContextRef.current?.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+
+    audioRef.current.play().catch(console.error);
+  }, [initAudioContext]);
+
+  const pause = useCallback(() => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+  }, []);
+
+  const next = useCallback(() => {
+    setCurrentTrackIndex((prev) => (prev + 1) % LOCAL_TRACKS.length);
+  }, []);
+
+  const previous = useCallback(() => {
+    // If more than 3 seconds in, restart; otherwise go to previous
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      setPosition(0);
+    } else {
+      setCurrentTrackIndex((prev) =>
+        prev === 0 ? LOCAL_TRACKS.length - 1 : prev - 1
+      );
+    }
+  }, []);
+
+  const seek = useCallback((positionMs) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = positionMs / 1000;
+    setPosition(positionMs);
+  }, []);
+
+  const handleVolumeChange = useCallback((newVolume) => {
+    setVolumeState(newVolume);
+    localStorage.setItem(STORAGE_KEYS.VOLUME, newVolume.toString());
+
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume / 100;
+    }
+
+    if (newVolume > 0 && isMuted) {
+      setIsMuted(false);
+      localStorage.setItem(STORAGE_KEYS.MUTED, 'false');
+    }
+  }, [isMuted]);
+
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    localStorage.setItem(STORAGE_KEYS.MUTED, newMuted.toString());
+
+    if (audioRef.current) {
+      audioRef.current.volume = newMuted ? 0 : volume / 100;
+    }
+  }, [isMuted, volume]);
+
+  // -------------------------------------------------------------------------
+  // GET FREQUENCY DATA FOR VISUALIZER
+  // -------------------------------------------------------------------------
+
+  const getFrequencyData = useCallback(() => {
+    if (!analyzerRef.current) return null;
+
+    const bufferLength = analyzerRef.current.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyzerRef.current.getByteFrequencyData(dataArray);
+
+    return dataArray;
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // AUTO-PLAY (MUTED) ON MOUNT
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    // Start playing muted on mount (for demo experience)
+    if (audioRef.current && currentTrack) {
+      audioRef.current.src = currentTrack.src;
+      audioRef.current.volume = 0; // Start muted
+      audioRef.current.muted = true;
+
+      // Try to autoplay (will likely fail without user interaction)
+      audioRef.current.play().catch(() => {
+        // Autoplay blocked - that's fine, user will click play
+      });
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // RETURN
+  // -------------------------------------------------------------------------
+
+  return {
+    // Playback state
+    isPlaying,
+    currentTrack: currentTrack ? {
+      id: currentTrack.id,
+      name: currentTrack.name,
+      artist: currentTrack.artist,
+      album: 'Demo Tracks',
+      albumArt: '/logo.png',
+    } : null,
+    position,
+    duration,
+    volume,
+    isMuted,
+
+    // Controls
+    play,
+    pause,
+    next,
+    previous,
+    seek,
+    setVolume: handleVolumeChange,
+    toggleMute,
+
+    // Visualizer data
+    getFrequencyData,
+    analyzer: analyzerRef.current,
+  };
+}
+
+export default useLocalAudio;

@@ -1,0 +1,23 @@
+{
+  "rewrites": [
+    {
+      "source": "/callback",
+      "destination": "/callback.html"
+    },
+    {
+      "source": "/((?!assets|music|logo\\.png|callback\\.html).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/music/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
