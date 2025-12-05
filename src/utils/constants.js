@@ -39,7 +39,8 @@ export const LOCAL_TRACKS = [
 // ============================================================================
 
 // Target number of albums to show (Top N algorithm)
-export const TARGET_ALBUM_COUNT = 48;
+// 72 divides cleanly by 2,3,4,6,8,9,12,18,24,36
+export const TARGET_ALBUM_COUNT = 72;
 
 // Minimum saved tracks required to include album in Top N
 export const MIN_SAVED_TRACKS = 8;

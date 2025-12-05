@@ -193,31 +193,46 @@ const AlbumCover = styled.div`
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.2s ease, filter 0.2s ease;
   }
 
-  /* Hover effect - subtle glow and scale */
+  /* CRT scanline overlay - always visible */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Hover effect - glitchy/grungy, no smooth transitions */
   &:hover img {
-    transform: scale(1.05);
-    filter: brightness(1.1);
+    filter: brightness(1.15) contrast(1.1) saturate(1.1);
   }
 
   &:hover::after {
     opacity: 1;
   }
 
-  /* Green border glow on hover */
+  /* Pixelated green border on hover - retro feel */
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    border: 2px solid rgba(0, 255, 65, 0.5);
+    border: 3px solid #00ff41;
     box-shadow:
-      inset 0 0 10px rgba(0, 255, 65, 0.3),
-      0 0 10px rgba(0, 255, 65, 0.2);
+      inset 0 0 0 1px #000,
+      inset 0 0 15px rgba(0, 255, 65, 0.4);
     opacity: 0;
-    transition: opacity 0.2s ease;
     pointer-events: none;
+    z-index: 2;
+    /* Instant snap, no transition */
   }
 
   /* Loading state - matrix-style scan line */
@@ -261,12 +276,13 @@ const AlbumInfo = styled.div`
   padding: 8px;
   background: linear-gradient(
     transparent 0%,
-    rgba(0, 0, 0, 0.7) 30%,
+    rgba(0, 0, 0, 0.8) 20%,
     rgba(0, 0, 0, 0.95) 100%
   );
   opacity: 0;
-  transition: opacity 0.15s ease;
   font-family: 'Consolas', 'Courier New', monospace;
+  z-index: 3;
+  /* No transition - instant snap */
 
   ${AlbumCover}:hover & {
     opacity: 1;

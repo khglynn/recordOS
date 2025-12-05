@@ -56,6 +56,8 @@ const StyledMenuList = styled(MenuList)`
     4px 4px 10px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(0, 255, 65, 0.05);
   min-width: 200px;
+  /* Add left padding to make room for the vertical banner */
+  padding-left: 26px !important;
 `;
 
 const StyledMenuItem = styled(MenuListItem)`
