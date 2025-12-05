@@ -56,22 +56,26 @@ const StyledMenuList = styled(MenuList)`
   box-shadow:
     4px 4px 10px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(0, 255, 65, 0.05);
-  min-width: 200px;
-  /* Add left padding to make room for the vertical banner */
-  padding-left: 26px !important;
+  min-width: 180px;
+  padding: 4px 0 !important;
 `;
 
 const StyledMenuItem = styled(MenuListItem)`
   color: #00ff41 !important;
   background: transparent !important;
-  padding: 6px 20px 6px 12px;
+  padding: 4px 20px 4px 8px;
   position: relative;
   font-size: 11px;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  min-height: 0;
 
   &:hover {
     background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
@@ -111,39 +115,21 @@ const MenuIcon = styled.span.attrs({ className: 'menu-icon' })`
 
 const StyledSeparator = styled(Separator)`
   background: #2a2a2a !important;
-  margin: 4px 8px;
+  margin: 2px 8px;
+  height: 1px;
+`;
+
+const SubmenuWrapper = styled.div`
+  position: relative;
 `;
 
 const Submenu = styled.div`
   position: absolute;
   left: 100%;
-  top: 0;
-  margin-left: 2px;
-`;
-
-const MenuBanner = styled.div`
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 24px;
-  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 8px;
-`;
-
-const BannerText = styled.span`
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  color: #00ff41;
-  font-weight: bold;
-  font-size: 12px;
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-  font-family: 'Consolas', 'Courier New', monospace;
+  top: -6px;
+  margin-left: -2px;
+  z-index: 10001;
+  padding-left: 4px; /* Gap for mouse travel */
 `;
 
 // ============================================================================
@@ -156,9 +142,12 @@ function StartMenu({
   onDecadeChange,
   onLogout,
   onOpenMediaPlayer,
+  onOpenTrippyGraphics,
   onOpenGame,
   onOpenInfo,
+  onOpenSettings,
   onOpenLogin,
+  onRescanLibrary,
   onClose,
 }) {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
@@ -171,10 +160,6 @@ function StartMenu({
   return (
     <MenuContainer data-start-menu onClick={(e) => e.stopPropagation()}>
       <StyledMenuList>
-        <MenuBanner>
-          <BannerText>RECORD OS</BannerText>
-        </MenuBanner>
-
         {/* Media Player - Always available */}
         <StyledMenuItem
           onClick={() => handleMenuItemClick(onOpenMediaPlayer)}
@@ -183,14 +168,23 @@ function StartMenu({
           Media Player
         </StyledMenuItem>
 
-        {/* Games Submenu - Always available */}
+        {/* Trippy Graphics - Always available */}
         <StyledMenuItem
-          data-submenu
+          onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}
+        >
+          <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
+          Trippy Graphics
+        </StyledMenuItem>
+
+        {/* Games Submenu - Always available */}
+        <SubmenuWrapper
           onMouseEnter={() => setActiveSubmenu('games')}
           onMouseLeave={() => setActiveSubmenu(null)}
         >
-          <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
-          Games
+          <StyledMenuItem data-submenu>
+            <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
+            Games
+          </StyledMenuItem>
           {activeSubmenu === 'games' && (
             <Submenu>
               <StyledMenuList>
@@ -209,20 +203,21 @@ function StartMenu({
               </StyledMenuList>
             </Submenu>
           )}
-        </StyledMenuItem>
+        </SubmenuWrapper>
 
         <StyledSeparator />
 
         {/* Decade Filter - Only when logged in */}
         {isLoggedIn && (
           <>
-            <StyledMenuItem
-              data-submenu
+            <SubmenuWrapper
               onMouseEnter={() => setActiveSubmenu('decade')}
               onMouseLeave={() => setActiveSubmenu(null)}
             >
-              <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
-              Decade: {DECADE_LABELS[decade] || 'All'}
+              <StyledMenuItem data-submenu>
+                <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
+                Decade: {DECADE_LABELS[decade] || 'All'}
+              </StyledMenuItem>
               {activeSubmenu === 'decade' && (
                 <Submenu>
                   <StyledMenuList>
@@ -239,6 +234,14 @@ function StartMenu({
                   </StyledMenuList>
                 </Submenu>
               )}
+            </SubmenuWrapper>
+
+            {/* Rescan Library */}
+            <StyledMenuItem
+              onClick={() => handleMenuItemClick(onRescanLibrary)}
+            >
+              <MenuIcon><PixelIcon name="sync" size={14} /></MenuIcon>
+              Rescan Library
             </StyledMenuItem>
 
             <StyledSeparator />
@@ -251,6 +254,14 @@ function StartMenu({
         >
           <MenuIcon><PixelIcon name="info" size={14} /></MenuIcon>
           Info
+        </StyledMenuItem>
+
+        {/* Settings */}
+        <StyledMenuItem
+          onClick={() => handleMenuItemClick(onOpenSettings)}
+        >
+          <MenuIcon><PixelIcon name="sliders" size={14} /></MenuIcon>
+          Settings
         </StyledMenuItem>
 
         <StyledSeparator />

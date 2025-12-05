@@ -278,7 +278,7 @@ function InfoModal({
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
-          <span>ℹ️</span>
+          <PixelIcon name="info" size={14} />
           <span>About Record OS</span>
         </HeaderTitle>
         <HeaderButton onClick={onClose}>×</HeaderButton>

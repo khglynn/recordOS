@@ -90,10 +90,9 @@ export const getDecadeFromDate = (releaseDate) => {
 // ============================================================================
 
 // Album grid sizing
-// iPhone width ~375px, so 2 albums = ~180px each (with minimal gap)
-export const GRID_ALBUM_SIZE = 175; // px - tile size (2x fits iPhone width)
-export const GRID_ALBUM_MIN_SIZE = 175; // px - alias for consistency
-export const GRID_ALBUM_MAX_SIZE = 200; // px - legacy
+// Min 225px ensures nice large tiles, max 50vw prevents > 2 per row on mobile
+export const GRID_ALBUM_MIN_SIZE = 225; // px - minimum tile size
+export const GRID_ALBUM_MAX_SIZE = '50vw'; // max tile size (string for CSS)
 export const GRID_GAP = 0; // px - no gap between albums (edge to edge)
 
 // ============================================================================

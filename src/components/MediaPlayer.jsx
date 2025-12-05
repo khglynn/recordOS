@@ -3,30 +3,28 @@
  * MEDIA PLAYER COMPONENT
  * ============================================================================
  *
- * Windows Media Player-style music player window.
+ * Compact Windows Media Player-style music player window.
  *
  * Features:
  * - Draggable window
- * - Visualization area (Butterchurn or fallback)
- * - Album art overlay
+ * - Album art + track info display
  * - Transport controls (play, pause, prev, next, seek)
  * - Volume control
- * - Track info display
  *
  * Handles both:
  * - Local audio playback (pre-login demo tracks)
  * - Spotify Web Playback SDK (post-login)
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRef } from 'react';
 import styled from 'styled-components';
 import {
   Window,
   WindowHeader,
   WindowContent,
   Button,
-  Slider,
 } from 'react95';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -34,7 +32,7 @@ import {
 
 const StyledWindow = styled(Window)`
   position: fixed;
-  width: 400px;
+  width: 320px;
   max-width: 95vw;
   z-index: ${props => props.$zIndex || 1000};
 
@@ -100,101 +98,72 @@ const StyledWindowContent = styled(WindowContent)`
   flex-direction: column;
 `;
 
-/* Visualization Area */
-const VisualizationArea = styled.div`
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  background: #000;
-  overflow: hidden;
-`;
-
-const VisualizerCanvas = styled.canvas`
-  width: 100%;
-  height: 100%;
-`;
-
-/* Fallback visualizer (CSS bars) */
-const FallbackVisualizer = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* Now Playing Display - compact like Windows Media Player */
+const NowPlayingArea = styled.div`
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 3px;
-  padding: 20px;
-`;
-
-const VisualizerBar = styled.div`
-  width: 8px;
-  background: linear-gradient(180deg, #00ff41 0%, #00cc33 50%, #0a0a0a 100%);
-  border-radius: 2px 2px 0 0;
-  transition: height 0.1s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-`;
-
-/* Album art overlay */
-const AlbumArtOverlay = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  pointer-events: none;
+  gap: 12px;
+  padding: 12px;
+  background: #0d0d0d;
+  border-bottom: 1px solid #2a2a2a;
 `;
 
 const AlbumArt = styled.img`
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
-  border: 2px solid rgba(0, 255, 65, 0.3);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
 `;
 
-const NowPlayingInfo = styled.div`
-  text-align: center;
-  margin-top: 8px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+const AlbumArtPlaceholder = styled.div`
+  width: 64px;
+  height: 64px;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 255, 65, 0.3);
+  flex-shrink: 0;
+`;
+
+const TrackInfo = styled.div`
+  flex: 1;
+  min-width: 0;
 `;
 
 const TrackTitle = styled.div`
   font-size: 12px;
   font-weight: bold;
   color: #00ff41;
-  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+`;
+
+const TrackArtist = styled.div`
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+`;
+
+const TrackAlbum = styled.div`
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
-const TrackArtist = styled.div`
-  font-size: 10px;
-  color: rgba(0, 255, 65, 0.7);
-`;
-
-/* Idle state */
-const IdleState = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
+const IdleMessage = styled.div`
+  font-size: 11px;
   color: rgba(0, 255, 65, 0.5);
-`;
-
-const IdleIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-`;
-
-const IdleText = styled.div`
-  font-size: 12px;
 `;
 
 /* Transport Controls */
@@ -312,23 +281,6 @@ const VolumeSlider = styled.input`
   }
 `;
 
-const NextVizButton = styled.button`
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  color: rgba(0, 255, 65, 0.7);
-  padding: 4px 8px;
-  font-size: 9px;
-  cursor: pointer;
-  border-radius: 2px;
-
-  &:hover {
-    background: rgba(0, 255, 65, 0.2);
-    color: #00ff41;
-  }
-`;
 
 // ============================================================================
 // HELPERS
@@ -365,29 +317,11 @@ function MediaPlayer({
   onSeek,
   onVolumeChange,
   onMuteToggle,
+  onOpenVisualizer,
   windowPosition,
   onDragStart,
-  audioAnalysis,
 }) {
   const headerRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [visualizerBars, setVisualizerBars] = useState(Array(20).fill(10));
-
-  // Simple fallback visualizer animation
-  useEffect(() => {
-    if (!isPlaying) {
-      setVisualizerBars(Array(20).fill(10));
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setVisualizerBars(prev =>
-        prev.map(() => 10 + Math.random() * 90)
-      );
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isPlaying]);
 
   const handleMouseDown = (e) => {
     if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
@@ -419,7 +353,7 @@ function MediaPlayer({
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
-          <span>🎵</span>
+          <PixelIcon name="music" size={14} />
           <span>Media Player</span>
         </HeaderTitle>
         <HeaderButtons>
@@ -429,37 +363,27 @@ function MediaPlayer({
       </StyledWindowHeader>
 
       <StyledWindowContent>
-        <VisualizationArea>
-          {/* Fallback CSS visualizer */}
-          <FallbackVisualizer>
-            {visualizerBars.map((height, i) => (
-              <VisualizerBar
-                key={i}
-                style={{ height: isPlaying ? `${height}%` : '10%' }}
-              />
-            ))}
-          </FallbackVisualizer>
-
-          {/* Album art and track info overlay */}
-          {currentTrack ? (
-            <AlbumArtOverlay>
-              {currentTrack.albumArt && (
-                <AlbumArt src={currentTrack.albumArt} alt={currentTrack.album} />
-              )}
-              <NowPlayingInfo>
+        {/* Now Playing - compact display */}
+        <NowPlayingArea>
+          {currentTrack?.albumArt ? (
+            <AlbumArt src={currentTrack.albumArt} alt={currentTrack.album} />
+          ) : (
+            <AlbumArtPlaceholder>
+              <PixelIcon name="music" size={24} />
+            </AlbumArtPlaceholder>
+          )}
+          <TrackInfo>
+            {currentTrack ? (
+              <>
                 <TrackTitle>{currentTrack.name}</TrackTitle>
                 <TrackArtist>{currentTrack.artist}</TrackArtist>
-              </NowPlayingInfo>
-            </AlbumArtOverlay>
-          ) : (
-            <IdleState>
-              <IdleIcon>🎵</IdleIcon>
-              <IdleText>No track playing</IdleText>
-            </IdleState>
-          )}
-
-          <NextVizButton>Next Viz</NextVizButton>
-        </VisualizationArea>
+                <TrackAlbum>{currentTrack.album}</TrackAlbum>
+              </>
+            ) : (
+              <IdleMessage>No track playing</IdleMessage>
+            )}
+          </TrackInfo>
+        </NowPlayingArea>
 
         <TransportArea>
           {/* Progress bar */}
@@ -474,14 +398,22 @@ function MediaPlayer({
           {/* Controls */}
           <ControlsRow>
             <TransportButtons>
-              <TransportButton onClick={onPrevious}>⏮</TransportButton>
+              <TransportButton onClick={onPrevious}>
+                <PixelIcon name="prev" size={14} />
+              </TransportButton>
               <TransportButton
                 $isPlay
                 onClick={isPlaying ? onPause : onPlay}
               >
-                {isPlaying ? '⏸' : '▶'}
+                <PixelIcon name={isPlaying ? "pause" : "play"} size={14} />
               </TransportButton>
-              <TransportButton onClick={onNext}>⏭</TransportButton>
+              <TransportButton onClick={onNext}>
+                <PixelIcon name="next" size={14} />
+              </TransportButton>
+              {/* Visualizer button */}
+              <TransportButton onClick={onOpenVisualizer} title="Trippy Graphics">
+                <PixelIcon name="sparkles" size={14} />
+              </TransportButton>
             </TransportButtons>
 
             <VolumeControl>
@@ -489,7 +421,7 @@ function MediaPlayer({
                 $muted={isMuted}
                 onClick={onMuteToggle}
               >
-                {isMuted || volume === 0 ? '🔇' : volume < 50 ? '🔉' : '🔊'}
+                <PixelIcon name={isMuted || volume === 0 ? "volume-minus" : "volume"} size={14} />
               </VolumeIcon>
               <VolumeSlider
                 type="range"

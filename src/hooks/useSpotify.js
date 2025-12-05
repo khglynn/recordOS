@@ -58,6 +58,7 @@ export function useSpotify() {
   const [albums, setAlbums] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
+  const [loadingAlbums, setLoadingAlbums] = useState([]); // Album art discovered during loading
 
   // Playback state
   const [player, setPlayer] = useState(null);
@@ -149,28 +150,34 @@ export function useSpotify() {
   // FETCH & PROCESS LIBRARY
   // -------------------------------------------------------------------------
 
-  const fetchLibrary = useCallback(async () => {
+  const fetchLibrary = useCallback(async (forceRefresh = false) => {
     if (!loggedIn) return;
 
-    // Check cache first - load immediately if valid
-    const cachedAlbums = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE);
-    const cacheTime = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
+    // Check cache first - load immediately if valid (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedAlbums = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE);
+      const cacheTime = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
 
-    if (cachedAlbums && cacheTime) {
-      const age = Date.now() - parseInt(cacheTime);
-      if (age < ALBUMS_CACHE_DURATION) {
-        console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
-        setAlbums(JSON.parse(cachedAlbums));
-        return;
+      if (cachedAlbums && cacheTime) {
+        const age = Date.now() - parseInt(cacheTime);
+        if (age < ALBUMS_CACHE_DURATION) {
+          console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
+          setAlbums(JSON.parse(cachedAlbums));
+          return;
+        }
       }
+    } else {
+      console.log('Force refresh requested - bypassing cache');
     }
 
     setIsLoading(true);
     setLoadingProgress({ loaded: 0, total: 0 });
+    setLoadingAlbums([]); // Reset loading albums
 
     try {
       // Map to accumulate album data and liked track counts
       const albumDataMap = new Map();
+      const seenAlbumImages = new Set(); // Track unique album images for loading display
 
       // Fetch all saved tracks with progress updates
       const savedTracks = await getAllSavedTracks(
@@ -178,9 +185,18 @@ export function useSpotify() {
         (progress) => {
           setLoadingProgress(progress);
         },
-        // Album batch callback - called as new albums are discovered
-        // We DON'T show albums here because likedTracks count is incomplete
-        null
+        // Album batch callback - stream album art for loading display
+        (newAlbums) => {
+          const newImages = newAlbums
+            .filter(a => a.image && !seenAlbumImages.has(a.image))
+            .map(a => {
+              seenAlbumImages.add(a.image);
+              return { id: a.id, image: a.image };
+            });
+          if (newImages.length > 0) {
+            setLoadingAlbums(prev => [...prev, ...newImages]);
+          }
+        }
       );
 
       // Process all tracks to build album data with accurate liked counts
@@ -231,9 +247,11 @@ export function useSpotify() {
       localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE_TIME, Date.now().toString());
 
       setAlbums(albumsArray);
+      setLoadingAlbums([]); // Clear loading albums
       setIsLoading(false);
     } catch (err) {
       console.error('Failed to fetch library:', err);
+      setLoadingAlbums([]); // Clear loading albums on error too
       setIsLoading(false);
     }
   }, [loggedIn]);
@@ -515,6 +533,7 @@ export function useSpotify() {
     allAlbumsCount: albums.length,
     isLoading,
     loadingProgress,
+    loadingAlbums,
     refreshLibrary: fetchLibrary,
 
     // Settings

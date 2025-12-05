@@ -20,43 +20,19 @@ import {
   Fieldset,
 } from 'react95';
 import { loginWithSpotify } from '../utils/spotify';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
 
-const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 48px; /* Leave room for taskbar! */
-  background: rgba(0, 0, 0, 0.75);
-  z-index: 10000;
-
-  /* Scanline effect */
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.1) 0px,
-      rgba(0, 0, 0, 0.1) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    pointer-events: none;
-  }
-`;
+/* No dimming overlay - windows stack naturally, login is just on top */
 
 const StyledWindow = styled(Window)`
   position: fixed;
   width: 340px;
   max-width: 95vw;
+  z-index: 1200; /* Above other windows (1100) but below taskbar (100000) */
 
   background: #1a1a1a !important;
   box-shadow:
@@ -64,6 +40,13 @@ const StyledWindow = styled(Window)`
     inset -1px -1px 0 #0a0a0a,
     0 0 30px rgba(0, 255, 65, 0.15),
     0 10px 40px rgba(0, 0, 0, 0.6) !important;
+
+  animation: windowAppear 0.15s ease-out;
+
+  @keyframes windowAppear {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
@@ -334,27 +317,17 @@ function LoginModal({
   loadingProgress,
   canClose,
 }) {
-  // Window position state
-  const [position, setPosition] = useState(null);
+  // Window position state - initialize centered
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') return { x: 200, y: 100 };
+    return {
+      x: Math.max(0, (window.innerWidth - 340) / 2),
+      y: Math.max(0, (window.innerHeight - 500) / 2),
+    };
+  });
   const [dragging, setDragging] = useState(null);
   const windowRef = useRef(null);
   const dragOutlineRef = useRef(null);
-
-  // Calculate centered position on mount
-  useEffect(() => {
-    if (isOpen && !position) {
-      const centerX = Math.max(0, (window.innerWidth - 420) / 2);
-      const centerY = Math.max(0, (window.innerHeight - 500) / 2);
-      setPosition({ x: centerX, y: centerY });
-    }
-  }, [isOpen, position]);
-
-  // Reset position when modal reopens
-  useEffect(() => {
-    if (!isOpen) {
-      setPosition(null);
-    }
-  }, [isOpen]);
 
   // Handle drag start
   const handleDragStart = useCallback((e) => {
@@ -430,99 +403,13 @@ function LoginModal({
     onExecute?.();
   };
 
-  if (!isOpen || !position) return null;
+  if (!isOpen) return null;
 
   // STEP 2: Post-auth configuration
   if (isPostAuth) {
     return (
-      <Overlay>
-        <StyledWindow
-          ref={windowRef}
-          style={{ left: position.x, top: position.y }}
-        >
-          <StyledWindowHeader
-            onMouseDown={handleDragStart}
-            style={{ cursor: 'grab' }}
-          >
-            <HeaderTitle>
-              <span>⚙</span>
-              <span>SYSTEM CONFIGURATION</span>
-            </HeaderTitle>
-          </StyledWindowHeader>
-
-          <StyledWindowContent>
-            {user && (
-              <UserInfo>
-                {user.images?.[0]?.url && (
-                  <UserAvatar src={user.images[0].url} alt={user.display_name} />
-                )}
-                <UserDetails>
-                  <UserName>{user.display_name}</UserName>
-                  <UserStatus>CONNECTION ESTABLISHED</UserStatus>
-                </UserDetails>
-              </UserInfo>
-            )}
-
-            <SystemMessage>
-              <span className="prompt">&gt;</span>
-              Audio library access granted.
-              <br />
-              <span className="prompt">&gt;</span>
-              Analyzing your <span className="highlight">saved tracks</span>...
-              <br />
-              <span className="prompt">&gt;</span>
-              Building your <span className="highlight">Top 50</span> most loved albums.
-            </SystemMessage>
-
-            <StyledFieldset label="TOP 50 ALGORITHM">
-              <ThresholdExplainer>
-                Your most loved albums, ranked by how many tracks you've saved from each.
-                <br /><br />
-                Albums with 100% saved tracks appear first, working down until we have your Top 50.
-              </ThresholdExplainer>
-            </StyledFieldset>
-
-            {isLoading ? (
-              <LoadingBar>
-                <LoadingText>
-                  SCANNING LIBRARY... {loadingProgress?.loaded || 0} / {loadingProgress?.total || '?'} tracks
-                </LoadingText>
-                <ProgressBarContainer>
-                  <ProgressBarFill
-                    style={{
-                      width: loadingProgress?.total
-                        ? `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
-                        : '0%'
-                    }}
-                  />
-                  {loadingProgress?.total > 0 && (
-                    <ProgressPercent>
-                      {Math.round((loadingProgress.loaded / loadingProgress.total) * 100)}%
-                    </ProgressPercent>
-                  )}
-                </ProgressBarContainer>
-              </LoadingBar>
-            ) : (
-              <ExecuteButton onClick={handleExecute}>
-                ▶ EXECUTE
-              </ExecuteButton>
-            )}
-
-            <Footer>
-              RECORD OS v3.0 // AUDIO VISUALIZATION SYSTEM
-            </Footer>
-          </StyledWindowContent>
-        </StyledWindow>
-      </Overlay>
-    );
-  }
-
-  // STEP 1: Initial connection
-  return (
-    <Overlay onClick={canClose ? onClose : undefined}>
       <StyledWindow
         ref={windowRef}
-        onClick={(e) => e.stopPropagation()}
         style={{ left: position.x, top: position.y }}
       >
         <StyledWindowHeader
@@ -530,46 +417,127 @@ function LoginModal({
           style={{ cursor: 'grab' }}
         >
           <HeaderTitle>
-            <span>◉</span>
-            <span>RECORD OS // INITIALIZE</span>
+            <PixelIcon name="sliders" size={14} />
+            <span>SYSTEM CONFIGURATION</span>
           </HeaderTitle>
-          {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
         </StyledWindowHeader>
 
         <StyledWindowContent>
-          <Logo src="/logo.png" alt="Record OS" />
-
-          <Title>RECORD OS</Title>
-
-          <StatusText>
-            AUDIO VISUALIZATION TERMINAL
-            <br />
-            SYSTEM STATUS: AWAITING CONNECTION
-          </StatusText>
+          {user && (
+            <UserInfo>
+              {user.images?.[0]?.url && (
+                <UserAvatar src={user.images[0].url} alt={user.display_name} />
+              )}
+              <UserDetails>
+                <UserName>{user.display_name}</UserName>
+                <UserStatus>CONNECTION ESTABLISHED</UserStatus>
+              </UserDetails>
+            </UserInfo>
+          )}
 
           <SystemMessage>
             <span className="prompt">&gt;</span>
-            This system displays your most-loved albums
+            Audio library access granted.
             <br />
             <span className="prompt">&gt;</span>
-            ranked by saved track count.
+            Analyzing your <span className="highlight">saved tracks</span>...
             <br />
             <span className="prompt">&gt;</span>
-            Establish connection to begin...
+            Building your <span className="highlight">Top 50</span> most loved albums.
           </SystemMessage>
 
-          <SpotifyButton onClick={handleLogin}>
-            ◉ CONNECT TO SPOTIFY
-          </SpotifyButton>
+          <StyledFieldset label="TOP 50 ALGORITHM">
+            <ThresholdExplainer>
+              Your most loved albums, ranked by how many tracks you've saved from each.
+              <br /><br />
+              Albums with 100% saved tracks appear first, working down until we have your Top 50.
+            </ThresholdExplainer>
+          </StyledFieldset>
+
+          {isLoading ? (
+            <LoadingBar>
+              <LoadingText>
+                SCANNING LIBRARY... {loadingProgress?.loaded || 0} / {loadingProgress?.total || '?'} tracks
+              </LoadingText>
+              <ProgressBarContainer>
+                <ProgressBarFill
+                  style={{
+                    width: loadingProgress?.total
+                      ? `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
+                      : '0%'
+                  }}
+                />
+                {loadingProgress?.total > 0 && (
+                  <ProgressPercent>
+                    {Math.round((loadingProgress.loaded / loadingProgress.total) * 100)}%
+                  </ProgressPercent>
+                )}
+              </ProgressBarContainer>
+            </LoadingBar>
+          ) : (
+            <ExecuteButton onClick={handleExecute}>
+              <PixelIcon name="play" size={14} /> EXECUTE
+            </ExecuteButton>
+          )}
 
           <Footer>
-            Requires Spotify Premium for audio playback.
-            <br />
-            All data processed locally.
+            RECORD OS v3.0 // AUDIO VISUALIZATION SYSTEM
           </Footer>
         </StyledWindowContent>
       </StyledWindow>
-    </Overlay>
+    );
+  }
+
+  // STEP 1: Initial connection
+  return (
+    <StyledWindow
+      ref={windowRef}
+      style={{ left: position.x, top: position.y }}
+    >
+      <StyledWindowHeader
+        onMouseDown={handleDragStart}
+        style={{ cursor: 'grab' }}
+      >
+        <HeaderTitle>
+          <PixelIcon name="power" size={14} />
+          <span>RECORD OS // INITIALIZE</span>
+        </HeaderTitle>
+        {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
+      </StyledWindowHeader>
+
+      <StyledWindowContent>
+        <Logo src="/logo.png" alt="Record OS" />
+
+        <Title>RECORD OS</Title>
+
+        <StatusText>
+          AUDIO VISUALIZATION TERMINAL
+          <br />
+          SYSTEM STATUS: AWAITING CONNECTION
+        </StatusText>
+
+        <SystemMessage>
+          <span className="prompt">&gt;</span>
+          This system displays your most-loved albums
+          <br />
+          <span className="prompt">&gt;</span>
+          ranked by saved track count.
+          <br />
+          <span className="prompt">&gt;</span>
+          Establish connection to begin...
+        </SystemMessage>
+
+        <SpotifyButton onClick={handleLogin}>
+          <PixelIcon name="login" size={14} /> CONNECT TO SPOTIFY
+        </SpotifyButton>
+
+        <Footer>
+          Requires Spotify Premium for audio playback.
+          <br />
+          All data processed locally.
+        </Footer>
+      </StyledWindowContent>
+    </StyledWindow>
   );
 }
 

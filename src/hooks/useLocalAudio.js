@@ -25,6 +25,7 @@ export function useLocalAudio() {
   const [isMuted, setIsMuted] = useState(
     localStorage.getItem(STORAGE_KEYS.MUTED) === 'true'
   );
+  const [audioContextReady, setAudioContextReady] = useState(false);
 
   // Refs
   const audioRef = useRef(null);
@@ -109,7 +110,8 @@ export function useLocalAudio() {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyzer = audioContext.createAnalyser();
-      analyzer.fftSize = 256;
+      analyzer.fftSize = 2048; // Higher for better visualizer quality
+      analyzer.smoothingTimeConstant = 0.7;
 
       const source = audioContext.createMediaElementSource(audioRef.current);
       source.connect(analyzer);
@@ -117,6 +119,7 @@ export function useLocalAudio() {
 
       audioContextRef.current = audioContext;
       analyzerRef.current = analyzer;
+      setAudioContextReady(true);
     } catch (err) {
       console.error('Failed to init audio context:', err);
     }
@@ -206,20 +209,14 @@ export function useLocalAudio() {
   }, []);
 
   // -------------------------------------------------------------------------
-  // AUTO-PLAY (MUTED) ON MOUNT
+  // LOAD INITIAL TRACK ON MOUNT
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    // Start playing muted on mount (for demo experience)
+    // Load the first track (don't autoplay - user will click play)
     if (audioRef.current && currentTrack) {
       audioRef.current.src = currentTrack.src;
-      audioRef.current.volume = 0; // Start muted
-      audioRef.current.muted = true;
-
-      // Try to autoplay (will likely fail without user interaction)
-      audioRef.current.play().catch(() => {
-        // Autoplay blocked - that's fine, user will click play
-      });
+      audioRef.current.volume = isMuted ? 0 : volume / 100;
     }
   }, []);
 
@@ -253,7 +250,11 @@ export function useLocalAudio() {
 
     // Visualizer data
     getFrequencyData,
-    analyzer: analyzerRef.current,
+    analyzer: audioContextReady ? analyzerRef.current : null,
+    audioContext: audioContextReady ? audioContextRef.current : null,
+
+    // For initializing audio context from user interaction
+    initAudioContext,
   };
 }
 

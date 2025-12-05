@@ -184,6 +184,7 @@ const TrackListContainer = styled.div`
   flex: 1;
   overflow: auto;
   padding: 4px;
+  max-height: 280px; /* ~10 tracks visible */
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
@@ -213,14 +214,15 @@ const StyledHeadCell = styled(TableHeadCell)`
   background: #0d0d0d !important;
   color: rgba(0, 255, 65, 0.6) !important;
   font-size: 10px;
-  padding: 6px 4px !important;
+  padding: 4px 4px !important;
   border-bottom: 1px solid #2a2a2a !important;
+  line-height: 1.2;
 `;
 
 const StyledRow = styled(TableRow)`
   background: ${props => props.$isLiked
     ? 'rgba(0, 255, 65, 0.08)'
-    : 'transparent'} !important;
+    : 'rgba(0, 0, 0, 0.3)'} !important;
   cursor: pointer;
 
   &:hover {
@@ -243,9 +245,10 @@ const StyledCell = styled(TableDataCell)`
     ? '#00ff41'
     : 'rgba(0, 255, 65, 0.6)'} !important;
   font-size: 11px;
-  padding: 6px 4px !important;
+  padding: 4px 4px !important;
   border-bottom: 1px solid #1a1a1a !important;
   vertical-align: middle;
+  line-height: 1.2;
 `;
 
 const TrackNumber = styled.span`
@@ -258,6 +261,11 @@ const TrackNumber = styled.span`
 const TrackName = styled.span`
   font-weight: ${props => props.$isLiked ? 'bold' : 'normal'};
   font-family: 'Consolas', 'Courier New', monospace;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 `;
 
 const CheckIcon = styled.span`
@@ -343,7 +351,7 @@ function TrackListModal({
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
-          <span>💿</span>
+          <PixelIcon name="disc" size={14} />
           <span>{album.name}</span>
         </HeaderTitle>
         <HeaderButtons>

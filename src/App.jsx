@@ -27,9 +27,12 @@ import Taskbar from './components/Taskbar';
 import LoginModal from './components/LoginModal';
 import TrackListModal from './components/TrackListModal';
 import MediaPlayer from './components/MediaPlayer';
+import TrippyGraphics from './components/TrippyGraphics';
 import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
+import SettingsModal from './components/SettingsModal';
 import LoadingWindow from './components/LoadingWindow';
+import LoadedModal from './components/LoadedModal';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -89,9 +92,71 @@ function App() {
   // Track selected album for track list
   const [selectedAlbum, setSelectedAlbum] = useState(null);
 
+  // -------------------------------------------------------------------------
+  // VISUAL SETTINGS
+  // -------------------------------------------------------------------------
+
+  // Scanlines toggle - persisted to localStorage
+  const [scanlinesEnabled, setScanlinesEnabled] = useState(() => {
+    const saved = localStorage.getItem('recordos_scanlines');
+    return saved !== null ? saved === 'true' : true; // Default: on
+  });
+
+  // Persist scanlines setting
+  useEffect(() => {
+    localStorage.setItem('recordos_scanlines', scanlinesEnabled.toString());
+    // Add/remove class on body for global CSS targeting
+    document.body.classList.toggle('scanlines-disabled', !scanlinesEnabled);
+  }, [scanlinesEnabled]);
+
+  // Album count setting - persisted to localStorage (default 48)
+  const [displayAlbumCount, setDisplayAlbumCount] = useState(() => {
+    const saved = localStorage.getItem('recordos_album_count');
+    return saved ? parseInt(saved) : 48;
+  });
+
+  // Persist album count setting
+  useEffect(() => {
+    localStorage.setItem('recordos_album_count', displayAlbumCount.toString());
+  }, [displayAlbumCount]);
+
   // Loading window position (separate from managed windows for simplicity)
   const [loadingWindowPos, setLoadingWindowPos] = useState(null);
-  const [loadingDragging, setLoadingDragging] = useState(null);
+
+  // Track when loading completes to show loaded modal
+  const [showLoadedModal, setShowLoadedModal] = useState(false);
+  const [wasLoading, setWasLoading] = useState(false);
+
+  // Detect when loading transitions from true to false (completed)
+  useEffect(() => {
+    if (spotify.isLoading) {
+      setWasLoading(true);
+    } else if (wasLoading && !spotify.isLoading && spotify.allAlbumsCount > 0) {
+      // Loading just finished, show the loaded modal
+      setShowLoadedModal(true);
+      setWasLoading(false);
+    }
+  }, [spotify.isLoading, wasLoading, spotify.allAlbumsCount]);
+
+  // Calculate top decade from albums
+  const getTopDecade = () => {
+    if (spotify.albums.length === 0) return null;
+    const decadeCounts = {};
+    spotify.albums.forEach(album => {
+      const year = parseInt(album.releaseDate?.split('-')[0]);
+      if (year) {
+        const decade = Math.floor(year / 10) * 10;
+        decadeCounts[decade] = (decadeCounts[decade] || 0) + 1;
+      }
+    });
+    const topDecade = Object.entries(decadeCounts).sort((a, b) => b[1] - a[1])[0];
+    return topDecade ? `${topDecade[0]}s` : null;
+  };
+
+  // Calculate total tracks
+  const getTotalTracks = () => {
+    return spotify.albums.reduce((sum, album) => sum + (album.likedTracks || 0), 0);
+  };
 
   // -------------------------------------------------------------------------
   // LOGIN FLOW STATE
@@ -100,9 +165,26 @@ function App() {
   // Step 1: Show login modal on first load or when logged out
   // Step 2: After OAuth, show config modal
   // Step 3: After execute, show the app
-  const [loginModalOpen, setLoginModalOpen] = useState(true);
+
+  // Check if user has cached albums to avoid modal flash on page refresh
+  const hasCachedAlbums = () => {
+    const cached = localStorage.getItem('recordos_albums_cache');
+    const cacheTime = localStorage.getItem('recordos_albums_cache_time');
+    if (cached && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      return age < 60 * 60 * 1000; // 1 hour cache
+    }
+    return false;
+  };
+
+  // Don't show login modal if user is logged in with valid cached albums
+  const [loginModalOpen, setLoginModalOpen] = useState(() => {
+    return !(isLoggedIn && hasCachedAlbums());
+  });
   const [showConfigStep, setShowConfigStep] = useState(false);
-  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(() => {
+    return isLoggedIn && hasCachedAlbums();
+  });
 
   // Check if user just returned from OAuth
   useEffect(() => {
@@ -139,13 +221,18 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn && !hasOpenedInitialWindows) {
-      // Open Minesweeper and Media Player on first load
+      // Calculate positions: Minesweeper upper right, Media Player lower right
+      // Minesweeper is ~280px wide, Media Player is ~320px wide
+      const minesweeperX = window.innerWidth - 280 - 24; // 24px inset from right
+      const mediaPlayerX = window.innerWidth - 320 - 24;
+      const mediaPlayerY = window.innerHeight - 48 - 200 - 24; // 48px taskbar, ~200px player height, 24px inset
+
       const minesweeperWindow = {
         id: generateWindowId(),
         type: 'minesweeper',
         title: 'Minesweeper',
         data: {},
-        position: { x: 50, y: 80 },
+        position: { x: minesweeperX, y: 24 }, // Upper right, 24px from top
         minimized: false,
       };
 
@@ -154,7 +241,7 @@ function App() {
         type: 'mediaPlayer',
         title: 'Media Player',
         data: {},
-        position: { x: 400, y: 120 },
+        position: { x: mediaPlayerX, y: mediaPlayerY }, // Lower right
         minimized: false,
       };
 
@@ -205,6 +292,9 @@ function App() {
         break;
       case 'snake':
         title = 'Snake';
+        break;
+      case 'trippyGraphics':
+        title = 'Trippy Graphics';
         break;
       case 'info':
         title = 'About Record OS';
@@ -354,59 +444,6 @@ function App() {
     };
   }, [dragging]);
 
-  // Loading window dragging
-  const handleLoadingDragStart = useCallback((e) => {
-    const currentPos = loadingWindowPos || {
-      x: window.innerWidth / 2 - 180,
-      y: window.innerHeight / 2 - 80,
-    };
-    setLoadingDragging({
-      startX: e.clientX - currentPos.x,
-      startY: e.clientY - currentPos.y,
-    });
-  }, [loadingWindowPos]);
-
-  useEffect(() => {
-    if (!loadingDragging) return;
-
-    let frameId = null;
-    let lastX = 0;
-    let lastY = 0;
-
-    const handleMouseMove = (e) => {
-      lastX = e.clientX;
-      lastY = e.clientY;
-
-      // Use RAF to throttle state updates
-      if (!frameId) {
-        frameId = requestAnimationFrame(() => {
-          setLoadingWindowPos({
-            x: Math.max(0, lastX - loadingDragging.startX),
-            y: Math.max(0, lastY - loadingDragging.startY),
-          });
-          frameId = null;
-        });
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-      }
-      setLoadingDragging(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-      }
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [loadingDragging]);
 
   // -------------------------------------------------------------------------
   // EVENT HANDLERS
@@ -433,6 +470,14 @@ function App() {
     openWindow('info');
   }, [openWindow]);
 
+  const handleOpenSettings = useCallback(() => {
+    openWindow('settings');
+  }, [openWindow]);
+
+  const handleOpenTrippyGraphics = useCallback(() => {
+    openWindow('trippyGraphics');
+  }, [openWindow]);
+
   const handleOpenLogin = useCallback(() => {
     setShowConfigStep(false);
     setLoginModalOpen(true);
@@ -454,6 +499,11 @@ function App() {
   const handleExecute = useCallback(() => {
     // Trigger library fetch
     spotify.refreshLibrary();
+  }, [spotify]);
+
+  const handleRescanLibrary = useCallback(() => {
+    // Force refresh library - bypass cache
+    spotify.refreshLibrary(true);
   }, [spotify]);
 
   // Close start menu when clicking elsewhere
@@ -552,7 +602,8 @@ function App() {
 
       {/* Desktop Background (Album Grid) */}
       <Desktop
-        albums={spotify.albums}
+        albums={spotify.albums.slice(0, displayAlbumCount)}
+        loadingAlbums={spotify.loadingAlbums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
         isLoading={spotify.isLoading}
         onAlbumClick={handleAlbumClick}
@@ -564,7 +615,7 @@ function App() {
         <LoadingWindow
           loadingProgress={spotify.loadingProgress}
           position={loadingWindowPos}
-          onDragStart={handleLoadingDragStart}
+          onPositionChange={setLoadingWindowPos}
         />
       )}
 
@@ -609,7 +660,6 @@ function App() {
                 duration={audio.duration}
                 volume={audio.volume}
                 isMuted={audio.isMuted}
-                audioAnalysis={spotify.audioAnalysis}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -617,6 +667,18 @@ function App() {
                 onSeek={audio.seek}
                 onVolumeChange={audio.setVolume}
                 onMuteToggle={audio.toggleMute}
+                onOpenVisualizer={handleOpenTrippyGraphics}
+              />
+            );
+
+          case 'trippyGraphics':
+            return (
+              <TrippyGraphics
+                {...commonProps}
+                size={w.size || { width: 600, height: 450 }}
+                audioContext={audio.audioContext}
+                audioAnalyser={audio.analyzer}
+                initAudioContext={audio.initAudioContext}
               />
             );
 
@@ -637,6 +699,17 @@ function App() {
               />
             );
 
+          case 'settings':
+            return (
+              <SettingsModal
+                {...commonProps}
+                scanlinesEnabled={scanlinesEnabled}
+                onToggleScanlines={() => setScanlinesEnabled(prev => !prev)}
+                albumCount={displayAlbumCount}
+                onAlbumCountChange={setDisplayAlbumCount}
+              />
+            );
+
           default:
             return null;
         }
@@ -654,6 +727,23 @@ function App() {
         loadingProgress={spotify.loadingProgress}
       />
 
+      {/* Loaded Modal - shown after library scan completes */}
+      <LoadedModal
+        isOpen={showLoadedModal}
+        albumCount={spotify.allAlbumsCount}
+        trackCount={getTotalTracks()}
+        topDecade={getTopDecade()}
+        onExplore={() => {
+          // Close all windows and dismiss modal
+          setWindows([]);
+          setShowLoadedModal(false);
+        }}
+        onKeepWindows={() => {
+          // Just dismiss the modal
+          setShowLoadedModal(false);
+        }}
+      />
+
       {/* Taskbar */}
       <Taskbar
         albumCount={spotify.albums.length}
@@ -667,9 +757,12 @@ function App() {
         onDecadeChange={spotify.setDecade}
         onLogout={handleLogout}
         onOpenMediaPlayer={handleOpenMediaPlayer}
+        onOpenTrippyGraphics={handleOpenTrippyGraphics}
         onOpenGame={handleOpenGame}
         onOpenInfo={handleOpenInfo}
+        onOpenSettings={handleOpenSettings}
         onOpenLogin={handleOpenLogin}
+        onRescanLibrary={handleRescanLibrary}
       />
     </ThemeProvider>
   );

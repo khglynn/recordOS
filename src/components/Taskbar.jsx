@@ -45,35 +45,51 @@ const TaskbarContainer = styled.div`
 const StartButton = styled(Button)`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 14px;
-  height: 36px;
+  gap: 10px;
+  padding: 4px 20px 4px 12px;
+  height: 40px;
   font-weight: bold;
   font-size: 12px;
   font-family: 'Consolas', 'Courier New', monospace;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 
-  /* Override React95 colors for our theme */
-  background: ${props => props.$active
-    ? 'linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%)'
-    : 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%)'} !important;
+  /* Terminal style - flat dark with subtle inner glow */
+  background: #050505 !important;
   color: #00ff41 !important;
-  border-color: ${props => props.$active ? '#00ff41' : '#3a3a3a'} !important;
+  border: 1px solid #1a1a1a !important;
+  box-shadow:
+    inset 0 0 20px rgba(0, 255, 65, 0.03),
+    inset 0 0 4px rgba(0, 255, 65, 0.05);
+
+  /* Active/pressed state */
+  ${props => props.$active && `
+    background: #0a0f0a !important;
+    box-shadow:
+      inset 0 0 30px rgba(0, 255, 65, 0.08),
+      inset 0 0 6px rgba(0, 255, 65, 0.1),
+      0 0 8px rgba(0, 255, 65, 0.15);
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+  `}
 
   &:hover {
-    background: linear-gradient(180deg, #1a3a1a 0%, #0d2d0d 100%) !important;
-    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+    background: #080a08 !important;
+    box-shadow:
+      inset 0 0 25px rgba(0, 255, 65, 0.05),
+      0 0 4px rgba(0, 255, 65, 0.1);
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
   }
 
   &:active {
-    background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
+    background: #050505 !important;
   }
 `;
 
 const StartLogo = styled.img`
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 65, 0.5));
 `;
 
 const TaskbarDivider = styled.div`
@@ -133,7 +149,8 @@ const TabIcon = styled.span`
 const TrayArea = styled.div`
   display: flex;
   align-items: center;
-  padding: 4px 12px;
+  gap: 4px;
+  padding: 4px 8px;
   height: 32px;
 
   /* Sunken border effect */
@@ -148,6 +165,30 @@ const TrayText = styled.span`
   color: #00ff41;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 0.5px;
+  min-width: 70px;
+  text-align: center;
+`;
+
+const DecadeArrow = styled.button`
+  background: transparent;
+  border: none;
+  color: #00ff41;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.2;
+    cursor: default;
+  }
 `;
 
 // ============================================================================
@@ -166,9 +207,12 @@ function Taskbar({
   onDecadeChange,
   onLogout,
   onOpenMediaPlayer,
+  onOpenTrippyGraphics,
   onOpenGame,
   onOpenInfo,
+  onOpenSettings,
   onOpenLogin,
+  onRescanLibrary,
 }) {
   const startButtonRef = useRef(null);
 
@@ -177,23 +221,41 @@ function Taskbar({
     switch (type) {
       case 'trackList': return <PixelIcon name="disc" size={14} />;
       case 'mediaPlayer': return <PixelIcon name="music" size={14} />;
+      case 'trippyGraphics': return <PixelIcon name="sparkles" size={14} />;
       case 'minesweeper': return <PixelIcon name="zap" size={14} />;
       case 'solitaire': return <PixelIcon name="gamepad" size={14} />;
       case 'snake': return <PixelIcon name="gamepad" size={14} />;
       case 'info': return <PixelIcon name="info" size={14} />;
+      case 'settings': return <PixelIcon name="sliders" size={14} />;
       default: return <PixelIcon name="folder" size={14} />;
     }
   };
 
+  // Decade options for cycling
+  const DECADES = ['all', 'classic', '1980s', '1990s', '2000s', '2010s', '2020s'];
+
   // Decade display for tray
   const getDecadeDisplay = () => {
     if (!isLoggedIn) return '--:--';
-    if (decade === 'classic') return 'circa: pre-80';
+    if (decade === 'classic') return 'pre-80';
     if (!decade || decade === 'all') return null; // Will show icon instead
-    return `circa: ${decade}`;
+    return decade;
   };
 
   const showInfinityIcon = isLoggedIn && (!decade || decade === 'all');
+
+  // Navigate decades
+  const currentIndex = DECADES.indexOf(decade || 'all');
+
+  const handlePrevDecade = () => {
+    const newIndex = currentIndex <= 0 ? DECADES.length - 1 : currentIndex - 1;
+    onDecadeChange?.(DECADES[newIndex]);
+  };
+
+  const handleNextDecade = () => {
+    const newIndex = currentIndex >= DECADES.length - 1 ? 0 : currentIndex + 1;
+    onDecadeChange?.(DECADES[newIndex]);
+  };
 
   return (
     <>
@@ -225,15 +287,25 @@ function Taskbar({
           ))}
         </WindowTabs>
 
-        {/* Tray Area - Decade Display */}
+        {/* Tray Area - Decade Display with Navigation */}
         <TrayArea>
+          {isLoggedIn && (
+            <DecadeArrow onClick={handlePrevDecade} title="Previous era">
+              <PixelIcon name="chevronLeft" size={12} />
+            </DecadeArrow>
+          )}
           <TrayText>
             {showInfinityIcon ? (
               <>circa: <PixelIcon name="repeat" size={12} /></>
             ) : (
-              getDecadeDisplay()
+              <>circa: {getDecadeDisplay()}</>
             )}
           </TrayText>
+          {isLoggedIn && (
+            <DecadeArrow onClick={handleNextDecade} title="Next era">
+              <PixelIcon name="chevronRight" size={12} />
+            </DecadeArrow>
+          )}
         </TrayArea>
       </TaskbarContainer>
 
@@ -245,9 +317,12 @@ function Taskbar({
           onDecadeChange={onDecadeChange}
           onLogout={onLogout}
           onOpenMediaPlayer={onOpenMediaPlayer}
+          onOpenTrippyGraphics={onOpenTrippyGraphics}
           onOpenGame={onOpenGame}
           onOpenInfo={onOpenInfo}
+          onOpenSettings={onOpenSettings}
           onOpenLogin={onOpenLogin}
+          onRescanLibrary={onRescanLibrary}
           onClose={onStartClick}
         />
       )}

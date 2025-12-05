@@ -42,6 +42,12 @@ const GlobalStyles = createGlobalStyle`
     );
     pointer-events: none;
     z-index: 999999;
+    transition: opacity 0.2s ease;
+  }
+
+  /* Hide scanlines when toggle is off */
+  body.scanlines-disabled #root::after {
+    opacity: 0;
   }
 
   body {

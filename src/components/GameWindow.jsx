@@ -30,7 +30,7 @@ const GAME_CONFIG = {
     title: 'Minesweeper',
     iconName: 'zap',
     url: '/games/minesweeper/index.html',
-    width: 300,
+    width: 260,
     height: 380,
   },
   solitaire: {
@@ -48,7 +48,7 @@ const GAME_CONFIG = {
     iconName: 'gamepad',
     url: '/games/snake/index.html',
     width: 340,
-    height: 500,
+    height: 420,
   },
 };
 

@@ -5,19 +5,19 @@
  *
  * Classic Windows 95-style loading window that appears during library fetch.
  * Features:
- * - Draggable like other windows
- * - Win95 progress bar with green theme
+ * - Draggable with green outline effect
+ * - Custom progress bar with green theme
  * - Track count and percentage display
  */
 
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import {
   Window,
   WindowHeader,
   WindowContent,
-  ProgressBar,
 } from 'react95';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -72,7 +72,7 @@ const StyledWindowContent = styled(WindowContent)`
 `;
 
 const StatusText = styled.div`
-  font-family: 'MS Sans Serif', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Consolas', 'Courier New', monospace;
   font-size: 12px;
   color: #00ff41;
   margin-bottom: 16px;
@@ -81,35 +81,33 @@ const StatusText = styled.div`
   gap: 8px;
 `;
 
-const Spinner = styled.span`
-  display: inline-block;
-  animation: spin 1s linear infinite;
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-
 const ProgressContainer = styled.div`
   margin-bottom: 12px;
+  width: 100%;
+  height: 20px;
+  background: #0a0a0a;
+  border: 1px solid #00ff41;
+  position: relative;
+  overflow: hidden;
+`;
 
-  /* Override React95 progress bar colors */
-  & > div {
-    background: #0a0a0a !important;
-    border-color: #3a3a3a !important;
-  }
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #00ff41 0%, #00cc33 100%);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  transition: width 0.2s ease-out;
+`;
 
-  /* The progress fill */
-  & > div > div {
-    background: linear-gradient(
-      90deg,
-      #00aa30 0%,
-      #00ff41 50%,
-      #00aa30 100%
-    ) !important;
-    box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-  }
+const ProgressPercent = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: #000;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0, 255, 65, 0.8);
 `;
 
 const ProgressDetails = styled.div`
@@ -142,48 +140,127 @@ const AnimatedDots = styled.span`
 function LoadingWindow({
   loadingProgress,
   position,
-  onDragStart,
+  onPositionChange,
 }) {
   const headerRef = useRef(null);
+  const windowRef = useRef(null);
+  const dragOutlineRef = useRef(null);
+  const [dragging, setDragging] = useState(null);
+  const [displayedPercent, setDisplayedPercent] = useState(0);
+
+  // Use provided position or center
+  const defaultX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 180) : 300;
+  const defaultY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 80) : 200;
+  const currentPos = position || { x: defaultX, y: defaultY };
 
   const loaded = loadingProgress?.loaded || 0;
   const total = loadingProgress?.total || 0;
-  const percent = total > 0 ? Math.round((loaded / total) * 100) : 0;
+  const calculatedPercent = total > 0 ? Math.round((loaded / total) * 100) : 0;
 
+  // Only update displayed percent if it increased (prevents backwards glitching)
+  useEffect(() => {
+    if (calculatedPercent > displayedPercent) {
+      setDisplayedPercent(calculatedPercent);
+    }
+  }, [calculatedPercent, displayedPercent]);
+
+  // Reset when starting a new load
+  useEffect(() => {
+    if (loaded === 0 && total === 0) {
+      setDisplayedPercent(0);
+    }
+  }, [loaded, total]);
+
+  // Handle drag start
   const handleMouseDown = (e) => {
     if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
-      onDragStart?.(e);
+      const rect = windowRef.current?.getBoundingClientRect();
+      setDragging({
+        startX: e.clientX - currentPos.x,
+        startY: e.clientY - currentPos.y,
+        width: rect?.width || 360,
+        height: rect?.height || 150,
+        initialX: currentPos.x,
+        initialY: currentPos.y,
+      });
     }
   };
 
+  // Outline drag effect (same as other windows)
+  useEffect(() => {
+    if (!dragging) return;
+
+    const outline = document.createElement('div');
+    outline.style.cssText = `
+      position: fixed;
+      border: 2px dashed #00ff41;
+      pointer-events: none;
+      z-index: 999999;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+      left: ${dragging.initialX}px;
+      top: ${dragging.initialY}px;
+      width: ${dragging.width}px;
+      height: ${dragging.height}px;
+    `;
+    document.body.appendChild(outline);
+    dragOutlineRef.current = outline;
+
+    let currentX = dragging.initialX;
+    let currentY = dragging.initialY;
+
+    const handleMouseMove = (e) => {
+      currentX = Math.max(0, e.clientX - dragging.startX);
+      currentY = Math.max(0, e.clientY - dragging.startY);
+      outline.style.left = `${currentX}px`;
+      outline.style.top = `${currentY}px`;
+    };
+
+    const handleMouseUp = () => {
+      outline.remove();
+      dragOutlineRef.current = null;
+      onPositionChange?.({ x: currentX, y: currentY });
+      setDragging(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      outline.remove();
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging, onPositionChange]);
+
   return (
     <StyledWindow
+      ref={windowRef}
       style={{
-        left: position?.x ?? 'calc(50% - 180px)',
-        top: position?.y ?? 'calc(50% - 80px)',
+        left: currentPos.x,
+        top: currentPos.y,
       }}
       onMouseDown={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef}>
         <HeaderTitle>
-          <span>💿</span>
+          <PixelIcon name="disc" size={14} />
           <span>Scanning Library</span>
         </HeaderTitle>
       </StyledWindowHeader>
 
       <StyledWindowContent>
         <StatusText>
-          <Spinner>⟳</Spinner>
           <span>Fetching saved tracks<AnimatedDots /></span>
         </StatusText>
 
         <ProgressContainer>
-          <ProgressBar value={percent} />
+          <ProgressFill style={{ width: `${displayedPercent}%` }} />
+          {displayedPercent > 0 && <ProgressPercent>{displayedPercent}%</ProgressPercent>}
         </ProgressContainer>
 
         <ProgressDetails>
           <span>{loaded.toLocaleString()} / {total > 0 ? total.toLocaleString() : '...'} tracks</span>
-          <span>{percent}%</span>
+          <span>{displayedPercent}%</span>
         </ProgressDetails>
       </StyledWindowContent>
     </StyledWindow>

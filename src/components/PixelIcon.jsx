@@ -41,13 +41,19 @@ const ICON_MAP = {
   power: 'power',
   link: 'link',
   externalLink: 'external-link',
+  arrowLeft: 'arrow-left',
+  arrowRight: 'arrow-right',
+  chevronLeft: 'chevron-left',
+  chevronRight: 'chevron-right',
 
   // Files/Data
-  disc: 'coin', // Closest to a record/disc
+  disc: 'notes-multiple', // Album/record icon
   folder: 'folder',
   file: 'file',
 
   // Misc
+  shuffle: 'shuffle',
+  check: 'check',
   user: 'user',
   heart: 'heart',
   dollar: 'dollar',
@@ -58,6 +64,9 @@ const ICON_MAP = {
   repeat: 'repeat', // For "all" / infinity
   sync: 'sync',
   reload: 'reload',
+  sparkles: 'moon-stars', // Trippy graphics / visualizer
+  eye: 'eye',
+  sliders: 'sliders-2', // Settings
 };
 
 const IconWrapper = styled.span`
