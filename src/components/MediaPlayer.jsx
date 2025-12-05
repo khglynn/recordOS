@@ -16,7 +16,7 @@
  * - Spotify Web Playback SDK (post-login)
  */
 
-import { useRef } from 'react';
+import { useRef, memo } from 'react';
 import styled from 'styled-components';
 import {
   Window,
@@ -438,4 +438,4 @@ function MediaPlayer({
   );
 }
 
-export default MediaPlayer;
+export default memo(MediaPlayer);

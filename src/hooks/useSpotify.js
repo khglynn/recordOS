@@ -13,7 +13,7 @@
  * - Playback controls
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   isLoggedIn,
   exchangeCodeForTokens,
@@ -270,8 +270,10 @@ export function useSpotify() {
    * 2. Sort by saved track count (most saved = most loved)
    * 3. Take the top N albums, prioritizing those with MIN_SAVED_TRACKS
    *    but filling up to TARGET_ALBUM_COUNT even with fewer liked tracks
+   *
+   * Memoized to prevent recalculation on every render
    */
-  const filteredAlbums = useCallback(() => {
+  const displayAlbums = useMemo(() => {
     if (albums.length === 0) return [];
 
     // Step 1: Filter by decade if not "all"
@@ -529,7 +531,7 @@ export function useSpotify() {
     logout: handleLogout,
 
     // Library
-    albums: filteredAlbums(),
+    albums: displayAlbums,
     allAlbumsCount: albums.length,
     isLoading,
     loadingProgress,

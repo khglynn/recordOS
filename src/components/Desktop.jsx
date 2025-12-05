@@ -679,15 +679,19 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
   }
 
   // Show album grid
-  // Calculate staggered delay for new albums (only animate unseen ones)
-  // Optimized: max delay cap to prevent long animation chains
-  const getAnimationDelay = (album, index) => {
-    if (seenAlbums.has(album.id)) return 0; // Already seen, no delay
-    // Find position among new albums for stagger effect
-    const newAlbums = albums.filter(a => !seenAlbums.has(a.id));
-    const newIndex = newAlbums.findIndex(a => a.id === album.id);
-    // Cap at 500ms total animation time, reduce stagger
-    return Math.min(newIndex * 15, 500);
+  // Pre-compute animation delays for new albums (O(n) instead of O(n²))
+  // Only animate unseen ones, cap at 500ms total animation time
+  const newAlbumDelays = new Map();
+  let newIndex = 0;
+  for (const album of albums) {
+    if (!seenAlbums.has(album.id)) {
+      newAlbumDelays.set(album.id, Math.min(newIndex * 15, 500));
+      newIndex++;
+    }
+  }
+
+  const getAnimationDelay = (album) => {
+    return newAlbumDelays.get(album.id) || 0;
   };
 
   // Determine if we're refreshing (loading while already have albums)
@@ -701,7 +705,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
             key={album.id}
             onClick={() => onAlbumClick(album)}
             className={!loadedImages.has(album.id) ? 'loading' : ''}
-            $delay={getAnimationDelay(album, index)}
+            $delay={getAnimationDelay(album)}
             style={seenAlbums.has(album.id) ? { animation: 'none' } : {}}
           >
             <img

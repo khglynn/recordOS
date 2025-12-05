@@ -13,7 +13,7 @@
  * - Click track to play in Media Player
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import styled from 'styled-components';
 import {
   Window,
@@ -428,4 +428,4 @@ function TrackListModal({
   );
 }
 
-export default TrackListModal;
+export default memo(TrackListModal);

@@ -210,7 +210,8 @@ function TrippyGraphics({
   // Initialize Butterchurn when window opens
   useEffect(() => {
     const initializeViz = async () => {
-      if (canvasRef.current && !isInitialized && !butterchurn.isEnabled) {
+      // Don't retry if already initialized, already enabled, or there's an error
+      if (canvasRef.current && !isInitialized && !butterchurn.isEnabled && !butterchurn.error) {
         // Try to initialize audio context if not already done
         if (!audioContext && initAudioContext) {
           initAudioContext();
@@ -231,7 +232,7 @@ function TrippyGraphics({
     // Small delay to ensure canvas is rendered and audio context is available
     const timer = setTimeout(initializeViz, 100);
     return () => clearTimeout(timer);
-  }, [isInitialized, butterchurn, audioContext, audioAnalyser, initAudioContext]);
+  }, [isInitialized, butterchurn.isEnabled, butterchurn.error, butterchurn.initialize, audioContext, audioAnalyser, initAudioContext]);
 
   // Handle resize
   useEffect(() => {
@@ -255,7 +256,7 @@ function TrippyGraphics({
     return () => {
       butterchurn.disable();
     };
-  }, [butterchurn]);
+  }, [butterchurn.disable]);
 
   const handleMouseDown = (e) => {
     if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
