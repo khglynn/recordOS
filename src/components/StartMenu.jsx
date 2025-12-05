@@ -146,6 +146,7 @@ function StartMenu({
   onOpenMediaPlayer,
   onOpenGame,
   onOpenInfo,
+  onOpenLogin,
   onClose,
 }) {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
@@ -288,7 +289,7 @@ function StartMenu({
 
         <StyledSeparator />
 
-        {/* Log In / Log Out */}
+        {/* Connect / Log Out */}
         {isLoggedIn ? (
           <StyledMenuItem
             data-icon="🚪"
@@ -298,11 +299,10 @@ function StartMenu({
           </StyledMenuItem>
         ) : (
           <StyledMenuItem
-            data-icon="🔐"
-            onClick={onClose}
-            style={{ opacity: 0.5, cursor: 'default' }}
+            data-icon="◉"
+            onClick={() => handleMenuItemClick(onOpenLogin)}
           >
-            Log In (use popup)
+            Connect
           </StyledMenuItem>
         )}
       </StyledMenuList>

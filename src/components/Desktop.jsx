@@ -41,18 +41,18 @@ const EmptyGrid = styled.div`
   right: 0;
   bottom: 0;
 
-  /* Grid pattern using CSS */
+  /* Grid pattern using CSS - Alien computer terminal aesthetic */
   background-image:
     /* Vertical lines */
     linear-gradient(
       to right,
-      rgba(0, 255, 65, 0.08) 1px,
+      rgba(0, 255, 65, 0.25) 1px,
       transparent 1px
     ),
     /* Horizontal lines */
     linear-gradient(
       to bottom,
-      rgba(0, 255, 65, 0.08) 1px,
+      rgba(0, 255, 65, 0.25) 1px,
       transparent 1px
     );
 

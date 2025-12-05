@@ -82,11 +82,48 @@ function App() {
   const [windows, setWindows] = useState([]);
   const [activeWindowId, setActiveWindowId] = useState(null);
   const [isStartMenuOpen, setIsStartMenuOpen] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(!isLoggedIn);
   const [dragging, setDragging] = useState(null);
 
   // Track selected album for track list
   const [selectedAlbum, setSelectedAlbum] = useState(null);
+
+  // -------------------------------------------------------------------------
+  // LOGIN FLOW STATE
+  // -------------------------------------------------------------------------
+
+  // Step 1: Show login modal on first load or when logged out
+  // Step 2: After OAuth, show config modal
+  // Step 3: After execute, show the app
+  const [loginModalOpen, setLoginModalOpen] = useState(true);
+  const [showConfigStep, setShowConfigStep] = useState(false);
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+
+  // Check if user just returned from OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasCode = params.has('code');
+
+    if (hasCode) {
+      // User just came back from Spotify OAuth - show config step
+      setShowConfigStep(true);
+      setLoginModalOpen(true);
+    } else if (isLoggedIn && !hasCompletedSetup) {
+      // Already logged in from previous session - show config
+      setShowConfigStep(true);
+      setLoginModalOpen(true);
+    } else if (isLoggedIn && hasCompletedSetup) {
+      // Fully set up - hide modal
+      setLoginModalOpen(false);
+    }
+  }, [isLoggedIn, hasCompletedSetup]);
+
+  // When albums finish loading and we have results, mark setup complete
+  useEffect(() => {
+    if (isLoggedIn && spotify.albums.length > 0 && !spotify.isLoading) {
+      setHasCompletedSetup(true);
+      setLoginModalOpen(false);
+    }
+  }, [isLoggedIn, spotify.albums.length, spotify.isLoading]);
 
   // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
@@ -250,9 +287,16 @@ function App() {
     openWindow('info');
   }, [openWindow]);
 
+  const handleOpenLogin = useCallback(() => {
+    setShowConfigStep(false);
+    setLoginModalOpen(true);
+  }, []);
+
   const handleLogout = useCallback(() => {
     spotify.logout();
-    setShowLoginModal(true);
+    setHasCompletedSetup(false);
+    setShowConfigStep(false);
+    setLoginModalOpen(true);
     setWindows([]);
     setSelectedAlbum(null);
   }, [spotify]);
@@ -260,6 +304,11 @@ function App() {
   const handleStartClick = useCallback(() => {
     setIsStartMenuOpen(prev => !prev);
   }, []);
+
+  const handleExecute = useCallback(() => {
+    // Trigger library fetch
+    spotify.refreshLibrary();
+  }, [spotify]);
 
   // Close start menu when clicking elsewhere
   useEffect(() => {
@@ -272,15 +321,6 @@ function App() {
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, [isStartMenuOpen]);
-
-  // Show login modal when not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setShowLoginModal(true);
-    } else {
-      setShowLoginModal(false);
-    }
-  }, [isLoggedIn]);
 
   // -------------------------------------------------------------------------
   // PLAYBACK HANDLERS
@@ -312,6 +352,9 @@ function App() {
     title: w.title,
   }));
 
+  // Determine if login modal can be closed (only after setup is complete)
+  const canCloseLogin = hasCompletedSetup;
+
   return (
     <ThemeProvider theme={recordOSTheme}>
       <React95Reset />
@@ -320,7 +363,7 @@ function App() {
       {/* Desktop Background (Album Grid) */}
       <Desktop
         albums={spotify.albums}
-        isLoggedIn={isLoggedIn}
+        isLoggedIn={isLoggedIn && hasCompletedSetup}
         isLoading={spotify.isLoading}
         onAlbumClick={handleAlbumClick}
       />
@@ -398,10 +441,16 @@ function App() {
 
       {/* Login Modal */}
       <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        canClose={canCloseLogin}
         threshold={spotify.threshold}
         onThresholdChange={spotify.setThreshold}
+        onExecute={handleExecute}
+        user={spotify.user}
+        isPostAuth={isLoggedIn && showConfigStep}
+        isLoading={spotify.isLoading}
+        loadingProgress={spotify.loadingProgress}
       />
 
       {/* Taskbar */}
@@ -413,7 +462,7 @@ function App() {
         onWindowClick={toggleWindowFromTaskbar}
         onStartClick={handleStartClick}
         isStartMenuOpen={isStartMenuOpen}
-        isLoggedIn={isLoggedIn}
+        isLoggedIn={isLoggedIn && hasCompletedSetup}
         sortBy={spotify.sortBy}
         sortDesc={spotify.sortDesc}
         onSortChange={spotify.setSortOptions}
@@ -422,6 +471,7 @@ function App() {
         onOpenMediaPlayer={handleOpenMediaPlayer}
         onOpenGame={handleOpenGame}
         onOpenInfo={handleOpenInfo}
+        onOpenLogin={handleOpenLogin}
       />
     </ThemeProvider>
   );

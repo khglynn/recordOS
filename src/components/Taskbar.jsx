@@ -163,6 +163,7 @@ function Taskbar({
   onOpenMediaPlayer,
   onOpenGame,
   onOpenInfo,
+  onOpenLogin,
 }) {
   const startButtonRef = useRef(null);
 
@@ -229,6 +230,7 @@ function Taskbar({
           onOpenMediaPlayer={onOpenMediaPlayer}
           onOpenGame={onOpenGame}
           onOpenInfo={onOpenInfo}
+          onOpenLogin={onOpenLogin}
           onClose={onStartClick}
         />
       )}

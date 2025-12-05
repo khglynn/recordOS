@@ -3,14 +3,11 @@
  * LOGIN MODAL COMPONENT
  * ============================================================================
  *
- * Windows 95-style modal for Spotify OAuth login.
+ * Two-step authentication flow:
+ * 1. Connect to Spotify (OAuth)
+ * 2. Configure display threshold (post-auth)
  *
- * Shows on initial load (unless already logged in).
- * Contains:
- * - Record OS logo
- * - Login with Spotify button
- * - Threshold selector
- * - Brief explanation text
+ * Voice: Retro-corporate with alien computer undertones
  */
 
 import { useState } from 'react';
@@ -22,6 +19,7 @@ import {
   Button,
   Select,
   Fieldset,
+  ProgressBar,
 } from 'react95';
 import { THRESHOLD_OPTIONS, DEFAULT_THRESHOLD } from '../utils/constants';
 import { loginWithSpotify } from '../utils/spotify';
@@ -36,13 +34,13 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
 
-  /* Slight scanline effect */
+  /* Scanline effect */
   &::after {
     content: '';
     position: absolute;
@@ -62,11 +60,10 @@ const Overlay = styled.div`
 `;
 
 const StyledWindow = styled(Window)`
-  width: 360px;
+  width: 420px;
   max-width: 90vw;
   animation: windowAppear 0.2s ease-out;
 
-  /* Dark theme overrides */
   background: #1a1a1a !important;
   box-shadow:
     inset 1px 1px 0 #3a3a3a,
@@ -98,6 +95,7 @@ const HeaderTitle = styled.span`
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const StyledWindowContent = styled(WindowContent)`
@@ -105,45 +103,70 @@ const StyledWindowContent = styled(WindowContent)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 24px;
 `;
 
 const Logo = styled.img`
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
   margin-bottom: 16px;
   filter: drop-shadow(0 0 20px rgba(0, 255, 65, 0.3));
 `;
 
 const Title = styled.h1`
-  font-size: 24px;
+  font-size: 22px;
   color: #00ff41;
   margin: 0 0 8px;
   text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
   font-weight: bold;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
-const Subtitle = styled.p`
+const StatusText = styled.p`
   font-size: 11px;
-  color: rgba(0, 255, 65, 0.7);
+  color: rgba(0, 255, 65, 0.6);
   margin: 0 0 20px;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.6;
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
+const SystemMessage = styled.div`
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  padding: 12px;
+  margin-bottom: 20px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.8);
+  line-height: 1.6;
+
+  .prompt {
+    color: #00ff41;
+    margin-right: 8px;
+  }
+
+  .highlight {
+    color: #00ff41;
+    font-weight: bold;
+  }
 `;
 
 const SpotifyButton = styled(Button)`
   width: 100%;
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 12px 20px;
+  font-size: 13px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
 
-  /* Spotify green styling */
   background: linear-gradient(180deg, #1ed760 0%, #1db954 100%) !important;
   color: #000 !important;
   border-color: #1ed760 !important;
@@ -157,8 +180,31 @@ const SpotifyButton = styled(Button)`
   }
 `;
 
-const SpotifyIcon = styled.span`
-  font-size: 18px;
+const ExecuteButton = styled(Button)`
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
+  margin-top: 16px;
+
+  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
+  color: #00ff41 !important;
+  border-color: #00ff41 !important;
+
+  &:hover {
+    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 const StyledFieldset = styled(Fieldset)`
@@ -166,10 +212,13 @@ const StyledFieldset = styled(Fieldset)`
   margin-top: 16px;
   background: #0d0d0d !important;
   border-color: #2a2a2a !important;
+  padding: 16px;
 
   legend {
     color: #00ff41 !important;
-    font-size: 11px;
+    font-size: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 1px;
   }
 `;
 
@@ -183,23 +232,31 @@ const ThresholdLabel = styled.label`
   color: rgba(0, 255, 65, 0.8);
   font-size: 11px;
   flex: 1;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const StyledSelect = styled(Select)`
-  width: 80px;
+  width: 90px;
 
-  /* Dark theme */
   background: #0d0d0d !important;
   color: #00ff41 !important;
   border-color: #2a2a2a !important;
 `;
 
-const InfoText = styled.p`
+const ThresholdExplainer = styled.p`
   font-size: 10px;
   color: rgba(0, 255, 65, 0.5);
-  margin: 16px 0 0;
+  margin: 12px 0 0;
+  line-height: 1.5;
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
+const Footer = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.3);
+  margin-top: 20px;
   text-align: center;
-  line-height: 1.4;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const CloseButton = styled(Button)`
@@ -219,22 +276,70 @@ const CloseButton = styled(Button)`
   }
 `;
 
+const UserInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  margin-bottom: 16px;
+`;
+
+const UserAvatar = styled.img`
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid #00ff41;
+`;
+
+const UserDetails = styled.div`
+  flex: 1;
+`;
+
+const UserName = styled.div`
+  font-size: 12px;
+  color: #00ff41;
+  font-weight: bold;
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
+const UserStatus = styled.div`
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.6);
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-function LoginModal({ onClose, threshold, onThresholdChange, isOpen }) {
-  const [isLoading, setIsLoading] = useState(false);
+function LoginModal({
+  isOpen,
+  onClose,
+  threshold,
+  onThresholdChange,
+  onExecute,
+  user,
+  isPostAuth,
+  isLoading,
+  loadingProgress,
+  canClose,
+}) {
+  const [localThreshold, setLocalThreshold] = useState(threshold);
 
   const handleLogin = async () => {
-    setIsLoading(true);
     try {
       await loginWithSpotify();
-      // The page will redirect, so loading state stays
     } catch (error) {
       console.error('Login error:', error);
-      setIsLoading(false);
     }
+  };
+
+  const handleExecute = () => {
+    onThresholdChange(localThreshold);
+    onExecute?.();
   };
 
   const thresholdOptions = THRESHOLD_OPTIONS.map(opt => ({
@@ -244,15 +349,88 @@ function LoginModal({ onClose, threshold, onThresholdChange, isOpen }) {
 
   if (!isOpen) return null;
 
+  // STEP 2: Post-auth configuration
+  if (isPostAuth) {
+    return (
+      <Overlay>
+        <StyledWindow>
+          <StyledWindowHeader>
+            <HeaderTitle>
+              <span>⚙</span>
+              <span>SYSTEM CONFIGURATION</span>
+            </HeaderTitle>
+          </StyledWindowHeader>
+
+          <StyledWindowContent>
+            {user && (
+              <UserInfo>
+                {user.images?.[0]?.url && (
+                  <UserAvatar src={user.images[0].url} alt={user.display_name} />
+                )}
+                <UserDetails>
+                  <UserName>{user.display_name}</UserName>
+                  <UserStatus>CONNECTION ESTABLISHED</UserStatus>
+                </UserDetails>
+              </UserInfo>
+            )}
+
+            <SystemMessage>
+              <span className="prompt">&gt;</span>
+              Audio library access granted.
+              <br />
+              <span className="prompt">&gt;</span>
+              Configure <span className="highlight">display threshold</span> to filter album results.
+              <br />
+              <span className="prompt">&gt;</span>
+              Only albums with <span className="highlight">N+ saved tracks</span> will be rendered.
+            </SystemMessage>
+
+            <StyledFieldset label="THRESHOLD PARAMETER">
+              <ThresholdRow>
+                <ThresholdLabel>
+                  Minimum saved tracks per album:
+                </ThresholdLabel>
+                <StyledSelect
+                  value={localThreshold}
+                  options={thresholdOptions}
+                  onChange={(e) => setLocalThreshold(e.value)}
+                  width={90}
+                />
+              </ThresholdRow>
+              <ThresholdExplainer>
+                Higher values = fewer albums displayed.
+                <br />
+                Recommended: 7+ for curated collection view.
+              </ThresholdExplainer>
+            </StyledFieldset>
+
+            <ExecuteButton onClick={handleExecute} disabled={isLoading}>
+              {isLoading ? (
+                <>LOADING... {loadingProgress?.loaded || 0}/{loadingProgress?.total || '?'}</>
+              ) : (
+                <>▶ EXECUTE</>
+              )}
+            </ExecuteButton>
+
+            <Footer>
+              RECORD OS v3.0 // AUDIO VISUALIZATION SYSTEM
+            </Footer>
+          </StyledWindowContent>
+        </StyledWindow>
+      </Overlay>
+    );
+  }
+
+  // STEP 1: Initial connection
   return (
-    <Overlay onClick={onClose}>
+    <Overlay onClick={canClose ? onClose : undefined}>
       <StyledWindow onClick={(e) => e.stopPropagation()}>
         <StyledWindowHeader>
           <HeaderTitle>
-            <span>🔐</span>
-            <span>Welcome to Record OS</span>
+            <span>◉</span>
+            <span>RECORD OS // INITIALIZE</span>
           </HeaderTitle>
-          <CloseButton onClick={onClose}>×</CloseButton>
+          {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
         </StyledWindowHeader>
 
         <StyledWindowContent>
@@ -260,39 +438,32 @@ function LoginModal({ onClose, threshold, onThresholdChange, isOpen }) {
 
           <Title>RECORD OS</Title>
 
-          <Subtitle>
-            Your music collection, visualized.
+          <StatusText>
+            AUDIO VISUALIZATION TERMINAL
             <br />
-            See your most-loved Spotify albums ranked by saved tracks.
-          </Subtitle>
+            SYSTEM STATUS: AWAITING CONNECTION
+          </StatusText>
 
-          <SpotifyButton
-            onClick={handleLogin}
-            disabled={isLoading}
-          >
-            <SpotifyIcon>🎵</SpotifyIcon>
-            {isLoading ? 'Connecting...' : 'Connect with Spotify'}
+          <SystemMessage>
+            <span className="prompt">&gt;</span>
+            This system displays your most-loved albums
+            <br />
+            <span className="prompt">&gt;</span>
+            ranked by saved track count.
+            <br />
+            <span className="prompt">&gt;</span>
+            Establish connection to begin...
+          </SystemMessage>
+
+          <SpotifyButton onClick={handleLogin}>
+            ◉ CONNECT TO SPOTIFY
           </SpotifyButton>
 
-          <StyledFieldset label="Settings">
-            <ThresholdRow>
-              <ThresholdLabel>
-                Minimum liked tracks per album:
-              </ThresholdLabel>
-              <StyledSelect
-                value={threshold}
-                options={thresholdOptions}
-                onChange={(e) => onThresholdChange(e.value)}
-                width={80}
-              />
-            </ThresholdRow>
-          </StyledFieldset>
-
-          <InfoText>
-            Requires Spotify Premium for full playback.
+          <Footer>
+            Requires Spotify Premium for audio playback.
             <br />
-            Your data stays in your browser.
-          </InfoText>
+            All data processed locally.
+          </Footer>
         </StyledWindowContent>
       </StyledWindow>
     </Overlay>
