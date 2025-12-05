@@ -38,6 +38,7 @@ import LoadedModal from './components/LoadedModal';
 import { useSpotify } from './hooks/useSpotify';
 import { useLocalAudio } from './hooks/useLocalAudio';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useMobile } from './hooks/useMobile';
 
 // Styles
 import { recordOSTheme } from './styles/theme';
@@ -75,6 +76,7 @@ function App() {
 
   const spotify = useSpotify();
   const localAudio = useLocalAudio();
+  const isMobile = useMobile();
 
   // Use Spotify when logged in, local audio otherwise
   const isLoggedIn = spotify.loggedIn;
@@ -221,6 +223,12 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn && !hasOpenedInitialWindows) {
+      // Mobile: don't open initial windows, let user explore via Start Menu
+      if (isMobile) {
+        setHasOpenedInitialWindows(true);
+        return;
+      }
+
       // Calculate positions: Minesweeper upper left, Media Player lower right
       const mediaPlayerX = window.innerWidth - 320 - 24;
       const mediaPlayerY = window.innerHeight - 48 - 200 - 24; // 48px taskbar, ~200px player height, 24px inset
@@ -252,7 +260,7 @@ function App() {
         localAudio.setVolume(50);
       }
     }
-  }, [isLoggedIn, hasOpenedInitialWindows, localAudio]);
+  }, [isLoggedIn, hasOpenedInitialWindows, localAudio, isMobile]);
 
   // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
@@ -264,15 +272,23 @@ function App() {
     if (existingWindow) {
       // Focus existing window
       setActiveWindowId(existingWindow.id);
-      setWindows(prev => prev.map(w => ({
-        ...w,
-        minimized: w.id === existingWindow.id ? false : w.minimized,
-      })));
+      if (isMobile) {
+        // Mobile: close all other windows, show only this one
+        setWindows(prev => prev.filter(w => w.id === existingWindow.id).map(w => ({
+          ...w,
+          minimized: false,
+        })));
+      } else {
+        setWindows(prev => prev.map(w => ({
+          ...w,
+          minimized: w.id === existingWindow.id ? false : w.minimized,
+        })));
+      }
       return;
     }
 
     const id = generateWindowId();
-    const position = getInitialPosition(windows.length);
+    const position = isMobile ? { x: 0, y: 0 } : getInitialPosition(windows.length);
 
     let title = '';
     switch (type) {
@@ -310,9 +326,14 @@ function App() {
       minimized: false,
     };
 
-    setWindows(prev => [...prev, newWindow]);
+    // Mobile: single-window mode - replace all windows
+    if (isMobile) {
+      setWindows([newWindow]);
+    } else {
+      setWindows(prev => [...prev, newWindow]);
+    }
     setActiveWindowId(id);
-  }, [windows]);
+  }, [windows, isMobile]);
 
   const closeWindow = useCallback((windowId) => {
     // Check if closing media player - stop music
@@ -632,7 +653,8 @@ function App() {
           onClose: () => closeWindow(w.id),
           onMinimize: () => minimizeWindow(w.id),
           onFocus: () => focusWindow(w.id),
-          onDragStart: (e) => handleDragStart(w.id, e),
+          onDragStart: isMobile ? null : (e) => handleDragStart(w.id, e),
+          isMobile,
         };
 
         switch (w.type) {

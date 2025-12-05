@@ -47,6 +47,16 @@ const StyledWindow = styled(Window)`
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
   }
+
+  /* Mobile: full screen */
+  ${props => props.$isMobile && `
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100vh - 44px) !important;
+    left: 0 !important;
+    top: 0 !important;
+    border-radius: 0;
+  `}
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
@@ -210,6 +220,7 @@ function SettingsModal({
   onToggleScanlines,
   albumCount,
   onAlbumCountChange,
+  isMobile,
 }) {
   const headerRef = useRef(null);
 
@@ -232,7 +243,8 @@ function SettingsModal({
     <StyledWindow
       data-window
       $zIndex={zIndex}
-      style={{
+      $isMobile={isMobile}
+      style={isMobile ? {} : {
         left: position?.x ?? 200,
         top: position?.y ?? 100,
       }}

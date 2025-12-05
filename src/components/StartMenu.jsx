@@ -21,6 +21,7 @@ import {
   DECADE_LABELS,
 } from '../utils/constants';
 import PixelIcon from './PixelIcon';
+import { useMobile } from '../hooks/useMobile';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -151,6 +152,7 @@ function StartMenu({
   onClose,
 }) {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
+  const isMobile = useMobile();
 
   const handleMenuItemClick = (action) => {
     action();
@@ -168,13 +170,15 @@ function StartMenu({
           Media Player
         </StyledMenuItem>
 
-        {/* Trippy Graphics - Always available */}
-        <StyledMenuItem
-          onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}
-        >
-          <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
-          Trippy Graphics
-        </StyledMenuItem>
+        {/* Trippy Graphics - Hide on mobile (WebGL too heavy) */}
+        {!isMobile && (
+          <StyledMenuItem
+            onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}
+          >
+            <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
+            Trippy Graphics
+          </StyledMenuItem>
+        )}
 
         {/* Games Submenu - Always available */}
         <SubmenuWrapper

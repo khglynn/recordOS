@@ -56,6 +56,17 @@ const StyledWindow = styled(Window)`
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
   }
+
+  /* Mobile: full screen */
+  ${props => props.$isMobile && `
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100vh - 44px) !important;
+    max-height: calc(100vh - 44px) !important;
+    left: 0 !important;
+    top: 0 !important;
+    border-radius: 0;
+  `}
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
@@ -184,7 +195,7 @@ const TrackListContainer = styled.div`
   flex: 1;
   overflow: auto;
   padding: 4px;
-  max-height: 280px; /* ~10 tracks visible */
+  max-height: ${props => props.$isMobile ? 'none' : '280px'}; /* ~10 tracks visible */
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
@@ -325,6 +336,7 @@ function TrackListModal({
   onPlayAlbum,
   position,
   onDragStart,
+  isMobile,
 }) {
   const headerRef = useRef(null);
 
@@ -343,7 +355,8 @@ function TrackListModal({
     <StyledWindow
       data-window
       $zIndex={zIndex}
-      style={{
+      $isMobile={isMobile}
+      style={isMobile ? {} : {
         left: position?.x ?? 100,
         top: position?.y ?? 100,
       }}
@@ -375,7 +388,7 @@ function TrackListModal({
           </AlbumInfo>
         </AlbumHeader>
 
-        <TrackListContainer>
+        <TrackListContainer $isMobile={isMobile}>
           <StyledTable>
             <StyledTableHead>
               <TableRow>

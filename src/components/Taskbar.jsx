@@ -40,6 +40,12 @@ const TaskbarContainer = styled.div`
   align-items: center;
   padding: 4px 6px;
   gap: 6px;
+
+  /* Mobile: shorter height */
+  @media (max-width: 767px) {
+    height: 44px;
+    padding: 2px 4px;
+  }
 `;
 
 const StartButton = styled(Button)`
@@ -102,6 +108,11 @@ const TaskbarDivider = styled.div`
     #0a0a0a 100%
   );
   margin: 0 4px;
+
+  /* Hide on mobile */
+  @media (max-width: 767px) {
+    display: none;
+  }
 `;
 
 const WindowTabs = styled.div`
@@ -109,6 +120,11 @@ const WindowTabs = styled.div`
   gap: 4px;
   flex: 1;
   overflow: hidden;
+
+  /* Hide on mobile - Start Menu only */
+  @media (max-width: 767px) {
+    display: none;
+  }
 `;
 
 const WindowTab = styled(Button)`
@@ -158,6 +174,11 @@ const TrayArea = styled.div`
   border: 1px solid #0a0a0a;
   border-right-color: #2a2a2a;
   border-bottom-color: #2a2a2a;
+
+  /* Hide on mobile - decade controls in Start Menu only */
+  @media (max-width: 767px) {
+    display: none;
+  }
 `;
 
 const TrayText = styled.span`
