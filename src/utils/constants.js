@@ -71,9 +71,9 @@ export const SORT_LABELS = {
 // GRID CONFIGURATION
 // ============================================================================
 
-// Album grid sizing - 120px divides cleanly (2,3,4,5,6,8,10,12)
-export const GRID_ALBUM_SIZE = 120; // px - base size for album covers
-export const GRID_GAP = 4; // px - gap between albums
+// Album grid sizing - larger tiles, clear gaps, full album art visible
+export const GRID_ALBUM_SIZE = 150; // px - base size for album covers
+export const GRID_GAP = 8; // px - gap between albums
 
 // ============================================================================
 // GAME URLS (classic 90s versions via iframes)

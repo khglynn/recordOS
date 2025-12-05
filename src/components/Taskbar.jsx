@@ -45,23 +45,27 @@ const StartButton = styled(Button)`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   height: 28px;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 11px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
 
   /* Override React95 colors for our theme */
   background: ${props => props.$active
-    ? 'linear-gradient(180deg, #1a2a1a 0%, #0a1a0a 100%)'
+    ? 'linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%)'
     : 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%)'} !important;
   color: #00ff41 !important;
+  border-color: ${props => props.$active ? '#00ff41' : '#3a3a3a'} !important;
 
   &:hover {
-    background: linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%) !important;
+    background: linear-gradient(180deg, #1a3a1a 0%, #0d2d0d 100%) !important;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
   }
 
   &:active {
-    background: linear-gradient(180deg, #1a2a1a 0%, #0a1a0a 100%) !important;
+    background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
   }
 `;
 
@@ -97,7 +101,9 @@ const WindowTab = styled(Button)`
   padding: 2px 10px;
   height: 26px;
   max-width: 180px;
-  font-size: 11px;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 
   /* Active window has different style */
   background: ${props => props.$active
@@ -114,6 +120,7 @@ const WindowTab = styled(Button)`
 
   &:hover {
     background: linear-gradient(180deg, #1a3a1a 0%, #0a2a0a 100%) !important;
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.4);
   }
 `;
 

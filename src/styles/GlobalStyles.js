@@ -25,6 +25,25 @@ const GlobalStyles = createGlobalStyle`
     overflow: hidden;
   }
 
+  /* Global CRT scanline overlay - covers EVERYTHING including modals */
+  #root::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+    z-index: 999999;
+  }
+
   body {
     /* Dark background - the albums will pop */
     background: #0a0a0a;

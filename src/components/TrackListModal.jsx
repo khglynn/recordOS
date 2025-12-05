@@ -77,6 +77,8 @@ const HeaderTitle = styled.span`
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 `;
 
 const HeaderButtons = styled.div`
@@ -134,32 +136,38 @@ const AlbumInfo = styled.div`
 `;
 
 const AlbumName = styled.h2`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   color: #00ff41;
   margin: 0;
-  text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 `;
 
 const ArtistName = styled.p`
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(0, 255, 65, 0.7);
   margin: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const AlbumMeta = styled.p`
   font-size: 10px;
   color: rgba(0, 255, 65, 0.5);
   margin: 4px 0 0;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const PlayAllButton = styled(Button)`
   margin-top: 8px;
   padding: 4px 12px;
   font-size: 11px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
 
   background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
   color: #00ff41 !important;
@@ -167,6 +175,7 @@ const PlayAllButton = styled(Button)`
 
   &:hover {
     background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
   }
 `;
 
@@ -245,17 +254,21 @@ const TrackNumber = styled.span`
 
 const TrackName = styled.span`
   font-weight: ${props => props.$isLiked ? 'bold' : 'normal'};
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const LikedIcon = styled.span`
   color: #00ff41;
-  font-size: 10px;
+  font-size: 9px;
   margin-left: 6px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  text-shadow: 0 0 4px rgba(0, 255, 65, 0.6);
 `;
 
 const Duration = styled.span`
   color: rgba(0, 255, 65, 0.5);
   font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const PlayButton = styled.button`
@@ -264,12 +277,13 @@ const PlayButton = styled.button`
   color: #00ff41;
   cursor: pointer;
   padding: 2px 6px;
-  font-size: 12px;
-  opacity: 0.5;
-  transition: opacity 0.15s;
+  font-size: 10px;
+  opacity: 0.4;
+  font-family: 'Consolas', 'Courier New', monospace;
 
   &:hover {
     opacity: 1;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
   }
 `;
 
@@ -374,7 +388,7 @@ function TrackListModal({
                     <TrackName $isLiked={track.isLiked}>
                       {track.name}
                     </TrackName>
-                    {track.isLiked && <LikedIcon>♥</LikedIcon>}
+                    {track.isLiked && <LikedIcon>[SAVED]</LikedIcon>}
                   </StyledCell>
                   <StyledCell $isLiked={track.isLiked}>
                     <Duration>{formatDuration(track.duration)}</Duration>

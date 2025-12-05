@@ -65,11 +65,14 @@ const StyledMenuItem = styled(MenuListItem)`
   background: transparent !important;
   padding: 6px 20px 6px 30px;
   position: relative;
-  font-size: 12px;
+  font-size: 11px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 
   &:hover {
     background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
     color: #00ff41 !important;
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.4);
   }
 
   /* Icon placeholder */
@@ -77,22 +80,24 @@ const StyledMenuItem = styled(MenuListItem)`
     content: attr(data-icon);
     position: absolute;
     left: 8px;
-    font-size: 14px;
+    font-size: 12px;
   }
 
   /* Arrow for submenus */
   &[data-submenu]::after {
-    content: '▶';
+    content: '>';
     position: absolute;
     right: 8px;
-    font-size: 8px;
+    font-size: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
   }
 
   /* Checkmark for selected items */
   &[data-checked="true"]::before {
-    content: '✓';
-    left: 10px;
-    font-size: 10px;
+    content: '[*]';
+    left: 6px;
+    font-size: 9px;
+    font-family: 'Consolas', 'Courier New', monospace;
   }
 `;
 
@@ -127,9 +132,10 @@ const BannerText = styled.span`
   transform: rotate(180deg);
   color: #00ff41;
   font-weight: bold;
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: 12px;
+  letter-spacing: 3px;
   text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 // ============================================================================
