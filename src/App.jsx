@@ -33,6 +33,7 @@ import InfoModal from './components/InfoModal';
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
 import { useLocalAudio } from './hooks/useLocalAudio';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 // Styles
 import { recordOSTheme } from './styles/theme';
@@ -321,6 +322,33 @@ function App() {
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, [isStartMenuOpen]);
+
+  // -------------------------------------------------------------------------
+  // KEYBOARD SHORTCUTS
+  // -------------------------------------------------------------------------
+
+  // Close active window handler for keyboard
+  const closeActiveWindowViaKeyboard = useCallback(() => {
+    if (activeWindowId) {
+      setWindows(prev => prev.filter(w => w.id !== activeWindowId));
+      setActiveWindowId(null);
+    }
+  }, [activeWindowId]);
+
+  useKeyboardShortcuts({
+    isPlaying: audio.isPlaying,
+    onPlay: audio.play,
+    onPause: audio.pause,
+    onNext: audio.next,
+    onPrevious: audio.previous,
+    volume: audio.volume,
+    onVolumeChange: audio.setVolume,
+    onMuteToggle: audio.toggleMute,
+    onCloseWindow: closeActiveWindowViaKeyboard,
+    onCloseStartMenu: () => setIsStartMenuOpen(false),
+    isStartMenuOpen,
+    enabled: true,
+  });
 
   // -------------------------------------------------------------------------
   // PLAYBACK HANDLERS

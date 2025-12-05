@@ -7,12 +7,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { initSentry } from './utils/sentry';
 
-// Remove default Vite styles
-// import './index.css'
+// Initialize Sentry error tracking (only if DSN is configured)
+initSentry();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

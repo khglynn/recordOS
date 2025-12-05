@@ -23,7 +23,7 @@
 
 // Your Spotify App Client ID (safe to expose - PKCE doesn't need secret)
 // TODO: Replace with your actual client ID
-export const SPOTIFY_CLIENT_ID = '5b170aaad8c5456388d7f5cd1c44d58c';
+export const SPOTIFY_CLIENT_ID = '4b8e17e088014d58868966b640d26734';
 
 // Redirect URI must match what's registered in Spotify Dashboard
 // For local dev: http://127.0.0.1:5173/callback
@@ -98,8 +98,9 @@ async function generateCodeChallenge(verifier) {
  */
 export async function loginWithSpotify() {
   // Generate and store the code verifier
+  // Use localStorage instead of sessionStorage - sessionStorage can be lost on redirect
   const codeVerifier = generateRandomString(128);
-  sessionStorage.setItem('spotify_code_verifier', codeVerifier);
+  localStorage.setItem('spotify_code_verifier', codeVerifier);
 
   // Generate the code challenge
   const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -124,7 +125,7 @@ export async function loginWithSpotify() {
  * Called after Spotify redirects back
  */
 export async function exchangeCodeForTokens(code) {
-  const codeVerifier = sessionStorage.getItem('spotify_code_verifier');
+  const codeVerifier = localStorage.getItem('spotify_code_verifier');
 
   if (!codeVerifier) {
     throw new Error('No code verifier found. Please try logging in again.');
@@ -155,7 +156,7 @@ export async function exchangeCodeForTokens(code) {
   saveTokens(tokens);
 
   // Clean up verifier
-  sessionStorage.removeItem('spotify_code_verifier');
+  localStorage.removeItem('spotify_code_verifier');
 
   return tokens;
 }

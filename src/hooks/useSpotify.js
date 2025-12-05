@@ -38,6 +38,7 @@ import {
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
 } from '../utils/constants';
+import { setUser as setSentryUser } from '../utils/sentry';
 
 // ============================================================================
 // HOOK
@@ -111,12 +112,17 @@ export function useSpotify() {
 
       if (code) {
         try {
+          console.log('Exchanging auth code for tokens...');
           await exchangeCodeForTokens(code);
+          console.log('Token exchange successful!');
           setLoggedIn(true);
           // Clean up URL
           window.history.replaceState({}, '', '/');
         } catch (err) {
           console.error('Failed to exchange code:', err);
+          // Clean up URL even on error
+          window.history.replaceState({}, '', '/');
+          alert(`Login failed: ${err.message}`);
         }
       }
     };
@@ -135,6 +141,8 @@ export function useSpotify() {
       try {
         const userData = await getCurrentUser();
         setUser(userData);
+        // Set user context for Sentry error tracking
+        setSentryUser(userData);
       } catch (err) {
         console.error('Failed to fetch user:', err);
       }
@@ -504,6 +512,9 @@ export function useSpotify() {
     setAlbums([]);
     localStorage.removeItem(STORAGE_KEYS.ALBUMS_CACHE);
     localStorage.removeItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
+
+    // Clear Sentry user context
+    setSentryUser(null);
 
     if (playerRef.current) {
       playerRef.current.disconnect();
