@@ -140,20 +140,18 @@ const AlbumGrid = styled.div`
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
   bottom: 0;
-  width: 100%; /* Safari needs explicit width for CSS Grid auto-fill */
+  /* Safari grid fix: use width instead of right, add box-sizing */
+  width: 100%;
+  box-sizing: border-box;
   overflow: auto;
 
   display: grid;
   /*
    * Min 225px per tile, stretch to fill row evenly.
-   * On a 1200px screen: 5 columns at 240px each
-   * On a 800px screen: 3 columns at 266px each
-   * On a 450px screen: 2 columns at 225px each
-   * On mobile: 140px min ensures 2 columns on 320px screens
+   * Safari: use auto-fit instead of auto-fill for better compatibility
    */
-  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
   gap: ${GRID_GAP}px;
   align-content: start;
 
@@ -167,7 +165,7 @@ const AlbumGrid = styled.div`
 
   /* Mobile: smaller tiles to ensure minimum 2 columns */
   @media (max-width: 767px) {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 `;
 
