@@ -602,7 +602,19 @@ const EmptyLibraryMessage = styled.div`
 function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitializing, onAlbumClick, onOpenGame }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
+  const [loadingCycle, setLoadingCycle] = useState(0);
   const containerRef = useRef(null);
+
+  // Cycle through albums every 10 seconds during loading
+  useEffect(() => {
+    if (!isLoading || loadingAlbums.length <= 4) return;
+
+    const interval = setInterval(() => {
+      setLoadingCycle(prev => prev + 1);
+    }, 10000); // 10 seconds per cycle (matches animation duration)
+
+    return () => clearInterval(interval);
+  }, [isLoading, loadingAlbums.length]);
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
@@ -611,6 +623,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   // Calculate grid geometry for loading animation
   // Matches CSS Grid behavior: minmax(225px, 1fr) stretches tiles to fill row
   // Returns both positions and cellSize for syncing background grid with albums
+  // Re-shuffles positions each cycle for visual variety
   const loadingGrid = useMemo(() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - 48; // -48 for taskbar
@@ -618,13 +631,9 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     const gap = GRID_GAP; // 4px
 
     // Calculate how many columns fit (same logic as CSS Grid auto-fill)
-    // CSS Grid: repeat(auto-fill, minmax(225px, 1fr))
-    // Columns = floor((viewportWidth + gap) / (minTileSize + gap))
     const numColumns = Math.max(1, Math.floor((viewportWidth + gap) / (minTileSize + gap)));
 
     // Calculate actual stretched tile width (fills remaining space evenly)
-    // totalGaps = (numColumns - 1) * gap
-    // tileWidth = (viewportWidth - totalGaps) / numColumns
     const totalGaps = (numColumns - 1) * gap;
     const tileWidth = (viewportWidth - totalGaps) / numColumns;
 
@@ -646,13 +655,13 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
       }
     }
 
-    // Fisher-Yates shuffle
+    // Fisher-Yates shuffle - re-randomizes each cycle
     for (let i = allPositions.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
     }
 
-    // Only take 4 positions - staggered appearance
+    // Only take 4 positions - nice and sparse, staggered appearance
     const positions = [];
     const numAlbums = Math.min(4, allPositions.length);
 
@@ -661,14 +670,14 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
       positions.push({
         x: col * cellSize,
         y: row * cellSize,
-        tileSize: tileWidth, // Pass calculated tile size (without gap)
+        tileSize: tileWidth,
         delay: i * 2.5, // Staggered start - 2.5s apart
-        duration: 10, // 10 second cycle each
+        duration: 10, // 10 second cycle each (slow and chill)
       });
     }
 
     return { positions, cellSize };
-  }, []); // Calculate once on mount
+  }, [loadingCycle]); // Re-shuffle when cycle changes
 
   useEffect(() => {
     const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
@@ -703,8 +712,11 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
 
   // Loading state: 4 albums fade in at random grid positions (chill vibes)
   if (isLoading && albums.length === 0) {
-    // Use first 4 albums for loading display - max 4 visible at a time
-    const displayAlbums = loadingAlbums.slice(0, 4);
+    // Rotate through albums - show different 4 each cycle
+    const startIndex = (loadingCycle * 4) % Math.max(1, loadingAlbums.length);
+    const displayAlbums = loadingAlbums.length > 0
+      ? [...loadingAlbums, ...loadingAlbums].slice(startIndex, startIndex + 4) // Wrap around
+      : [];
     const { positions, cellSize } = loadingGrid;
 
     return (
@@ -719,7 +731,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
             if (!pos) return null;
             return (
               <GlitchAlbum
-                key={album.id}
+                key={`${loadingCycle}-${album.id}`}
                 style={{
                   left: pos.x,
                   top: pos.y,
