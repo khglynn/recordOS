@@ -140,18 +140,14 @@ const AlbumGrid = styled.div`
   position: absolute;
   top: 0;
   left: 0;
-  bottom: 0;
-  /* Safari grid fix: use width instead of right, add box-sizing */
   width: 100%;
+  height: calc(100vh - 48px); /* Explicit height for Safari */
   box-sizing: border-box;
   overflow: auto;
 
+  /* CSS Grid - Safari needs explicit display and simpler syntax */
   display: grid;
-  /*
-   * Min 225px per tile, stretch to fill row evenly.
-   * Safari: use auto-fit instead of auto-fill for better compatibility
-   */
-  grid-template-columns: repeat(auto-fit, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
   gap: ${GRID_GAP}px;
   align-content: start;
 
@@ -165,7 +161,7 @@ const AlbumGrid = styled.div`
 
   /* Mobile: smaller tiles to ensure minimum 2 columns */
   @media (max-width: 767px) {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 `;
 
@@ -425,10 +421,11 @@ const AlbumStats = styled.div`
  * Slow pulse animation - chill, visible most of the time
  * Album fades in, hangs out for a while, then fades out
  */
+// Animation synced to 4-second cycle - fades in, stays, fades out before unmount
 const slowPulse = keyframes`
   0% { opacity: 0; transform: scale(0.97); }
-  8% { opacity: 0.85; transform: scale(1); }
-  85% { opacity: 0.85; transform: scale(1); }
+  12% { opacity: 0.85; transform: scale(1); }
+  75% { opacity: 0.85; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.97); }
 `;
 
@@ -497,7 +494,8 @@ const GlitchAlbum = styled.div`
   width: var(--tile-size, ${GRID_ALBUM_MIN_SIZE}px);
   height: var(--tile-size, ${GRID_ALBUM_MIN_SIZE}px);
   overflow: hidden;
-  animation: ${slowPulse} var(--duration, 12s) ease-in-out infinite;
+  /* 4s animation synced to state change - no loop, fades out before unmount */
+  animation: ${slowPulse} 4s ease-in-out forwards;
   animation-delay: var(--delay, 0s);
 
   img {
@@ -601,11 +599,10 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
   // Track which slot to update next (rotating: 0, 1, 2, 3, 0, 1, 2, 3...)
+  // Only 2 loading slots - simpler, no overlap possible
   const [loadingSlots, setLoadingSlots] = useState([
     { albumIndex: 0, cycle: 0 },
     { albumIndex: 1, cycle: 0 },
-    { albumIndex: 2, cycle: 0 },
-    { albumIndex: 3, cycle: 0 },
   ]);
   const nextSlotRef = useRef(0);
   const containerRef = useRef(null);
@@ -616,28 +613,27 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     loadingAlbumsLengthRef.current = loadingAlbums.length;
   }, [loadingAlbums.length]);
 
-  // Simple rotating timer - updates ONE slot every 2.5 seconds
-  // Creates staggered effect: slot 0 changes, then slot 1, then slot 2, etc.
+  // Rotate ONE slot every 4 seconds (slower, calmer animation)
   useEffect(() => {
     if (!isLoading) return;
 
     const interval = setInterval(() => {
       const slotToUpdate = nextSlotRef.current;
-      const albumCount = loadingAlbumsLengthRef.current; // Use ref for current value
+      const albumCount = loadingAlbumsLengthRef.current;
 
       setLoadingSlots(prev => prev.map((slot, i) => {
         if (i !== slotToUpdate) return slot;
-        // This slot gets a new album and new position (via cycle increment)
-        const newAlbumIndex = (slot.albumIndex + 4) % Math.max(4, albumCount);
+        // Jump by 2 to get a different album each time
+        const newAlbumIndex = (slot.albumIndex + 2) % Math.max(2, albumCount);
         return { albumIndex: newAlbumIndex, cycle: slot.cycle + 1 };
       }));
 
-      // Move to next slot (wraps around)
-      nextSlotRef.current = (slotToUpdate + 1) % 4;
-    }, 2500); // Update one slot every 2.5 seconds
+      // Alternate between slot 0 and 1
+      nextSlotRef.current = (slotToUpdate + 1) % 2;
+    }, 4000); // 4 seconds per slot change (slower)
 
     return () => clearInterval(interval);
-  }, [isLoading]); // Don't depend on length - use ref instead
+  }, [isLoading]);
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
@@ -660,20 +656,33 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     return { numColumns, numRows, tileWidth, cellSize };
   }, []);
 
-  // Generate random position for a slot based on its cycle
-  // Uses seeded random so same cycle = same position (for animation continuity)
+  // Generate position for a slot - ensures 2 slots never overlap
+  // Slot 0: top-left area, Slot 1: bottom-right area
   const getSlotPosition = useCallback((slotIndex, cycle) => {
     const { numColumns, numRows, tileWidth, cellSize } = gridGeometry;
 
-    // Simple seeded random based on slot and cycle
-    const seed = slotIndex * 1000 + cycle;
+    // Predefined regions to prevent overlap
+    // Slot 0: top-left quadrant, Slot 1: bottom-right quadrant
+    const halfCols = Math.floor(numColumns / 2);
+    const halfRows = Math.floor(numRows / 2);
+
+    // Use cycle for variety within each slot's region
+    const seed = cycle * 7 + slotIndex * 13; // Different primes for variety
     const pseudoRandom = (s) => {
       const x = Math.sin(s) * 10000;
       return x - Math.floor(x);
     };
 
-    const col = Math.floor(pseudoRandom(seed) * numColumns);
-    const row = Math.floor(pseudoRandom(seed + 1) * numRows);
+    let col, row;
+    if (slotIndex === 0) {
+      // Slot 0: columns 0 to halfCols-1, rows 0 to halfRows-1
+      col = Math.floor(pseudoRandom(seed) * Math.max(1, halfCols));
+      row = Math.floor(pseudoRandom(seed + 1) * Math.max(1, halfRows));
+    } else {
+      // Slot 1: columns halfCols to end, rows halfRows to end
+      col = halfCols + Math.floor(pseudoRandom(seed) * Math.max(1, numColumns - halfCols));
+      row = halfRows + Math.floor(pseudoRandom(seed + 1) * Math.max(1, numRows - halfRows));
+    }
 
     return {
       x: col * cellSize,
@@ -713,8 +722,8 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     );
   }
 
-  // Loading state: 4 albums fade in at random grid positions (chill vibes)
-  // Each slot cycles independently - creates a flowing "scanning" effect
+  // Loading state: 2 albums in separate quadrants (no overlap)
+  // Each fades in/out over 4 seconds, synced to state change
   if (isLoading && albums.length === 0) {
     const { cellSize } = gridGeometry;
 
@@ -724,13 +733,11 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Each slot manages its own album and position independently */}
+          {/* 2 slots: top-left and bottom-right quadrants (never overlap) */}
           {loadingSlots.map((slot, slotIndex) => {
-            // Get album for this slot (wraps around loadingAlbums)
             const album = loadingAlbums[slot.albumIndex % Math.max(1, loadingAlbums.length)];
             if (!album) return null;
 
-            // Get position for this slot based on its cycle
             const pos = getSlotPosition(slotIndex, slot.cycle);
 
             return (
@@ -740,8 +747,6 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
                   left: pos.x,
                   top: pos.y,
                   '--tile-size': `${pos.tileSize}px`,
-                  '--delay': '0s', // No delay - each slot starts immediately
-                  '--duration': '8s', // Match slot duration
                 }}
               >
                 <img src={album.image} alt="" />
