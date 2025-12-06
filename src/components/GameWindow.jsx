@@ -153,6 +153,14 @@ const MobileGameContainer = styled.div`
   padding-top: 8px;
 `;
 
+// Solitaire fills entire container on mobile - no padding/scaling
+const SolitaireFullContainer = styled.div`
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -239,7 +247,20 @@ function GameWindow({
       </StyledWindowHeader>
 
       <StyledWindowContent style={contentStyle}>
-        {isMobile ? (
+        {isMobile && gameType === 'solitaire' ? (
+          // Solitaire fills entire viewport on mobile - no scaling
+          <SolitaireFullContainer>
+            <GameFrame
+              src={config.url}
+              title={config.title}
+              style={{
+                width: '100%',
+                height: '100%',
+              }}
+            />
+          </SolitaireFullContainer>
+        ) : isMobile ? (
+          // Other games use scaling to fit
           <MobileGameContainer>
             <GameFrame
               src={config.url}
@@ -252,6 +273,7 @@ function GameWindow({
             />
           </MobileGameContainer>
         ) : (
+          // Desktop: fill window
           <GameFrame
             src={config.url}
             title={config.title}

@@ -58,6 +58,7 @@ export function useSpotify() {
 
   // Library state
   const [albums, setAlbums] = useState([]);
+  const [unavailableAlbumIds, setUnavailableAlbumIds] = useState(new Set()); // Albums that threw 403 errors
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // True until first cache check completes
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
@@ -358,10 +359,12 @@ export function useSpotify() {
   const displayAlbums = useMemo(() => {
     if (albums.length === 0) return [];
 
+    // Step 0: Filter out unavailable albums (403 errors)
+    let candidates = albums.filter(a => !unavailableAlbumIds.has(a.id));
+
     // Step 1: Filter by decade if not "all"
-    let candidates = albums;
     if (decade !== DECADE_OPTIONS.ALL) {
-      candidates = albums.filter(a => getDecadeFromDate(a.releaseDate) === decade);
+      candidates = candidates.filter(a => getDecadeFromDate(a.releaseDate) === decade);
     }
 
     // Step 2: Sort all candidates by liked track count (highest first)
@@ -382,13 +385,14 @@ export function useSpotify() {
 
     console.log(`[Safari Debug] displayAlbums filter:`);
     console.log(`  - Input albums: ${albums.length}`);
+    console.log(`  - Unavailable albums filtered: ${unavailableAlbumIds.size}`);
     console.log(`  - Decade filter: "${decade}"`);
     console.log(`  - After decade filter: ${candidates.length}`);
     console.log(`  - Qualifying (${MIN_SAVED_TRACKS}+ tracks): ${qualifyingAlbums.length}`);
     console.log(`  - Final result: ${result.length}`);
 
     return result;
-  }, [albums, decade]);
+  }, [albums, decade, unavailableAlbumIds]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
@@ -610,11 +614,23 @@ export function useSpotify() {
       });
     } catch (err) {
       console.error('Failed to play album:', err);
-      setPlaybackError({
-        code: 'PLAYBACK_FAILURE',
-        message: 'ALBUM INITIALIZATION FAILED',
-        detail: err.message,
-      });
+
+      // Check if this is a 403 error (album unavailable/restricted)
+      if (err.message?.includes('403') || err.status === 403) {
+        console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable`);
+        setUnavailableAlbumIds(prev => new Set([...prev, album.id]));
+        setPlaybackError({
+          code: 'ALBUM_UNAVAILABLE',
+          message: 'ALBUM RESTRICTED',
+          detail: 'This album is not available in your region',
+        });
+      } else {
+        setPlaybackError({
+          code: 'PLAYBACK_FAILURE',
+          message: 'ALBUM INITIALIZATION FAILED',
+          detail: err.message,
+        });
+      }
     }
   }, [deviceId]);
 

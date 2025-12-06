@@ -146,10 +146,11 @@ const AlbumGrid = styled.div`
   overflow-x: hidden;
   overflow-y: auto;
 
-  /* Flexbox approach - better Safari compatibility than CSS Grid */
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  /* CSS Grid - works great in Chrome, Safari has issues */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+  gap: ${GRID_GAP}px;
+  align-content: start;
 
   /* Fade in when albums load */
   animation: fadeIn 0.5s ease-out;
@@ -158,20 +159,22 @@ const AlbumGrid = styled.div`
     from { opacity: 0; }
     to { opacity: 1; }
   }
+
+  /* Mobile: smaller tiles */
+  @media (max-width: 767px) {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
 `;
 
 /**
  * Individual album cover with entrance animation
  * Uses padding-bottom trick for reliable square aspect ratio
  * Uses CSS variables for animation delay (avoids styled-components class explosion)
- * Tile width passed via --tile-width CSS variable for flexbox layout
  */
 const AlbumCover = styled.div`
   position: relative;
-  /* Flexbox sizing - use CSS variable from parent */
-  width: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
-  padding-bottom: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
-  margin: 0 ${GRID_GAP}px ${GRID_GAP}px 0;
+  width: 100%;
+  padding-bottom: 100%; /* Square tiles - height equals width */
   cursor: pointer;
   overflow: hidden;
   background: #0a0a0a;
@@ -817,11 +820,9 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   // Determine if we're refreshing (loading while already have albums)
   const isRefreshing = isLoading && albums.length > 0;
 
-  const { tileWidth } = gridGeometry;
-
   return (
     <DesktopContainer>
-      <AlbumGrid style={{ '--tile-width': `${tileWidth}px` }}>
+      <AlbumGrid>
         {albums.map((album, index) => (
           <AlbumCover
             key={album.id}

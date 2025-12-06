@@ -335,6 +335,9 @@ function InfoModal({
           <br />
           <span className="prompt">&gt;</span>
           All data processed locally.
+          <br />
+          <span className="prompt">&gt;</span>
+          Best experienced in Chrome.
         </SystemMessage>
 
         <StyledFieldset label="SYSTEM ADMINISTRATOR">
