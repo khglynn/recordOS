@@ -187,8 +187,16 @@ export function useSpotify() {
           console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
           try {
             const parsed = JSON.parse(cachedAlbums);
-            console.log(`Parsed ${parsed.length} albums from cache`);
-            setAlbums(parsed);
+            // Add missing fields that weren't cached (to save space)
+            // tracks and likedTrackIds will be fetched on demand
+            const albumsWithDefaults = parsed.map(album => ({
+              ...album,
+              tracks: album.tracks || [],
+              likedTrackIds: album.likedTrackIds || [],
+              needsTrackRefresh: !album.tracks || album.tracks.length === 0,
+            }));
+            console.log(`Parsed ${albumsWithDefaults.length} albums from cache`);
+            setAlbums(albumsWithDefaults);
             setIsInitializing(false); // Cache loaded successfully
             return;
           } catch (parseErr) {
@@ -291,9 +299,23 @@ export function useSpotify() {
       console.log(`  - First 3 albums:`, albumsArray.slice(0, 3).map(a => `${a.name} (${a.likedTracks} liked)`));
 
       // Cache the results (with Safari-safe error handling)
+      // Only cache essential fields to stay within localStorage quota (~5MB)
+      // Full tracks data is kept in memory, but not cached
       try {
-        const jsonData = JSON.stringify(albumsArray);
-        console.log(`Caching ${jsonData.length} bytes to localStorage...`);
+        const cacheData = albumsArray.map(album => ({
+          id: album.id,
+          name: album.name,
+          artist: album.artist,
+          image: album.image,
+          releaseDate: album.releaseDate,
+          totalTracks: album.totalTracks,
+          uri: album.uri,
+          likedTracks: album.likedTracks,
+          // Omit: tracks, likedTrackIds - too large for localStorage
+          // These will be fetched on demand when user opens album
+        }));
+        const jsonData = JSON.stringify(cacheData);
+        console.log(`Caching ${jsonData.length} bytes to localStorage (minimal data)...`);
         localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE, jsonData);
         localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE_TIME, Date.now().toString());
         console.log('Cache saved successfully');

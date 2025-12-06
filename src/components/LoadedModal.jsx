@@ -249,7 +249,7 @@ function LoadedModal({
             </StatBox>
             <StatBox>
               <StatValue>{trackCount.toLocaleString()}</StatValue>
-              <StatLabel>Tracks Cataloged</StatLabel>
+              <StatLabel>Albums in Grid</StatLabel>
             </StatBox>
           </StatsGrid>
 

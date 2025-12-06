@@ -799,7 +799,7 @@ function App() {
       <LoadedModal
         isOpen={showLoadedModal}
         albumCount={spotify.allAlbumsCount}
-        trackCount={getTotalTracks()}
+        trackCount={spotify.albums.length}
         topDecade={getTopDecade()}
         onExplore={() => {
           // Minimize all windows (not close) and dismiss modal
