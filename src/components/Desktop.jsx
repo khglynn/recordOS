@@ -142,9 +142,8 @@ const AlbumGrid = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+  overflow: auto;
+  /* Note: scrollbar-gutter removed for Safari compatibility */
 
   display: grid;
   /*

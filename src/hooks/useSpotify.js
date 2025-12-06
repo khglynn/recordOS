@@ -170,6 +170,17 @@ export function useSpotify() {
       const cachedAlbums = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE);
       const cacheTime = localStorage.getItem(STORAGE_KEYS.ALBUMS_CACHE_TIME);
 
+      // Safari cache debug - helps diagnose why cache might not persist
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      console.log('[Cache Debug]', {
+        browser: isSafari ? 'Safari' : 'Other',
+        cachedAlbumsExists: !!cachedAlbums,
+        cachedAlbumsLength: cachedAlbums?.length || 0,
+        cacheTimeExists: !!cacheTime,
+        cacheAge: cacheTime ? Math.round((Date.now() - parseInt(cacheTime)) / 60000) + 'min' : 'N/A',
+        localStorageAvailable: typeof localStorage !== 'undefined',
+      });
+
       if (cachedAlbums && cacheTime) {
         const age = Date.now() - parseInt(cacheTime);
         if (age < ALBUMS_CACHE_DURATION) {
