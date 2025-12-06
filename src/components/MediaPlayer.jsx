@@ -425,7 +425,7 @@ function MediaPlayer({
                 <PixelIcon name="next" size={14} />
               </TransportButton>
               {/* Visualizer button */}
-              <TransportButton onClick={onOpenVisualizer} title="Trippy Graphics">
+              <TransportButton onClick={onOpenVisualizer} title="Visualizer">
                 <PixelIcon name="sparkles" size={14} />
               </TransportButton>
             </TransportButtons>

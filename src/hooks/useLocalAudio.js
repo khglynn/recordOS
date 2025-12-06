@@ -16,7 +16,10 @@ import { LOCAL_TRACKS, STORAGE_KEYS } from '../utils/constants';
 export function useLocalAudio() {
   // State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  // Start with a random track
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(
+    () => Math.floor(Math.random() * LOCAL_TRACKS.length)
+  );
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(

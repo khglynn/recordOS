@@ -14,23 +14,37 @@ export const LOCAL_TRACKS = [
   {
     id: 'local-1',
     name: 'Bit Bouncer',
-    artist: 'Stock Music',
+    artist: 'Envato Elements',
     src: '/music/Bit Bouncer.mp3',
-    duration: 180000, // ~3 min estimate
+    duration: 180000,
   },
   {
     id: 'local-2',
     name: 'Eurodance Music',
-    artist: 'Stock Music',
+    artist: 'Envato Elements',
     src: '/music/Eurodance Music (143 BPM) (03-04 SEC).mp3',
     duration: 200000,
   },
   {
     id: 'local-3',
     name: 'Upbeat Synthwave Movie',
-    artist: 'Stock Music',
+    artist: 'Envato Elements',
     src: '/music/Upbeat Synthwave Movie.mp3',
     duration: 160000,
+  },
+  {
+    id: 'local-4',
+    name: 'Country',
+    artist: 'Envato Elements',
+    src: '/music/Country.mp3',
+    duration: 180000,
+  },
+  {
+    id: 'local-5',
+    name: 'Grunge Punk',
+    artist: 'Envato Elements',
+    src: '/music/Grunge Punk.mp3',
+    duration: 150000,
   },
 ];
 

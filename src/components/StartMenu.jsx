@@ -330,10 +330,10 @@ function StartMenu({
           Media Player
         </StyledMenuItem>
 
-        {/* Trippy Graphics */}
+        {/* Visualizer */}
         <StyledMenuItem onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}>
           <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
-          Trippy Graphics
+          Visualizer
         </StyledMenuItem>
 
         {/* Games Submenu - Hover flyout */}

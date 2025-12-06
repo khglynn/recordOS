@@ -389,6 +389,12 @@ function InfoModal({
               </StyledLink>
               <span className="lib-license">MIT (planned)</span>
             </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://elements.envato.com" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Pre-loaded Music</span>
+              </StyledLink>
+              <span className="lib-license">Envato Elements</span>
+            </CreditItem>
           </CreditsList>
         </StyledFieldset>
 

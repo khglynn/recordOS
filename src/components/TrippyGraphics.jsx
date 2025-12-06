@@ -1,10 +1,10 @@
 /**
  * ============================================================================
- * TRIPPY GRAPHICS COMPONENT
+ * VISUALIZER COMPONENT
  * ============================================================================
  *
  * Butterchurn (MilkDrop) visualizer in its own window.
- * Uses an iframe to embed a standalone visualizer page for better reliability.
+ * Inspired by Windows Media Player visualizations.
  *
  * Features:
  * - Draggable window
@@ -192,7 +192,7 @@ function TrippyGraphics({
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
           <PixelIcon name="sparkles" size={14} />
-          <span>Trippy Graphics</span>
+          <span>Visualizer</span>
         </HeaderTitle>
         <HeaderButtons>
           <HeaderButton onClick={onMinimize}>_</HeaderButton>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trippy Graphics</title>
+  <title>Visualizer</title>
   <style>
     * {
       margin: 0;
@@ -149,7 +149,7 @@
   <canvas id="canvas"></canvas>
 
   <div id="start-overlay">
-    <h1>TRIPPY GRAPHICS</h1>
+    <h1>VISUALIZER</h1>
     <p>Microphone input required for audio visualization</p>
     <button id="start-btn">CLICK TO START</button>
   </div>
@@ -241,9 +241,14 @@
         presets = getPresets();
         presetNames = Object.keys(presets);
 
-        // Find a good preset to start with
-        let initialPreset = GOOD_PRESETS.find(name => presetNames.includes(name));
-        if (!initialPreset) {
+        // Start with a random preset from the curated list
+        const availableGoodPresets = GOOD_PRESETS.filter(name => presetNames.includes(name));
+        let initialPreset;
+        if (availableGoodPresets.length > 0) {
+          // Random from curated list
+          initialPreset = availableGoodPresets[Math.floor(Math.random() * availableGoodPresets.length)];
+        } else {
+          // Fallback to random from all
           initialPreset = presetNames[Math.floor(Math.random() * presetNames.length)];
         }
 

@@ -308,7 +308,7 @@ function App() {
         title = 'Snake';
         break;
       case 'trippyGraphics':
-        title = 'Trippy Graphics';
+        title = 'Visualizer';
         break;
       case 'info':
         title = 'About Record OS';
