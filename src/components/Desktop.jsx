@@ -142,8 +142,8 @@ const AlbumGrid = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%; /* Safari needs explicit width for CSS Grid auto-fill */
   overflow: auto;
-  /* Note: scrollbar-gutter removed for Safari compatibility */
 
   display: grid;
   /*
