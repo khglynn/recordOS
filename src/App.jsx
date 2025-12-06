@@ -802,8 +802,8 @@ function App() {
         trackCount={getTotalTracks()}
         topDecade={getTopDecade()}
         onExplore={() => {
-          // Close all windows and dismiss modal
-          setWindows([]);
+          // Minimize all windows (not close) and dismiss modal
+          setWindows(prev => prev.map(w => ({ ...w, minimized: true })));
           setShowLoadedModal(false);
         }}
         onKeepWindows={() => {
