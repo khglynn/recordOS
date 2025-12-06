@@ -614,11 +614,23 @@ export function useSpotify() {
       });
     } catch (err) {
       console.error('Failed to play album:', err);
+      console.log('[Play Error Debug] Error message:', err.message);
+      console.log('[Play Error Debug] Error status:', err.status);
 
       // Check if this is a 403 error (album unavailable/restricted)
-      if (err.message?.includes('403') || err.status === 403) {
-        console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable`);
-        setUnavailableAlbumIds(prev => new Set([...prev, album.id]));
+      // Spotify returns 403 for region-restricted, unavailable albums
+      const is403Error = err.message?.includes('403') ||
+                         err.message?.includes('Forbidden') ||
+                         err.message?.includes('restricted') ||
+                         err.status === 403;
+
+      if (is403Error) {
+        console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable - REMOVING FROM GRID`);
+        setUnavailableAlbumIds(prev => {
+          const newSet = new Set([...prev, album.id]);
+          console.log(`[Album Unavailable] Unavailable albums count: ${newSet.size}`);
+          return newSet;
+        });
         setPlaybackError({
           code: 'ALBUM_UNAVAILABLE',
           message: 'ALBUM RESTRICTED',

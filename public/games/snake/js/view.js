@@ -53,10 +53,10 @@
   }
 
   View.prototype.pace = function () {
-    // Slower, more playable speed - starts at ~125ms, speeds up slowly
-    var baseSpeed = 125;
+    // Slower, more playable speed - starts at ~175ms, speeds up slowly
+    var baseSpeed = 175;
     var speedIncrease = Math.floor(this.player.segments.length / 3) * 5;
-    return Math.max(60, baseSpeed - speedIncrease);
+    return Math.max(70, baseSpeed - speedIncrease);
   }
 
   View.prototype.renderBoard = function () {

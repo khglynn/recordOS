@@ -167,6 +167,7 @@ const AlbumGrid = styled.div`
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
+    justify-content: center;
   ` : css`
     /* Chrome/Firefox: Use CSS Grid for better responsiveness */
     display: grid;
