@@ -13,8 +13,16 @@
  */
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { GRID_ALBUM_MIN_SIZE, GRID_ALBUM_MAX_SIZE, GRID_GAP } from '../utils/constants';
+
+// ============================================================================
+// BROWSER DETECTION
+// ============================================================================
+
+// Detect Safari - CSS Grid has issues, use flexbox instead
+const isSafari = typeof navigator !== 'undefined' &&
+  /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 // ============================================================================
 // KEYFRAMES (defined first to avoid temporal dead zone)
@@ -146,12 +154,6 @@ const AlbumGrid = styled.div`
   overflow-x: hidden;
   overflow-y: auto;
 
-  /* CSS Grid - works great in Chrome, Safari has issues */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
-  gap: ${GRID_GAP}px;
-  align-content: start;
-
   /* Fade in when albums load */
   animation: fadeIn 0.5s ease-out;
 
@@ -160,24 +162,47 @@ const AlbumGrid = styled.div`
     to { opacity: 1; }
   }
 
-  /* Mobile: smaller tiles */
-  @media (max-width: 767px) {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
+  ${isSafari ? css`
+    /* Safari: Use flexbox (CSS Grid has rendering issues) */
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+  ` : css`
+    /* Chrome/Firefox: Use CSS Grid for better responsiveness */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
+    gap: ${GRID_GAP}px;
+    align-content: start;
+
+    /* Mobile: smaller tiles */
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+  `}
 `;
 
 /**
  * Individual album cover with entrance animation
  * Uses padding-bottom trick for reliable square aspect ratio
  * Uses CSS variables for animation delay (avoids styled-components class explosion)
+ * Safari uses --tile-width CSS variable from parent, Chrome uses 100%
  */
 const AlbumCover = styled.div`
   position: relative;
-  width: 100%;
-  padding-bottom: 100%; /* Square tiles - height equals width */
   cursor: pointer;
   overflow: hidden;
   background: #0a0a0a;
+
+  ${isSafari ? css`
+    /* Safari flexbox: explicit width via CSS variable */
+    width: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
+    padding-bottom: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
+    margin: 0 ${GRID_GAP}px ${GRID_GAP}px 0;
+  ` : css`
+    /* Chrome/Firefox CSS Grid: 100% width */
+    width: 100%;
+    padding-bottom: 100%; /* Square tiles - height equals width */
+  `}
 
   /* Entrance animation - uses CSS variable for delay */
   animation: albumReveal 0.3s ease-out backwards;
@@ -820,9 +845,12 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   // Determine if we're refreshing (loading while already have albums)
   const isRefreshing = isLoading && albums.length > 0;
 
+  // Get tile width for Safari flexbox layout
+  const { tileWidth } = gridGeometry;
+
   return (
     <DesktopContainer>
-      <AlbumGrid>
+      <AlbumGrid style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
         {albums.map((album, index) => (
           <AlbumCover
             key={album.id}
