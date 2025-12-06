@@ -443,8 +443,8 @@ const fadeIn = keyframes`
 `;
 
 /**
- * Loading container - same grid lines as EmptyGrid but with scanning effect
- * Grid is positioned from top-left with calculated offset to center visually
+ * Loading container - grid lines that match the stretched album tiles
+ * Uses CSS variable --cell-size to sync with calculated tile width
  */
 const LoadingContainer = styled.div`
   position: absolute;
@@ -453,12 +453,12 @@ const LoadingContainer = styled.div`
   right: 0;
   bottom: 0;
 
-  /* Grid pattern - aligned from top-left with offset passed via CSS var */
+  /* Grid pattern - uses calculated cell size passed via CSS var */
   background-image:
     linear-gradient(to right, rgba(0, 255, 65, 0.25) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0, 255, 65, 0.25) 1px, transparent 1px);
-  background-size: ${GRID_ALBUM_MIN_SIZE + GRID_GAP}px ${GRID_ALBUM_MIN_SIZE + GRID_GAP}px;
-  background-position: var(--grid-offset-x, 0) var(--grid-offset-y, 0);
+  background-size: var(--cell-size, 229px) var(--cell-size, 229px);
+  background-position: 0 0;
 
   /* Brighter pulse during loading */
   animation: loadingPulse 2s ease-in-out infinite;
@@ -608,9 +608,10 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // Generate 4 random grid positions for loading animation
+  // Calculate grid geometry for loading animation
   // Matches CSS Grid behavior: minmax(225px, 1fr) stretches tiles to fill row
-  const loadingPositions = useMemo(() => {
+  // Returns both positions and cellSize for syncing background grid with albums
+  const loadingGrid = useMemo(() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - 48; // -48 for taskbar
     const minTileSize = GRID_ALBUM_MIN_SIZE; // 225px
@@ -626,6 +627,9 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     // tileWidth = (viewportWidth - totalGaps) / numColumns
     const totalGaps = (numColumns - 1) * gap;
     const tileWidth = (viewportWidth - totalGaps) / numColumns;
+
+    // Cell size for background grid (tile + gap)
+    const cellSize = tileWidth + gap;
 
     // Row height matches tile width (square tiles)
     const tileHeight = tileWidth;
@@ -655,15 +659,15 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     for (let i = 0; i < numAlbums; i++) {
       const { col, row } = allPositions[i];
       positions.push({
-        x: col * (tileWidth + gap),
-        y: row * (tileHeight + gap),
-        tileSize: tileWidth, // Pass calculated tile size
+        x: col * cellSize,
+        y: row * cellSize,
+        tileSize: tileWidth, // Pass calculated tile size (without gap)
         delay: i * 2.5, // Staggered start - 2.5s apart
         duration: 10, // 10 second cycle each
       });
     }
 
-    return positions;
+    return { positions, cellSize };
   }, []); // Calculate once on mount
 
   useEffect(() => {
@@ -701,16 +705,17 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   if (isLoading && albums.length === 0) {
     // Use first 4 albums for loading display - max 4 visible at a time
     const displayAlbums = loadingAlbums.slice(0, 4);
+    const { positions, cellSize } = loadingGrid;
 
     return (
       <DesktopContainer>
-        <LoadingContainer>
+        <LoadingContainer style={{ '--cell-size': `${cellSize}px` }}>
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Albums fade in and out at random grid positions - slow and chill */}
+          {/* Albums fade in and out at grid positions - synced with background */}
           {displayAlbums.map((album, index) => {
-            const pos = loadingPositions[index];
+            const pos = positions[index];
             if (!pos) return null;
             return (
               <GlitchAlbum
