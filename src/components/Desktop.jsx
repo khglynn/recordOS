@@ -602,54 +602,36 @@ const EmptyLibraryMessage = styled.div`
 function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitializing, onAlbumClick, onOpenGame }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
-  // Each slot manages its own album independently - staggered cycling
+  // Track which slot to update next (rotating: 0, 1, 2, 3, 0, 1, 2, 3...)
   const [loadingSlots, setLoadingSlots] = useState([
     { albumIndex: 0, cycle: 0 },
     { albumIndex: 1, cycle: 0 },
     { albumIndex: 2, cycle: 0 },
     { albumIndex: 3, cycle: 0 },
   ]);
+  const nextSlotRef = useRef(0);
   const containerRef = useRef(null);
 
-  // Individual slot cycling - each slot updates independently
-  // Slot 0 at 0s, Slot 1 at 2s, Slot 2 at 4s, Slot 3 at 6s, then repeat
+  // Simple rotating timer - updates ONE slot every 2.5 seconds
+  // Creates staggered effect: slot 0 changes, then slot 1, then slot 2, etc.
   useEffect(() => {
     if (!isLoading) return;
 
-    const SLOT_DURATION = 8000; // Each album visible for 8 seconds
-    const SLOT_OFFSET = 2000; // 2 second offset between slots
+    const interval = setInterval(() => {
+      const slotToUpdate = nextSlotRef.current;
 
-    const timers = [0, 1, 2, 3].map(slotIndex => {
-      // Initial delay based on slot index
-      const initialDelay = slotIndex * SLOT_OFFSET;
+      setLoadingSlots(prev => prev.map((slot, i) => {
+        if (i !== slotToUpdate) return slot;
+        // This slot gets a new album and new position (via cycle increment)
+        const newAlbumIndex = (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length);
+        return { albumIndex: newAlbumIndex, cycle: slot.cycle + 1 };
+      }));
 
-      // Start interval after initial delay
-      const timeoutId = setTimeout(() => {
-        // Update this slot immediately
-        setLoadingSlots(prev => prev.map((slot, i) =>
-          i === slotIndex ? { ...slot, cycle: slot.cycle + 1, albumIndex: (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length) } : slot
-        ));
+      // Move to next slot (wraps around)
+      nextSlotRef.current = (slotToUpdate + 1) % 4;
+    }, 2500); // Update one slot every 2.5 seconds
 
-        // Then set up recurring interval
-        const intervalId = setInterval(() => {
-          setLoadingSlots(prev => prev.map((slot, i) =>
-            i === slotIndex ? { ...slot, cycle: slot.cycle + 1, albumIndex: (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length) } : slot
-          ));
-        }, SLOT_DURATION);
-
-        // Store interval ID for cleanup
-        timers[slotIndex] = { intervalId };
-      }, initialDelay);
-
-      return { timeoutId };
-    });
-
-    return () => {
-      timers.forEach(t => {
-        if (t.timeoutId) clearTimeout(t.timeoutId);
-        if (t.intervalId) clearInterval(t.intervalId);
-      });
-    };
+    return () => clearInterval(interval);
   }, [isLoading, loadingAlbums.length]);
 
   const handleImageLoad = (albumId) => {
