@@ -219,8 +219,8 @@ const SystemNote = styled.div`
 
 function LoadedModal({
   isOpen,
+  savedTracksCount,
   albumCount,
-  trackCount,
   topDecade,
   onExplore,
   onKeepWindows,
@@ -244,12 +244,12 @@ function LoadedModal({
 
           <StatsGrid>
             <StatBox>
-              <StatValue>{albumCount.toLocaleString()}</StatValue>
-              <StatLabel>Records Indexed</StatLabel>
+              <StatValue>{savedTracksCount.toLocaleString()}</StatValue>
+              <StatLabel>Songs Saved</StatLabel>
             </StatBox>
             <StatBox>
-              <StatValue>{trackCount.toLocaleString()}</StatValue>
-              <StatLabel>Albums in Grid</StatLabel>
+              <StatValue>{albumCount.toLocaleString()}</StatValue>
+              <StatLabel>Across Albums</StatLabel>
             </StatBox>
           </StatsGrid>
 

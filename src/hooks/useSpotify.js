@@ -684,6 +684,7 @@ export function useSpotify() {
     // Library
     albums: displayAlbums,
     allAlbumsCount: albums.length,
+    totalSavedTracks: albums.reduce((sum, a) => sum + (a.likedTracks || 0), 0),
     isLoading,
     isInitializing,
     loadingProgress,

@@ -609,6 +609,12 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   ]);
   const nextSlotRef = useRef(0);
   const containerRef = useRef(null);
+  const loadingAlbumsLengthRef = useRef(loadingAlbums.length);
+
+  // Keep ref in sync with prop (so interval closure always has current value)
+  useEffect(() => {
+    loadingAlbumsLengthRef.current = loadingAlbums.length;
+  }, [loadingAlbums.length]);
 
   // Simple rotating timer - updates ONE slot every 2.5 seconds
   // Creates staggered effect: slot 0 changes, then slot 1, then slot 2, etc.
@@ -617,11 +623,12 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
 
     const interval = setInterval(() => {
       const slotToUpdate = nextSlotRef.current;
+      const albumCount = loadingAlbumsLengthRef.current; // Use ref for current value
 
       setLoadingSlots(prev => prev.map((slot, i) => {
         if (i !== slotToUpdate) return slot;
         // This slot gets a new album and new position (via cycle increment)
-        const newAlbumIndex = (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length);
+        const newAlbumIndex = (slot.albumIndex + 4) % Math.max(4, albumCount);
         return { albumIndex: newAlbumIndex, cycle: slot.cycle + 1 };
       }));
 
@@ -630,7 +637,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     }, 2500); // Update one slot every 2.5 seconds
 
     return () => clearInterval(interval);
-  }, [isLoading, loadingAlbums.length]);
+  }, [isLoading]); // Don't depend on length - use ref instead
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
