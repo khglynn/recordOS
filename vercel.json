@@ -5,7 +5,7 @@
       "destination": "/callback.html"
     },
     {
-      "source": "/((?!assets|music|logo\\.png|callback\\.html).*)",
+      "source": "/((?!assets|music|games|visualizer|logo\\.png|callback\\.html).*)",
       "destination": "/index.html"
     }
   ],
