@@ -1,3 +1,53 @@
+# Record OS Technical Notes
+
+---
+
+# Safari Cache Fix (localStorage Quota)
+
+## The Problem
+
+Safari's localStorage quota (~5MB) was exceeded when caching 8,224 albums with full track data (~4.67MB).
+
+```
+QuotaExceededError: The quota has been exceeded.
+Caching 4675468 bytes to localStorage...
+```
+
+## The Fix
+
+Cache only essential album fields, omit large arrays:
+
+**Cached (essential for grid display):**
+- id, name, artist, image, releaseDate, totalTracks, uri, likedTracks
+
+**NOT cached (too large):**
+- `tracks` array (~1.7MB for 11K tracks)
+- `likedTrackIds` array (~250KB)
+
+## Tradeoffs
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Cache size | ~4.7MB | ~1MB |
+| Safari support | Fails (quota) | Works |
+| Grid display | Instant | Instant |
+| Track list | Instant | **Needs refresh on first click** |
+
+**What this means for users:**
+- Grid loads instantly from cache (all album covers visible)
+- When clicking an album for first time after cache load, track list may be empty
+- Tracks are fetched fresh from Spotify API when album is opened
+
+**Future improvement (if needed):**
+- Add on-demand track fetching in TrackListModal when `album.needsTrackRefresh === true`
+- Or use IndexedDB instead of localStorage (50MB+ quota)
+
+## Files Modified
+
+- `src/hooks/useSpotify.js` - Lines 293-317 (cache save) and 184-206 (cache load)
+
+---
+
 # Loading Grid Alignment Fix
 
 ## The Problem

@@ -12,7 +12,7 @@
  * Style: Dark with green grid lines, grungy/Alien computer aesthetic.
  */
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { GRID_ALBUM_MIN_SIZE, GRID_ALBUM_MAX_SIZE, GRID_GAP } from '../utils/constants';
 
@@ -602,83 +602,98 @@ const EmptyLibraryMessage = styled.div`
 function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitializing, onAlbumClick, onOpenGame }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
-  const [loadingCycle, setLoadingCycle] = useState(0);
+  // Each slot manages its own album independently - staggered cycling
+  const [loadingSlots, setLoadingSlots] = useState([
+    { albumIndex: 0, cycle: 0 },
+    { albumIndex: 1, cycle: 0 },
+    { albumIndex: 2, cycle: 0 },
+    { albumIndex: 3, cycle: 0 },
+  ]);
   const containerRef = useRef(null);
 
-  // Cycle through albums every 8 seconds during loading
-  // Shuffles positions and rotates to different albums each cycle
+  // Individual slot cycling - each slot updates independently
+  // Slot 0 at 0s, Slot 1 at 2s, Slot 2 at 4s, Slot 3 at 6s, then repeat
   useEffect(() => {
     if (!isLoading) return;
 
-    const interval = setInterval(() => {
-      setLoadingCycle(prev => prev + 1);
-    }, 8000); // 8 seconds per cycle
+    const SLOT_DURATION = 8000; // Each album visible for 8 seconds
+    const SLOT_OFFSET = 2000; // 2 second offset between slots
 
-    return () => clearInterval(interval);
-  }, [isLoading]);
+    const timers = [0, 1, 2, 3].map(slotIndex => {
+      // Initial delay based on slot index
+      const initialDelay = slotIndex * SLOT_OFFSET;
+
+      // Start interval after initial delay
+      const timeoutId = setTimeout(() => {
+        // Update this slot immediately
+        setLoadingSlots(prev => prev.map((slot, i) =>
+          i === slotIndex ? { ...slot, cycle: slot.cycle + 1, albumIndex: (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length) } : slot
+        ));
+
+        // Then set up recurring interval
+        const intervalId = setInterval(() => {
+          setLoadingSlots(prev => prev.map((slot, i) =>
+            i === slotIndex ? { ...slot, cycle: slot.cycle + 1, albumIndex: (slot.albumIndex + 4) % Math.max(4, loadingAlbums.length) } : slot
+          ));
+        }, SLOT_DURATION);
+
+        // Store interval ID for cleanup
+        timers[slotIndex] = { intervalId };
+      }, initialDelay);
+
+      return { timeoutId };
+    });
+
+    return () => {
+      timers.forEach(t => {
+        if (t.timeoutId) clearTimeout(t.timeoutId);
+        if (t.intervalId) clearInterval(t.intervalId);
+      });
+    };
+  }, [isLoading, loadingAlbums.length]);
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // Calculate grid geometry for loading animation
-  // Matches CSS Grid behavior: minmax(225px, 1fr) stretches tiles to fill row
-  // Returns both positions and cellSize for syncing background grid with albums
-  // Re-shuffles positions each cycle for visual variety
-  const loadingGrid = useMemo(() => {
+  // Calculate grid geometry - stable (doesn't change with slots)
+  const gridGeometry = useMemo(() => {
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight - 48; // -48 for taskbar
-    const minTileSize = GRID_ALBUM_MIN_SIZE; // 225px
-    const gap = GRID_GAP; // 4px
+    const viewportHeight = window.innerHeight - 48;
+    const minTileSize = GRID_ALBUM_MIN_SIZE;
+    const gap = GRID_GAP;
 
-    // Calculate how many columns fit (same logic as CSS Grid auto-fill)
     const numColumns = Math.max(1, Math.floor((viewportWidth + gap) / (minTileSize + gap)));
-
-    // Calculate actual stretched tile width (fills remaining space evenly)
     const totalGaps = (numColumns - 1) * gap;
     const tileWidth = (viewportWidth - totalGaps) / numColumns;
-
-    // Cell size for background grid (tile + gap)
     const cellSize = tileWidth + gap;
-
-    // Row height matches tile width (square tiles)
-    const tileHeight = tileWidth;
-    const rowHeight = tileHeight + gap;
-
-    // Calculate how many rows fit
+    const rowHeight = tileWidth + gap;
     const numRows = Math.max(1, Math.floor(viewportHeight / rowHeight));
 
-    // Build all possible grid positions
-    const allPositions = [];
-    for (let row = 0; row < numRows; row++) {
-      for (let col = 0; col < numColumns; col++) {
-        allPositions.push({ col, row });
-      }
-    }
+    return { numColumns, numRows, tileWidth, cellSize };
+  }, []);
 
-    // Fisher-Yates shuffle - re-randomizes each cycle
-    for (let i = allPositions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
-    }
+  // Generate random position for a slot based on its cycle
+  // Uses seeded random so same cycle = same position (for animation continuity)
+  const getSlotPosition = useCallback((slotIndex, cycle) => {
+    const { numColumns, numRows, tileWidth, cellSize } = gridGeometry;
 
-    // Only take 4 positions - nice and sparse, staggered appearance
-    const positions = [];
-    const numAlbums = Math.min(4, allPositions.length);
+    // Simple seeded random based on slot and cycle
+    const seed = slotIndex * 1000 + cycle;
+    const pseudoRandom = (s) => {
+      const x = Math.sin(s) * 10000;
+      return x - Math.floor(x);
+    };
 
-    for (let i = 0; i < numAlbums; i++) {
-      const { col, row } = allPositions[i];
-      positions.push({
-        x: col * cellSize,
-        y: row * cellSize,
-        tileSize: tileWidth,
-        delay: i * 2.5, // Staggered start - 2.5s apart
-        duration: 10, // 10 second cycle each (slow and chill)
-      });
-    }
+    const col = Math.floor(pseudoRandom(seed) * numColumns);
+    const row = Math.floor(pseudoRandom(seed + 1) * numRows);
 
-    return { positions, cellSize };
-  }, [loadingCycle]); // Re-shuffle when cycle changes
+    return {
+      x: col * cellSize,
+      y: row * cellSize,
+      tileSize: tileWidth,
+    };
+  }, [gridGeometry]);
 
   useEffect(() => {
     const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
@@ -712,13 +727,9 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   }
 
   // Loading state: 4 albums fade in at random grid positions (chill vibes)
+  // Each slot cycles independently - creates a flowing "scanning" effect
   if (isLoading && albums.length === 0) {
-    // Rotate through albums - show different 4 each cycle
-    const startIndex = (loadingCycle * 4) % Math.max(1, loadingAlbums.length);
-    const displayAlbums = loadingAlbums.length > 0
-      ? [...loadingAlbums, ...loadingAlbums].slice(startIndex, startIndex + 4) // Wrap around
-      : [];
-    const { positions, cellSize } = loadingGrid;
+    const { cellSize } = gridGeometry;
 
     return (
       <DesktopContainer>
@@ -726,19 +737,24 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Albums fade in and out at grid positions - synced with background */}
-          {displayAlbums.map((album, index) => {
-            const pos = positions[index];
-            if (!pos) return null;
+          {/* Each slot manages its own album and position independently */}
+          {loadingSlots.map((slot, slotIndex) => {
+            // Get album for this slot (wraps around loadingAlbums)
+            const album = loadingAlbums[slot.albumIndex % Math.max(1, loadingAlbums.length)];
+            if (!album) return null;
+
+            // Get position for this slot based on its cycle
+            const pos = getSlotPosition(slotIndex, slot.cycle);
+
             return (
               <GlitchAlbum
-                key={`${loadingCycle}-${album.id}`}
+                key={`slot-${slotIndex}-cycle-${slot.cycle}`}
                 style={{
                   left: pos.x,
                   top: pos.y,
                   '--tile-size': `${pos.tileSize}px`,
-                  '--delay': `${pos.delay}s`,
-                  '--duration': `${pos.duration}s`,
+                  '--delay': '0s', // No delay - each slot starts immediately
+                  '--duration': '8s', // Match slot duration
                 }}
               >
                 <img src={album.image} alt="" />
