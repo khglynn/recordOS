@@ -20,6 +20,7 @@ import {
   getAccessToken,
   logout as spotifyLogout,
   getAllSavedTracks,
+  getAlbumTracks,
   getAudioAnalysis,
   play,
   pause,
@@ -75,6 +76,7 @@ export function useSpotify() {
   const [isMuted, setIsMuted] = useState(
     localStorage.getItem(STORAGE_KEYS.MUTED) === 'true'
   );
+  const [playbackError, setPlaybackError] = useState(null);
 
   // Audio analysis for visualizer
   const [audioAnalysis, setAudioAnalysis] = useState(null);
@@ -172,9 +174,16 @@ export function useSpotify() {
         const age = Date.now() - parseInt(cacheTime);
         if (age < ALBUMS_CACHE_DURATION) {
           console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
-          setAlbums(JSON.parse(cachedAlbums));
-          setIsInitializing(false); // Cache loaded successfully
-          return;
+          try {
+            const parsed = JSON.parse(cachedAlbums);
+            console.log(`Parsed ${parsed.length} albums from cache`);
+            setAlbums(parsed);
+            setIsInitializing(false); // Cache loaded successfully
+            return;
+          } catch (parseErr) {
+            console.error('Failed to parse cached albums:', parseErr);
+            // Continue to fetch fresh data
+          }
         }
       }
     } else {
@@ -192,6 +201,8 @@ export function useSpotify() {
       // Map to accumulate album data and liked track counts
       const albumDataMap = new Map();
       const seenAlbumImages = new Set(); // Track unique album images for loading display
+
+      console.log('[Safari Debug] Starting getAllSavedTracks...');
 
       // Fetch all saved tracks with progress updates
       const savedTracks = await getAllSavedTracks(
@@ -213,6 +224,8 @@ export function useSpotify() {
         }
       );
 
+      console.log(`[Safari Debug] getAllSavedTracks returned ${savedTracks.length} tracks`);
+
       // Process all tracks to build album data with accurate liked counts
       for (const item of savedTracks) {
         const track = item.track;
@@ -228,12 +241,14 @@ export function useSpotify() {
             totalTracks: album.total_tracks,
             uri: album.uri,
             likedTracks: 0,
+            likedTrackIds: new Set(), // Track IDs that are liked
             tracks: [],
           });
         }
 
         const albumData = albumDataMap.get(album.id);
         albumData.likedTracks += 1;
+        albumData.likedTrackIds.add(track.id); // Track which songs are liked
         albumData.tracks.push({
           id: track.id,
           name: track.name,
@@ -251,18 +266,38 @@ export function useSpotify() {
       }
 
       // Sort albums by liked track count (descending)
+      // Convert Sets to Arrays for caching
       const albumsArray = Array.from(albumDataMap.values())
+        .map(album => ({
+          ...album,
+          likedTrackIds: Array.from(album.likedTrackIds), // Convert Set to Array for JSON
+        }))
         .sort((a, b) => b.likedTracks - a.likedTracks);
 
-      console.log(`Found ${albumsArray.length} albums from ${savedTracks.length} liked tracks`);
+      console.log(`[Safari Debug] Processing complete:`);
+      console.log(`  - albumDataMap size: ${albumDataMap.size}`);
+      console.log(`  - albumsArray length: ${albumsArray.length}`);
+      console.log(`  - First 3 albums:`, albumsArray.slice(0, 3).map(a => `${a.name} (${a.likedTracks} liked)`));
 
-      // Cache the results
-      localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE, JSON.stringify(albumsArray));
-      localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE_TIME, Date.now().toString());
+      // Cache the results (with Safari-safe error handling)
+      try {
+        const jsonData = JSON.stringify(albumsArray);
+        console.log(`Caching ${jsonData.length} bytes to localStorage...`);
+        localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE, jsonData);
+        localStorage.setItem(STORAGE_KEYS.ALBUMS_CACHE_TIME, Date.now().toString());
+        console.log('Cache saved successfully');
+      } catch (cacheErr) {
+        console.warn('Failed to cache albums (localStorage may be full or disabled):', cacheErr);
+        // Continue without caching - albums will still work this session
+      }
 
+      // IMPORTANT: Set albums state regardless of cache success
+      console.log(`[Safari Debug] Calling setAlbums with ${albumsArray.length} albums...`);
       setAlbums(albumsArray);
+      console.log(`[Safari Debug] setAlbums called, clearing loading state...`);
       setLoadingAlbums([]); // Clear loading albums
       setIsLoading(false);
+      console.log(`[Safari Debug] fetchLibrary complete!`);
     } catch (err) {
       console.error('Failed to fetch library:', err);
       setLoadingAlbums([]); // Clear loading albums on error too
@@ -312,7 +347,12 @@ export function useSpotify() {
       result = [...qualifyingAlbums, ...remaining].slice(0, TARGET_ALBUM_COUNT);
     }
 
-    console.log(`Top ${TARGET_ALBUM_COUNT} (${decade}): ${albums.length} total -> ${candidates.length} in decade -> ${qualifyingAlbums.length} qualifying (${MIN_SAVED_TRACKS}+ tracks) -> ${result.length} selected`);
+    console.log(`[Safari Debug] displayAlbums filter:`);
+    console.log(`  - Input albums: ${albums.length}`);
+    console.log(`  - Decade filter: "${decade}"`);
+    console.log(`  - After decade filter: ${candidates.length}`);
+    console.log(`  - Qualifying (${MIN_SAVED_TRACKS}+ tracks): ${qualifyingAlbums.length}`);
+    console.log(`  - Final result: ${result.length}`);
 
     return result;
   }, [albums, decade]);
@@ -367,6 +407,11 @@ export function useSpotify() {
 
       spotifyPlayer.addListener('playback_error', ({ message }) => {
         console.error('Spotify playback error:', message);
+        setPlaybackError({
+          code: 'PLAYBACK_FAILURE',
+          message: 'EXTERNAL AUDIO STREAM INTERRUPTED',
+          detail: message,
+        });
       });
 
       // Ready
@@ -490,29 +535,86 @@ export function useSpotify() {
   }, [player, isMuted, volume]);
 
   const playTrack = useCallback(async (track, album) => {
-    if (!deviceId) return;
+    if (!deviceId) {
+      setPlaybackError({
+        code: 'DEVICE_UNAVAILABLE',
+        message: 'PLAYBACK SUBSTRATE OFFLINE',
+        detail: 'Spotify Premium required for web playback',
+      });
+      return;
+    }
 
     try {
+      setPlaybackError(null); // Clear any previous error
       await play(deviceId, {
         contextUri: album.uri,
         offset: track.uri,
       });
     } catch (err) {
       console.error('Failed to play track:', err);
+      setPlaybackError({
+        code: 'PLAYBACK_FAILURE',
+        message: 'TRACK INITIALIZATION FAILED',
+        detail: err.message,
+      });
     }
   }, [deviceId]);
 
   const playAlbum = useCallback(async (album) => {
-    if (!deviceId) return;
+    if (!deviceId) {
+      setPlaybackError({
+        code: 'DEVICE_UNAVAILABLE',
+        message: 'PLAYBACK SUBSTRATE OFFLINE',
+        detail: 'Spotify Premium required for web playback',
+      });
+      return;
+    }
 
     try {
+      setPlaybackError(null); // Clear any previous error
       await play(deviceId, {
         contextUri: album.uri,
       });
     } catch (err) {
       console.error('Failed to play album:', err);
+      setPlaybackError({
+        code: 'PLAYBACK_FAILURE',
+        message: 'ALBUM INITIALIZATION FAILED',
+        detail: err.message,
+      });
     }
   }, [deviceId]);
+
+  // -------------------------------------------------------------------------
+  // GET FULL ALBUM TRACKS (with liked status)
+  // -------------------------------------------------------------------------
+
+  const getFullAlbumTracks = useCallback(async (album) => {
+    if (!album?.id) return null;
+
+    try {
+      // Fetch all tracks from Spotify API
+      const allTracks = await getAlbumTracks(album.id);
+
+      // Get the liked track IDs (stored as array in cache, may need to convert)
+      const likedIds = new Set(album.likedTrackIds || []);
+
+      // Mark which tracks are liked
+      const tracksWithLikedStatus = allTracks.map(track => ({
+        ...track,
+        isLiked: likedIds.has(track.id),
+      }));
+
+      return {
+        ...album,
+        tracks: tracksWithLikedStatus,
+      };
+    } catch (err) {
+      console.error('Failed to fetch album tracks:', err);
+      // Fall back to stored liked tracks
+      return album;
+    }
+  }, []);
 
   // -------------------------------------------------------------------------
   // LOGOUT
@@ -567,6 +669,8 @@ export function useSpotify() {
     volume,
     isMuted,
     audioAnalysis,
+    playbackError,
+    clearPlaybackError: () => setPlaybackError(null),
 
     // Playback controls
     play: handlePlay,
@@ -578,6 +682,7 @@ export function useSpotify() {
     toggleMute: handleMuteToggle,
     playTrack,
     playAlbum,
+    getFullAlbumTracks,
 
     // SDK status
     playerReady: !!deviceId,

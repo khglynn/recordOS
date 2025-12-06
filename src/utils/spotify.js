@@ -380,6 +380,22 @@ export async function getAlbum(albumId) {
 }
 
 /**
+ * Get all tracks from an album
+ * Returns array of track objects with id, name, duration, trackNumber, uri, artist
+ */
+export async function getAlbumTracks(albumId) {
+  const album = await getAlbum(albumId);
+  return album.tracks.items.map(track => ({
+    id: track.id,
+    name: track.name,
+    duration: track.duration_ms,
+    trackNumber: track.track_number,
+    uri: track.uri,
+    artist: track.artists.map(a => a.name).join(', '),
+  }));
+}
+
+/**
  * Get multiple albums by IDs (max 20)
  */
 export async function getAlbums(albumIds) {

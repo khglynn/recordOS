@@ -175,6 +175,7 @@ const AlbumGrid = styled.div`
 /**
  * Individual album cover with entrance animation
  * Uses padding-bottom trick for reliable square aspect ratio
+ * Uses CSS variables for animation delay (avoids styled-components class explosion)
  */
 const AlbumCover = styled.div`
   position: relative;
@@ -184,9 +185,9 @@ const AlbumCover = styled.div`
   overflow: hidden;
   background: #0a0a0a;
 
-  /* Entrance animation - simplified for performance */
+  /* Entrance animation - uses CSS variable for delay */
   animation: albumReveal 0.3s ease-out backwards;
-  animation-delay: ${props => props.$delay || 0}ms;
+  animation-delay: var(--reveal-delay, 0ms);
 
   @keyframes albumReveal {
     0% {
@@ -424,16 +425,14 @@ const AlbumStats = styled.div`
 // ============================================================================
 
 /**
- * Slow pulse animation - mostly invisible, gentle fade in/out
- * Album is visible only ~15% of the cycle for sparse, calm effect
+ * Slow pulse animation - chill, visible most of the time
+ * Album fades in, hangs out for a while, then fades out
  */
 const slowPulse = keyframes`
-  0% { opacity: 0; transform: scale(0.98); }
-  40% { opacity: 0; transform: scale(0.98); }
-  45% { opacity: 0.9; transform: scale(1); }
-  55% { opacity: 0.9; transform: scale(1); }
-  60% { opacity: 0; transform: scale(0.98); }
-  100% { opacity: 0; transform: scale(0.98); }
+  0% { opacity: 0; transform: scale(0.97); }
+  8% { opacity: 0.85; transform: scale(1); }
+  85% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.97); }
 `;
 
 /**
@@ -494,15 +493,15 @@ const ScanLine = styled.div`
 
 /**
  * Floating album that glitches in a grid position
- * Now uses CSS calc to properly center within grid cells
+ * Uses CSS variables for dynamic sizing (matches CSS Grid stretched tiles)
  */
 const GlitchAlbum = styled.div`
   position: absolute;
-  width: ${GRID_ALBUM_MIN_SIZE}px;
-  height: ${GRID_ALBUM_MIN_SIZE}px;
+  width: var(--tile-size, ${GRID_ALBUM_MIN_SIZE}px);
+  height: var(--tile-size, ${GRID_ALBUM_MIN_SIZE}px);
   overflow: hidden;
-  animation: ${props => props.$fadeIn ? fadeIn : slowPulse} ${props => props.$fadeIn ? '0.6s' : `${props.$duration || 12}s`} ${props => props.$fadeIn ? 'ease-out forwards' : 'ease-in-out infinite'};
-  animation-delay: ${props => props.$delay || 0}s;
+  animation: ${slowPulse} var(--duration, 12s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
 
   img {
     width: 100%;
@@ -586,6 +585,15 @@ const EmptyLibraryMessage = styled.div`
   .prompt {
     color: #00ff41;
   }
+
+  a {
+    color: #00ff41;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 `;
 
 // ============================================================================
@@ -601,48 +609,58 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // Generate random grid positions for loading animation
-  // 24 albums fade in at random positions across the grid
+  // Generate 4 random grid positions for loading animation
+  // Matches CSS Grid behavior: minmax(225px, 1fr) stretches tiles to fill row
   const loadingPositions = useMemo(() => {
-    const cellSize = GRID_ALBUM_MIN_SIZE + GRID_GAP;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - 48; // -48 for taskbar
+    const minTileSize = GRID_ALBUM_MIN_SIZE; // 225px
+    const gap = GRID_GAP; // 4px
 
-    // Calculate grid alignment
-    const totalGridWidth = Math.floor(viewportWidth / cellSize) * cellSize;
-    const totalGridHeight = Math.floor(viewportHeight / cellSize) * cellSize;
-    const gridOffsetX = (viewportWidth - totalGridWidth) / 2;
-    const gridOffsetY = (viewportHeight - totalGridHeight) / 2;
+    // Calculate how many columns fit (same logic as CSS Grid auto-fill)
+    // CSS Grid: repeat(auto-fill, minmax(225px, 1fr))
+    // Columns = floor((viewportWidth + gap) / (minTileSize + gap))
+    const numColumns = Math.max(1, Math.floor((viewportWidth + gap) / (minTileSize + gap)));
 
-    const maxCols = Math.floor(totalGridWidth / cellSize);
-    const maxRows = Math.floor(totalGridHeight / cellSize);
-    const totalCells = maxCols * maxRows;
+    // Calculate actual stretched tile width (fills remaining space evenly)
+    // totalGaps = (numColumns - 1) * gap
+    // tileWidth = (viewportWidth - totalGaps) / numColumns
+    const totalGaps = (numColumns - 1) * gap;
+    const tileWidth = (viewportWidth - totalGaps) / numColumns;
 
-    // Generate 24 unique random positions
-    const usedPositions = new Set();
-    const positions = [];
-    const numAlbums = Math.min(24, totalCells);
+    // Row height matches tile width (square tiles)
+    const tileHeight = tileWidth;
+    const rowHeight = tileHeight + gap;
 
-    // Shuffle all possible grid positions
+    // Calculate how many rows fit
+    const numRows = Math.max(1, Math.floor(viewportHeight / rowHeight));
+
+    // Build all possible grid positions
     const allPositions = [];
-    for (let row = 0; row < maxRows; row++) {
-      for (let col = 0; col < maxCols; col++) {
+    for (let row = 0; row < numRows; row++) {
+      for (let col = 0; col < numColumns; col++) {
         allPositions.push({ col, row });
       }
     }
+
     // Fisher-Yates shuffle
     for (let i = allPositions.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
     }
 
-    // Take first 24 positions with staggered fade-in delays
-    for (let i = 0; i < numAlbums && i < allPositions.length; i++) {
+    // Only take 4 positions - staggered appearance
+    const positions = [];
+    const numAlbums = Math.min(4, allPositions.length);
+
+    for (let i = 0; i < numAlbums; i++) {
       const { col, row } = allPositions[i];
       positions.push({
-        x: gridOffsetX + col * cellSize,
-        y: gridOffsetY + row * cellSize,
-        delay: i * 0.08, // Staggered fade-in (80ms apart)
+        x: col * (tileWidth + gap),
+        y: row * (tileHeight + gap),
+        tileSize: tileWidth, // Pass calculated tile size
+        delay: i * 2.5, // Staggered start - 2.5s apart
+        duration: 10, // 10 second cycle each
       });
     }
 
@@ -680,10 +698,10 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     );
   }
 
-  // Loading state: 24 albums fade in at random grid positions
+  // Loading state: 4 albums fade in at random grid positions (chill vibes)
   if (isLoading && albums.length === 0) {
-    // Use first 24 albums for loading display
-    const displayAlbums = loadingAlbums.slice(0, 24);
+    // Use first 4 albums for loading display - max 4 visible at a time
+    const displayAlbums = loadingAlbums.slice(0, 4);
 
     return (
       <DesktopContainer>
@@ -691,18 +709,19 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Albums fade in at random grid positions */}
+          {/* Albums fade in and out at random grid positions - slow and chill */}
           {displayAlbums.map((album, index) => {
             const pos = loadingPositions[index];
             if (!pos) return null;
             return (
               <GlitchAlbum
                 key={album.id}
-                $delay={pos.delay}
-                $fadeIn
                 style={{
                   left: pos.x,
                   top: pos.y,
+                  '--tile-size': `${pos.tileSize}px`,
+                  '--delay': `${pos.delay}s`,
+                  '--duration': `${pos.duration}s`,
                 }}
               >
                 <img src={album.image} alt="" />
@@ -739,7 +758,10 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
               <span className="prompt">&gt;</span> This is probably our fault.
             </p>
             <p>
-              <span className="prompt">&gt;</span> Please try again. We apologize for the inconvenience.
+              <span className="prompt">&gt;</span> Enjoy the games, or contact:
+            </p>
+            <p>
+              <span className="prompt">&gt;</span> <a href="https://github.com/khglynn/recordOS" target="_blank" rel="noopener noreferrer">github</a> · <a href="mailto:hello@kevinhg.com">email</a> · <a href="https://kevinhg.com" target="_blank" rel="noopener noreferrer">web</a>
             </p>
           </EmptyLibraryMessage>
         </DesktopContainer>
@@ -780,8 +802,10 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
             key={album.id}
             onClick={() => onAlbumClick(album)}
             className={!loadedImages.has(album.id) ? 'loading' : ''}
-            $delay={getAnimationDelay(album)}
-            style={seenAlbums.has(album.id) ? { animation: 'none' } : {}}
+            style={seenAlbums.has(album.id)
+              ? { animation: 'none' }
+              : { '--reveal-delay': `${getAnimationDelay(album)}ms` }
+            }
           >
             <img
               src={album.image}

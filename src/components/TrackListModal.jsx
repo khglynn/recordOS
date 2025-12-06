@@ -57,14 +57,14 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: full screen */
+  /* Mobile: vertically centered, hug content, max fills viewport */
   ${props => props.$isMobile && `
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: calc(100vh - 44px) !important;
-    max-height: calc(100vh - 44px) !important;
-    left: 0 !important;
-    top: 0 !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 44px - 16px) !important;
+    left: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%);
     border-radius: 0;
   `}
 `;

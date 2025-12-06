@@ -51,13 +51,13 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: full screen */
+  /* Mobile: float to bottom, hug content */
   ${props => props.$isMobile && `
     width: 100vw !important;
     max-width: 100vw !important;
-    height: calc(100vh - 44px) !important;
     left: 0 !important;
-    top: 0 !important;
+    bottom: 44px !important;
+    top: auto !important;
     border-radius: 0;
     display: flex;
     flex-direction: column;
@@ -293,6 +293,56 @@ const VolumeSlider = styled.input`
   }
 `;
 
+/* Playback Error Banner - Weyland-Yutani aesthetic */
+const ErrorBanner = styled.div`
+  background: linear-gradient(180deg, #1a0a0a 0%, #0d0505 100%);
+  border: 1px solid rgba(255, 65, 65, 0.3);
+  border-left: 3px solid #ff4141;
+  padding: 12px;
+  margin: 8px;
+  font-size: 10px;
+  font-family: 'Consolas', monospace;
+`;
+
+const ErrorCode = styled.div`
+  color: rgba(255, 65, 65, 0.9);
+  font-weight: bold;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+`;
+
+const ErrorMessage = styled.div`
+  color: rgba(255, 200, 200, 0.7);
+  margin-bottom: 8px;
+  line-height: 1.4;
+`;
+
+const FallbackButton = styled(Button)`
+  background: linear-gradient(180deg, #2a1a1a 0%, #1a0a0a 100%) !important;
+  color: #00ff41 !important;
+  border-color: rgba(0, 255, 65, 0.4) !important;
+  font-size: 10px;
+  padding: 6px 12px;
+  font-family: 'Consolas', monospace;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    background: linear-gradient(180deg, #3a2a2a 0%, #2a1a1a 100%) !important;
+    border-color: #00ff41 !important;
+  }
+`;
+
+const DismissLink = styled.span`
+  color: rgba(255, 200, 200, 0.5);
+  font-size: 9px;
+  cursor: pointer;
+  margin-left: 12px;
+
+  &:hover {
+    color: rgba(255, 200, 200, 0.8);
+  }
+`;
+
 
 // ============================================================================
 // HELPERS
@@ -319,6 +369,7 @@ function MediaPlayer({
   duration,
   volume,
   isMuted,
+  playbackError,
   onClose,
   onMinimize,
   onFocus,
@@ -330,6 +381,8 @@ function MediaPlayer({
   onVolumeChange,
   onMuteToggle,
   onOpenVisualizer,
+  onEnableDemoMode,
+  onDismissError,
   windowPosition,
   onDragStart,
   isMobile,
@@ -399,6 +452,24 @@ function MediaPlayer({
           </TrackInfo>
         </NowPlayingArea>
 
+        {/* Playback Error Banner */}
+        {playbackError && (
+          <ErrorBanner>
+            <ErrorCode>⚠ {playbackError.code || 'PLAYBACK_FAILURE'}</ErrorCode>
+            <ErrorMessage>
+              {playbackError.message || 'External audio subsystem unavailable.'}
+              <br />
+              Local audio protocol standing by.
+            </ErrorMessage>
+            <FallbackButton onClick={onEnableDemoMode}>
+              INITIATE OFFLINE MODE
+            </FallbackButton>
+            <DismissLink onClick={onDismissError}>
+              [DISMISS]
+            </DismissLink>
+          </ErrorBanner>
+        )}
+
         <TransportArea>
           {/* Progress bar */}
           <ProgressRow>
@@ -425,7 +496,7 @@ function MediaPlayer({
                 <PixelIcon name="next" size={14} />
               </TransportButton>
               {/* Visualizer button */}
-              <TransportButton onClick={onOpenVisualizer} title="Visualizations">
+              <TransportButton onClick={onOpenVisualizer} title="WMP[ish] Visualizations">
                 <PixelIcon name="sparkles" size={14} />
               </TransportButton>
             </TransportButtons>

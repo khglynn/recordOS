@@ -11,7 +11,7 @@
  * - Snake: cribbles/snake (MIT) - dark/green themed
  */
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   Window,
@@ -72,13 +72,21 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: full screen */
-  ${props => props.$isMobile && `
+  /* Mobile: Solitaire = full viewport, others = centered */
+  ${props => props.$isMobile && props.$isSolitaire && `
     width: 100vw !important;
     height: calc(100vh - 44px) !important;
     left: 0 !important;
     top: 0 !important;
     border-radius: 0;
+  `}
+
+  ${props => props.$isMobile && !props.$isSolitaire && `
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
+    max-height: calc(100vh - 44px - 16px) !important;
   `}
 `;
 
@@ -132,7 +140,16 @@ const StyledWindowContent = styled(WindowContent)`
 const GameFrame = styled.iframe`
   border: none;
   background: #0a0a0a;
-  transform-origin: top left;
+  transform-origin: top center;
+`;
+
+const MobileGameContainer = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  padding-top: 8px;
 `;
 
 // ============================================================================
@@ -152,6 +169,28 @@ function GameWindow({
 }) {
   const headerRef = useRef(null);
   const config = GAME_CONFIG[gameType];
+  const [mobileScale, setMobileScale] = useState(1);
+
+  // Calculate scale for mobile to fit game within viewport
+  useEffect(() => {
+    if (!isMobile || !config) return;
+
+    const calculateScale = () => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight - 44 - 30 - 20; // -44 taskbar, -30 header, -20 padding
+
+      const scaleX = (viewportWidth - 20) / config.width; // 20px total horizontal padding
+      const scaleY = viewportHeight / config.height;
+
+      // Use the smaller scale to fit both dimensions
+      const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+      setMobileScale(scale);
+    };
+
+    calculateScale();
+    window.addEventListener('resize', calculateScale);
+    return () => window.removeEventListener('resize', calculateScale);
+  }, [isMobile, config]);
 
   if (!config) return null;
 
@@ -179,6 +218,7 @@ function GameWindow({
       data-window
       $zIndex={zIndex}
       $isMobile={isMobile}
+      $isSolitaire={gameType === 'solitaire'}
       style={windowStyle}
       onMouseDown={handleMouseDown}
     >
@@ -198,21 +238,28 @@ function GameWindow({
       </StyledWindowHeader>
 
       <StyledWindowContent style={contentStyle}>
-        <GameFrame
-          src={config.url}
-          title={config.title}
-          style={isMobile ? {
-            width: '100%',
-            height: '100%',
-          } : config.scale ? {
-            width: config.innerWidth,
-            height: config.innerHeight,
-            transform: `scale(${config.scale})`,
-          } : {
-            width: '100%',
-            height: '100%',
-          }}
-        />
+        {isMobile ? (
+          <MobileGameContainer>
+            <GameFrame
+              src={config.url}
+              title={config.title}
+              style={{
+                width: config.width,
+                height: config.height,
+                transform: `scale(${mobileScale})`,
+              }}
+            />
+          </MobileGameContainer>
+        ) : (
+          <GameFrame
+            src={config.url}
+            title={config.title}
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        )}
       </StyledWindowContent>
     </StyledWindow>
   );

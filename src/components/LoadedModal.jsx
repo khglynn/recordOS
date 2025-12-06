@@ -125,10 +125,6 @@ const StatBox = styled.div`
   border: 1px solid #2a2a2a;
   padding: 12px;
   text-align: center;
-
-  &:hover {
-    border-color: rgba(0, 255, 65, 0.3);
-  }
 `;
 
 const StatValue = styled.div`
@@ -274,11 +270,8 @@ function LoadedModal({
           <ButtonGroup>
             <ActionButton onClick={onExplore}>
               <PixelIcon name="monitor" size={12} style={{ marginRight: '6px' }} />
-              Clear & Explore
+              Minimize & Explore
             </ActionButton>
-            <SecondaryButton onClick={onKeepWindows}>
-              Keep Windows
-            </SecondaryButton>
           </ButtonGroup>
 
           <SystemNote>

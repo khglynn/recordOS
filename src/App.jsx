@@ -80,7 +80,12 @@ function App() {
 
   // Use Spotify when logged in, local audio otherwise
   const isLoggedIn = spotify.loggedIn;
-  const audio = isLoggedIn ? spotify : localAudio;
+
+  // Allow user to force demo mode if Spotify playback fails
+  const [demoModeForced, setDemoModeForced] = useState(false);
+
+  // Use Spotify when logged in and demo mode not forced, local audio otherwise
+  const audio = (isLoggedIn && !demoModeForced) ? spotify : localAudio;
 
   // -------------------------------------------------------------------------
   // WINDOW STATE
@@ -273,11 +278,18 @@ function App() {
       // Focus existing window
       setActiveWindowId(existingWindow.id);
       if (isMobile) {
-        // Mobile: close all other windows, show only this one
-        setWindows(prev => prev.filter(w => w.id === existingWindow.id).map(w => ({
-          ...w,
-          minimized: false,
-        })));
+        // Mobile: keep media player + the focused window
+        setWindows(prev => {
+          const mediaPlayer = prev.find(w => w.type === 'mediaPlayer');
+          if (existingWindow.type === 'mediaPlayer') {
+            // Focusing media player - keep any non-player window too
+            const nonPlayer = prev.find(w => w.type !== 'mediaPlayer');
+            return nonPlayer ? [existingWindow, nonPlayer] : [existingWindow];
+          } else {
+            // Focusing non-player - keep media player if it exists
+            return mediaPlayer ? [mediaPlayer, { ...existingWindow, minimized: false }] : [{ ...existingWindow, minimized: false }];
+          }
+        });
       } else {
         setWindows(prev => prev.map(w => ({
           ...w,
@@ -308,7 +320,7 @@ function App() {
         title = 'Snake';
         break;
       case 'trippyGraphics':
-        title = 'Visualizations';
+        title = 'WMP[ish] Visualizations';
         break;
       case 'info':
         title = 'About Record OS';
@@ -326,9 +338,21 @@ function App() {
       minimized: false,
     };
 
-    // Mobile: single-window mode - replace all windows
+    // Mobile: allow Media Player + one other window
     if (isMobile) {
-      setWindows([newWindow]);
+      if (type === 'mediaPlayer') {
+        // Opening media player - keep any existing non-player window on top
+        setWindows(prev => {
+          const nonPlayerWindow = prev.find(w => w.type !== 'mediaPlayer');
+          return nonPlayerWindow ? [newWindow, nonPlayerWindow] : [newWindow];
+        });
+      } else {
+        // Opening non-player window - keep media player if open, replace other windows
+        setWindows(prev => {
+          const mediaPlayer = prev.find(w => w.type === 'mediaPlayer');
+          return mediaPlayer ? [mediaPlayer, newWindow] : [newWindow];
+        });
+      }
     } else {
       setWindows(prev => [...prev, newWindow]);
     }
@@ -468,10 +492,12 @@ function App() {
   // EVENT HANDLERS
   // -------------------------------------------------------------------------
 
-  const handleAlbumClick = useCallback((album) => {
-    setSelectedAlbum(album);
-    openWindow('trackList', album);
-  }, [openWindow]);
+  const handleAlbumClick = useCallback(async (album) => {
+    // Fetch full album tracks with liked status
+    const fullAlbum = await spotify.getFullAlbumTracks(album);
+    setSelectedAlbum(fullAlbum || album);
+    openWindow('trackList', fullAlbum || album);
+  }, [openWindow, spotify]);
 
   const handleOpenMediaPlayer = useCallback(() => {
     openWindow('mediaPlayer');
@@ -509,6 +535,20 @@ function App() {
     setLoginModalOpen(true);
     setWindows([]);
     setSelectedAlbum(null);
+    setDemoModeForced(false);
+  }, [spotify]);
+
+  // Enable demo mode fallback when Spotify playback fails
+  const handleEnableDemoMode = useCallback(() => {
+    setDemoModeForced(true);
+    spotify.clearPlaybackError?.();
+    // Start playing local audio demo tracks
+    localAudio.play?.();
+  }, [spotify, localAudio]);
+
+  // Dismiss playback error without switching to demo mode
+  const handleDismissPlaybackError = useCallback(() => {
+    spotify.clearPlaybackError?.();
   }, [spotify]);
 
   const handleStartClick = useCallback(() => {
@@ -681,6 +721,7 @@ function App() {
                 duration={audio.duration}
                 volume={audio.volume}
                 isMuted={audio.isMuted}
+                playbackError={!demoModeForced ? spotify.playbackError : null}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -689,6 +730,8 @@ function App() {
                 onVolumeChange={audio.setVolume}
                 onMuteToggle={audio.toggleMute}
                 onOpenVisualizer={handleOpenTrippyGraphics}
+                onEnableDemoMode={handleEnableDemoMode}
+                onDismissError={handleDismissPlaybackError}
               />
             );
 
