@@ -33,7 +33,16 @@
       "Bash(curl:*)",
       "Bash(pkill:*)",
       "Bash(npm run dev:*)",
-      "WebFetch(domain:jlogical-apps.github.io)"
+      "WebFetch(domain:jlogical-apps.github.io)",
+      "WebFetch(domain:cards.jlogical.com)",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:georgeblackwell.itch.io)",
+      "Bash(ls:*)",
+      "Bash(npm init -y)",
+      "Bash(npm install:*)",
+      "Bash(/usr/local/opt/node@20/bin/npm --version)"
     ],
     "deny": [],
     "ask": []

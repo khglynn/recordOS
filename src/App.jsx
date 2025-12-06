@@ -625,6 +625,7 @@ function App() {
         loadingAlbums={spotify.loadingAlbums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
         isLoading={spotify.isLoading}
+        isInitializing={spotify.isInitializing}
         onAlbumClick={handleAlbumClick}
         onOpenGame={handleOpenGame}
       />
@@ -729,6 +730,8 @@ function App() {
                 onToggleScanlines={() => setScanlinesEnabled(prev => !prev)}
                 albumCount={displayAlbumCount}
                 onAlbumCountChange={setDisplayAlbumCount}
+                isLoggedIn={isLoggedIn}
+                onRescanLibrary={handleRescanLibrary}
               />
             );
 
@@ -784,7 +787,6 @@ function App() {
         onOpenInfo={handleOpenInfo}
         onOpenSettings={handleOpenSettings}
         onOpenLogin={handleOpenLogin}
-        onRescanLibrary={handleRescanLibrary}
       />
     </ThemeProvider>
   );

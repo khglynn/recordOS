@@ -203,9 +203,9 @@ function TrippyGraphics({
       <StyledWindowContent>
         <VisualizerIframe
           ref={iframeRef}
-          src="/visualizer/"
+          src="/visualizer/index.html"
           title="Butterchurn Visualizer"
-          allow="microphone"
+          allow="microphone *; autoplay *"
         />
 
         {/* Control bar */}

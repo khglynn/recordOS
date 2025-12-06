@@ -233,7 +233,6 @@ function Taskbar({
   onOpenInfo,
   onOpenSettings,
   onOpenLogin,
-  onRescanLibrary,
 }) {
   const startButtonRef = useRef(null);
 
@@ -343,7 +342,6 @@ function Taskbar({
           onOpenInfo={onOpenInfo}
           onOpenSettings={onOpenSettings}
           onOpenLogin={onOpenLogin}
-          onRescanLibrary={onRescanLibrary}
           onClose={onStartClick}
         />
       )}

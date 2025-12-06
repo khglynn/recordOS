@@ -225,8 +225,9 @@
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioContext.createMediaStreamSource(stream);
 
-        // Create visualizer
-        visualizer = butterchurn.default.createVisualizer(audioContext, canvas, {
+        // Create visualizer (handle both default export and direct export)
+        const createVis = butterchurn.default?.createVisualizer || butterchurn.createVisualizer;
+        visualizer = createVis(audioContext, canvas, {
           width: canvas.width,
           height: canvas.height,
           pixelRatio: window.devicePixelRatio || 1,
@@ -235,8 +236,9 @@
         // Connect audio
         visualizer.connectAudio(source);
 
-        // Load presets
-        presets = butterchurnPresets.default.getPresets();
+        // Load presets (handle both default export and direct export)
+        const getPresets = butterchurnPresets.default?.getPresets || butterchurnPresets.getPresets;
+        presets = getPresets();
         presetNames = Object.keys(presets);
 
         // Find a good preset to start with

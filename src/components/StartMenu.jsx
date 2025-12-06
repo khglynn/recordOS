@@ -3,14 +3,9 @@
  * START MENU COMPONENT
  * ============================================================================
  *
- * Windows 95-style Start Menu with options:
- * - Decade filter (Top 48 from each decade)
- * - Media Player
- * - Games (submenu: Minesweeper, Snake)
- * - Info (contact info)
- * - Log Out (only when logged in)
- *
- * Opens above the taskbar Start button.
+ * Windows 95-style Start Menu.
+ * - Desktop: hover flyout submenus (classic Win95 behavior)
+ * - Mobile: click-to-expand inline submenus (touch-friendly)
  */
 
 import { useState } from 'react';
@@ -29,11 +24,10 @@ import { useMobile } from '../hooks/useMobile';
 
 const MenuContainer = styled.div`
   position: fixed;
-  bottom: 50px; /* Updated for taller taskbar */
+  bottom: 50px;
   left: 4px;
   z-index: 10000;
 
-  /* Animation */
   animation: slideUp 0.15s ease-out;
 
   @keyframes slideUp {
@@ -49,7 +43,6 @@ const MenuContainer = styled.div`
 `;
 
 const StyledMenuList = styled(MenuList)`
-  /* Override React95 colors */
   background: #1a1a1a !important;
   border: 2px solid #3a3a3a !important;
   border-right-color: #0a0a0a !important;
@@ -77,6 +70,7 @@ const StyledMenuItem = styled(MenuListItem)`
   text-overflow: ellipsis;
   line-height: 1.3;
   min-height: 0;
+  cursor: pointer;
 
   &:hover {
     background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
@@ -84,7 +78,7 @@ const StyledMenuItem = styled(MenuListItem)`
     text-shadow: 0 0 5px rgba(0, 255, 65, 0.4);
   }
 
-  /* Arrow for submenus */
+  /* Arrow for submenus (desktop) */
   &[data-submenu]::after {
     content: '>';
     position: absolute;
@@ -93,15 +87,25 @@ const StyledMenuItem = styled(MenuListItem)`
     font-family: 'Consolas', 'Courier New', monospace;
   }
 
+  /* Expandable indicator (mobile) */
+  &[data-expandable]::after {
+    content: '${props => props.$expanded ? '−' : '+'}';
+    position: absolute;
+    right: 8px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-weight: bold;
+  }
+
   /* Checkmark for selected items */
   &[data-checked="true"] .menu-icon {
     display: none;
   }
   &[data-checked="true"]::before {
-    content: '[*]';
+    content: '▸';
     font-size: 9px;
-    font-family: 'Consolas', 'Courier New', monospace;
     width: 14px;
+    color: #00ff41;
   }
 `;
 
@@ -120,17 +124,73 @@ const StyledSeparator = styled(Separator)`
   height: 1px;
 `;
 
+// Desktop flyout submenu wrapper
 const SubmenuWrapper = styled.div`
   position: relative;
 `;
 
+// Desktop flyout submenu
 const Submenu = styled.div`
   position: absolute;
   left: 100%;
   top: -6px;
   margin-left: -2px;
   z-index: 10001;
-  padding-left: 4px; /* Gap for mouse travel */
+  padding-left: 4px;
+`;
+
+// Mobile inline submenu item
+const InlineSubmenuItem = styled(StyledMenuItem)`
+  padding-left: 28px;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.85) !important;
+
+  &:hover {
+    color: #00ff41 !important;
+  }
+
+  &::after {
+    content: none !important;
+  }
+`;
+
+// Mobile decade row with arrow navigation
+const DecadeRow = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  gap: 4px;
+`;
+
+const DecadeArrow = styled.button`
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #00ff41;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+
+  &:hover {
+    background: #0a2a0a;
+    border-color: #00ff41;
+  }
+
+  &:active {
+    background: #0d3d0d;
+  }
+`;
+
+const DecadeLabel = styled.span`
+  flex: 1;
+  text-align: center;
+  color: #00ff41;
+  font-size: 11px;
+  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 // ============================================================================
@@ -148,39 +208,135 @@ function StartMenu({
   onOpenInfo,
   onOpenSettings,
   onOpenLogin,
-  onRescanLibrary,
   onClose,
 }) {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
+  const [expandedSection, setExpandedSection] = useState(null);
   const isMobile = useMobile();
+
+  // Decade cycling for mobile arrow navigation
+  const DECADES = ['all', '2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
+
+  const cycleDecade = (direction) => {
+    const currentIndex = DECADES.indexOf(decade) || 0;
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % DECADES.length;
+    } else {
+      newIndex = (currentIndex - 1 + DECADES.length) % DECADES.length;
+    }
+    onDecadeChange(DECADES[newIndex]);
+  };
 
   const handleMenuItemClick = (action) => {
     action();
     onClose();
   };
 
+  const toggleSection = (section) => {
+    setExpandedSection(prev => prev === section ? null : section);
+  };
+
+  // -------------------------------------------------------------------------
+  // MOBILE MENU (click-to-expand)
+  // -------------------------------------------------------------------------
+  if (isMobile) {
+    return (
+      <MenuContainer data-start-menu onClick={(e) => e.stopPropagation()}>
+        <StyledMenuList>
+          {/* Media Player */}
+          <StyledMenuItem onClick={() => handleMenuItemClick(onOpenMediaPlayer)}>
+            <MenuIcon><PixelIcon name="music" size={14} /></MenuIcon>
+            Media Player
+          </StyledMenuItem>
+
+          {/* Games - Expandable */}
+          <StyledMenuItem
+            data-expandable
+            $expanded={expandedSection === 'games'}
+            onClick={() => toggleSection('games')}
+          >
+            <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
+            Games
+          </StyledMenuItem>
+          {expandedSection === 'games' && (
+            <>
+              <InlineSubmenuItem onClick={() => handleMenuItemClick(() => onOpenGame('minesweeper'))}>
+                Minesweeper
+              </InlineSubmenuItem>
+              <InlineSubmenuItem onClick={() => handleMenuItemClick(() => onOpenGame('snake'))}>
+                Snake
+              </InlineSubmenuItem>
+              <InlineSubmenuItem onClick={() => handleMenuItemClick(() => onOpenGame('solitaire'))}>
+                Solitaire
+              </InlineSubmenuItem>
+            </>
+          )}
+
+          <StyledSeparator />
+
+          {/* Decade Filter with arrow navigation - Only when logged in */}
+          {isLoggedIn && (
+            <>
+              <DecadeRow>
+                <DecadeArrow onClick={() => cycleDecade('prev')}>◀</DecadeArrow>
+                <DecadeLabel>{DECADE_LABELS[decade] || 'All Decades'}</DecadeLabel>
+                <DecadeArrow onClick={() => cycleDecade('next')}>▶</DecadeArrow>
+              </DecadeRow>
+              <StyledSeparator />
+            </>
+          )}
+
+          {/* Info */}
+          <StyledMenuItem onClick={() => handleMenuItemClick(onOpenInfo)}>
+            <MenuIcon><PixelIcon name="info" size={14} /></MenuIcon>
+            Info
+          </StyledMenuItem>
+
+          {/* Settings */}
+          <StyledMenuItem onClick={() => handleMenuItemClick(onOpenSettings)}>
+            <MenuIcon><PixelIcon name="sliders" size={14} /></MenuIcon>
+            Settings
+          </StyledMenuItem>
+
+          <StyledSeparator />
+
+          {/* Connect / Log Out */}
+          {isLoggedIn ? (
+            <StyledMenuItem onClick={() => handleMenuItemClick(onLogout)}>
+              <MenuIcon><PixelIcon name="logout" size={14} /></MenuIcon>
+              Log Out
+            </StyledMenuItem>
+          ) : (
+            <StyledMenuItem onClick={() => handleMenuItemClick(onOpenLogin)}>
+              <MenuIcon><PixelIcon name="login" size={14} /></MenuIcon>
+              Connect
+            </StyledMenuItem>
+          )}
+        </StyledMenuList>
+      </MenuContainer>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // DESKTOP MENU (hover flyouts)
+  // -------------------------------------------------------------------------
   return (
     <MenuContainer data-start-menu onClick={(e) => e.stopPropagation()}>
       <StyledMenuList>
-        {/* Media Player - Always available */}
-        <StyledMenuItem
-          onClick={() => handleMenuItemClick(onOpenMediaPlayer)}
-        >
+        {/* Media Player */}
+        <StyledMenuItem onClick={() => handleMenuItemClick(onOpenMediaPlayer)}>
           <MenuIcon><PixelIcon name="music" size={14} /></MenuIcon>
           Media Player
         </StyledMenuItem>
 
-        {/* Trippy Graphics - Hide on mobile (WebGL too heavy) */}
-        {!isMobile && (
-          <StyledMenuItem
-            onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}
-          >
-            <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
-            Trippy Graphics
-          </StyledMenuItem>
-        )}
+        {/* Trippy Graphics */}
+        <StyledMenuItem onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}>
+          <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
+          Trippy Graphics
+        </StyledMenuItem>
 
-        {/* Games Submenu - Always available */}
+        {/* Games Submenu - Hover flyout */}
         <SubmenuWrapper
           onMouseEnter={() => setActiveSubmenu('games')}
           onMouseLeave={() => setActiveSubmenu(null)}
@@ -192,17 +348,17 @@ function StartMenu({
           {activeSubmenu === 'games' && (
             <Submenu>
               <StyledMenuList>
-                <StyledMenuItem
-                  onClick={() => handleMenuItemClick(() => onOpenGame('minesweeper'))}
-                >
+                <StyledMenuItem onClick={() => handleMenuItemClick(() => onOpenGame('minesweeper'))}>
                   <MenuIcon><PixelIcon name="zap" size={14} /></MenuIcon>
                   Minesweeper
                 </StyledMenuItem>
-                <StyledMenuItem
-                  onClick={() => handleMenuItemClick(() => onOpenGame('snake'))}
-                >
+                <StyledMenuItem onClick={() => handleMenuItemClick(() => onOpenGame('snake'))}>
                   <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
                   Snake
+                </StyledMenuItem>
+                <StyledMenuItem onClick={() => handleMenuItemClick(() => onOpenGame('solitaire'))}>
+                  <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
+                  Solitaire
                 </StyledMenuItem>
               </StyledMenuList>
             </Submenu>
@@ -239,31 +395,18 @@ function StartMenu({
                 </Submenu>
               )}
             </SubmenuWrapper>
-
-            {/* Rescan Library */}
-            <StyledMenuItem
-              onClick={() => handleMenuItemClick(onRescanLibrary)}
-            >
-              <MenuIcon><PixelIcon name="sync" size={14} /></MenuIcon>
-              Rescan Library
-            </StyledMenuItem>
-
             <StyledSeparator />
           </>
         )}
 
         {/* Info */}
-        <StyledMenuItem
-          onClick={() => handleMenuItemClick(onOpenInfo)}
-        >
+        <StyledMenuItem onClick={() => handleMenuItemClick(onOpenInfo)}>
           <MenuIcon><PixelIcon name="info" size={14} /></MenuIcon>
           Info
         </StyledMenuItem>
 
         {/* Settings */}
-        <StyledMenuItem
-          onClick={() => handleMenuItemClick(onOpenSettings)}
-        >
+        <StyledMenuItem onClick={() => handleMenuItemClick(onOpenSettings)}>
           <MenuIcon><PixelIcon name="sliders" size={14} /></MenuIcon>
           Settings
         </StyledMenuItem>
@@ -272,16 +415,12 @@ function StartMenu({
 
         {/* Connect / Log Out */}
         {isLoggedIn ? (
-          <StyledMenuItem
-            onClick={() => handleMenuItemClick(onLogout)}
-          >
+          <StyledMenuItem onClick={() => handleMenuItemClick(onLogout)}>
             <MenuIcon><PixelIcon name="logout" size={14} /></MenuIcon>
             Log Out
           </StyledMenuItem>
         ) : (
-          <StyledMenuItem
-            onClick={() => handleMenuItemClick(onOpenLogin)}
-          >
+          <StyledMenuItem onClick={() => handleMenuItemClick(onOpenLogin)}>
             <MenuIcon><PixelIcon name="login" size={14} /></MenuIcon>
             Connect
           </StyledMenuItem>

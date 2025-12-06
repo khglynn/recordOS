@@ -3,13 +3,14 @@
  * USE MOBILE HOOK
  * ============================================================================
  *
- * Detects mobile viewport (< 768px) for responsive behavior.
- * Returns boolean indicating if we're on a mobile device.
+ * Detects mobile viewport for responsive behavior.
+ * Breakpoint set to 480px (menu ~180px + flyout ~180px + margin).
+ * This keeps flyout menus working on tablets, only switching on phones.
  */
 
 import { useState, useEffect } from 'react';
 
-const MOBILE_BREAKPOINT = 768;
+const MOBILE_BREAKPOINT = 480;
 
 export function useMobile() {
   const [isMobile, setIsMobile] = useState(() => {

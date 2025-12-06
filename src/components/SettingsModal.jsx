@@ -221,6 +221,8 @@ function SettingsModal({
   albumCount,
   onAlbumCountChange,
   isMobile,
+  isLoggedIn,
+  onRescanLibrary,
 }) {
   const headerRef = useRef(null);
 
@@ -295,6 +297,19 @@ function SettingsModal({
             </SliderLabels>
           </SliderContainer>
         </StyledFieldset>
+
+        {/* Library section - only when logged in */}
+        {isLoggedIn && (
+          <StyledFieldset label="LIBRARY">
+            <SettingRow>
+              <SettingLabel>Refresh from Spotify</SettingLabel>
+              <ToggleButton onClick={onRescanLibrary}>
+                <PixelIcon name="sync" size={12} />
+                RESCAN
+              </ToggleButton>
+            </SettingRow>
+          </StyledFieldset>
+        )}
       </StyledWindowContent>
     </StyledWindow>
   );

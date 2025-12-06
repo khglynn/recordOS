@@ -36,12 +36,9 @@ const GAME_CONFIG = {
   solitaire: {
     title: 'Solitaire',
     iconName: 'gamepad',
-    url: '/games/solitaire/index.html',
-    width: 580,
-    height: 480,
-    scale: 0.6,
-    innerWidth: 960,
-    innerHeight: 750,
+    url: 'https://retro-solitare-4recordos.vercel.app',
+    width: 700,
+    height: 520,
   },
   snake: {
     title: 'Snake',

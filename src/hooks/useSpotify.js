@@ -58,6 +58,7 @@ export function useSpotify() {
   // Library state
   const [albums, setAlbums] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // True until first cache check completes
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
   const [loadingAlbums, setLoadingAlbums] = useState([]); // Album art discovered during loading
 
@@ -172,12 +173,16 @@ export function useSpotify() {
         if (age < ALBUMS_CACHE_DURATION) {
           console.log('Loading albums from cache (age:', Math.round(age / 60000), 'min)');
           setAlbums(JSON.parse(cachedAlbums));
+          setIsInitializing(false); // Cache loaded successfully
           return;
         }
       }
     } else {
       console.log('Force refresh requested - bypassing cache');
     }
+
+    // No valid cache - mark as done initializing (but about to start loading)
+    setIsInitializing(false);
 
     setIsLoading(true);
     setLoadingProgress({ loaded: 0, total: 0 });
@@ -545,6 +550,7 @@ export function useSpotify() {
     albums: displayAlbums,
     allAlbumsCount: albums.length,
     isLoading,
+    isInitializing,
     loadingProgress,
     loadingAlbums,
     refreshLibrary: fetchLibrary,

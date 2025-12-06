@@ -152,6 +152,7 @@ const AlbumGrid = styled.div`
    * On a 1200px screen: 5 columns at 240px each
    * On a 800px screen: 3 columns at 266px each
    * On a 450px screen: 2 columns at 225px each
+   * On mobile: 140px min ensures 2 columns on 320px screens
    */
   grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
   gap: ${GRID_GAP}px;
@@ -163,6 +164,11 @@ const AlbumGrid = styled.div`
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+
+  /* Mobile: smaller tiles to ensure minimum 2 columns */
+  @media (max-width: 767px) {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 `;
 
@@ -382,6 +388,11 @@ const AlbumTitle = styled.div`
   text-overflow: ellipsis;
   text-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
   margin-bottom: 2px;
+
+  /* Mobile: larger text for readability */
+  @media (max-width: 767px) {
+    font-size: 13px;
+  }
 `;
 
 const AlbumArtist = styled.div`
@@ -390,27 +401,39 @@ const AlbumArtist = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  /* Mobile: larger text for readability */
+  @media (max-width: 767px) {
+    font-size: 12px;
+  }
 `;
 
 const AlbumStats = styled.div`
   font-size: 9px;
   color: rgba(0, 255, 65, 0.5);
   margin-top: 2px;
+
+  /* Mobile: larger text for readability */
+  @media (max-width: 767px) {
+    font-size: 11px;
+  }
 `;
 
 // ============================================================================
 // LOADING STATE - Glitchy grid with scanning albums
 // ============================================================================
 
-const glitchFlicker = keyframes`
+/**
+ * Slow pulse animation - mostly invisible, gentle fade in/out
+ * Album is visible only ~15% of the cycle for sparse, calm effect
+ */
+const slowPulse = keyframes`
   0% { opacity: 0; transform: scale(0.98); }
-  8% { opacity: 0; }
-  10% { opacity: 1; transform: scale(1); }
-  85% { opacity: 1; transform: scale(1); }
-  88% { opacity: 0.7; }
-  92% { opacity: 0.9; }
-  95% { opacity: 0; transform: scale(0.98); }
-  100% { opacity: 0; }
+  40% { opacity: 0; transform: scale(0.98); }
+  45% { opacity: 0.9; transform: scale(1); }
+  55% { opacity: 0.9; transform: scale(1); }
+  60% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 0; transform: scale(0.98); }
 `;
 
 /**
@@ -470,7 +493,7 @@ const GlitchAlbum = styled.div`
   width: ${GRID_ALBUM_MIN_SIZE}px;
   height: ${GRID_ALBUM_MIN_SIZE}px;
   overflow: hidden;
-  animation: ${glitchFlicker} ${props => props.$duration || 8}s ease-in-out infinite;
+  animation: ${slowPulse} ${props => props.$duration || 12}s ease-in-out infinite;
   animation-delay: ${props => props.$delay || 0}s;
 
   img {
@@ -561,36 +584,23 @@ const EmptyLibraryMessage = styled.div`
 // COMPONENT
 // ============================================================================
 
-function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumClick, onOpenGame }) {
+function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitializing, onAlbumClick, onOpenGame }) {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [seenAlbums, setSeenAlbums] = useState(new Set());
-  const [shuffleKey, setShuffleKey] = useState(0); // Forces position recalculation
   const containerRef = useRef(null);
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // Shuffle album positions periodically during loading
-  useEffect(() => {
-    if (!isLoading || albums.length > 0) return;
-
-    const shuffleInterval = setInterval(() => {
-      setShuffleKey(k => k + 1);
-    }, 4000); // Shuffle every 4 seconds
-
-    return () => clearInterval(shuffleInterval);
-  }, [isLoading, albums.length]);
-
-  // Generate random grid positions that align with the centered grid pattern
-  // The grid is centered, so we calculate the offset from center
-  const glitchPositions = useMemo(() => {
+  // Generate STABLE random grid positions for loading animation
+  // These positions are calculated once and stay fixed - only opacity animates
+  const pulsePositions = useMemo(() => {
     const cellSize = GRID_ALBUM_MIN_SIZE + GRID_GAP;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - 48; // -48 for taskbar
 
-    // Calculate how the centered grid aligns
-    // The grid pattern starts from center, so we find the leftmost/topmost grid line
+    // Calculate grid alignment
     const totalGridWidth = Math.floor(viewportWidth / cellSize) * cellSize;
     const totalGridHeight = Math.floor(viewportHeight / cellSize) * cellSize;
     const gridOffsetX = (viewportWidth - totalGridWidth) / 2;
@@ -599,35 +609,33 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
     const maxCols = Math.floor(totalGridWidth / cellSize);
     const maxRows = Math.floor(totalGridHeight / cellSize);
 
-    // Create unique positions - avoid duplicates by using a Set
+    // Use seeded randomness for stable positions
+    // Spread 8 albums across the grid with large stagger delays
     const usedPositions = new Set();
     const positions = [];
+    const seed = 42; // Fixed seed for reproducible "random" positions
 
     for (let i = 0; i < 8; i++) {
-      let col, row, posKey;
-      let attempts = 0;
+      // Pseudo-random based on index (deterministic)
+      const col = ((i * 7 + seed) % maxCols);
+      const row = ((i * 5 + seed * 2) % maxRows);
+      const posKey = `${col}-${row}`;
 
-      // Find a unique position
-      do {
-        col = Math.floor(Math.random() * maxCols);
-        row = Math.floor(Math.random() * maxRows);
-        posKey = `${col}-${row}`;
-        attempts++;
-      } while (usedPositions.has(posKey) && attempts < 50);
-
+      // Skip if position already used (shouldn't happen with this formula)
+      if (usedPositions.has(posKey)) continue;
       usedPositions.add(posKey);
 
       positions.push({
-        // Position relative to the centered grid
         x: gridOffsetX + col * cellSize,
         y: gridOffsetY + row * cellSize,
-        delay: i * 1.2, // Stagger: each album appears 1.2s after previous
-        duration: 6 + Math.random() * 3, // 6-9 second cycles
+        // Large stagger - each album pulses at very different times
+        delay: i * 3, // 3 seconds apart
+        duration: 12 + (i % 3) * 4, // 12, 16, or 20 second cycles
       });
     }
 
     return positions;
-  }, [shuffleKey]); // Recalculate when shuffleKey changes
+  }, []); // No dependencies - calculate once and keep stable
 
   useEffect(() => {
     const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
@@ -648,12 +656,22 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
     );
   }
 
-  // Loading state: show glitchy grid with user's albums streaming in
+  // Initializing: checking cache - show empty grid with subtle loading indicator
+  if (isInitializing) {
+    return (
+      <DesktopContainer>
+        <EmptyGrid />
+        <LoadingStatus style={{ opacity: 0.5 }}>
+          LOADING CACHE...
+        </LoadingStatus>
+      </DesktopContainer>
+    );
+  }
+
+  // Loading state: albums pulse in/out at stable positions
   if (isLoading && albums.length === 0) {
-    // Randomly select which albums to show (different subset on each shuffle)
-    const shuffledAlbums = [...loadingAlbums]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 8);
+    // Use first 8 albums (stable, no shuffling)
+    const stableAlbums = loadingAlbums.slice(0, 8);
 
     // Calculate grid offset for centering
     const cellSize = GRID_ALBUM_MIN_SIZE + GRID_GAP;
@@ -675,13 +693,13 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Glitching album art in random grid positions - shuffles periodically */}
-          {shuffledAlbums.map((album, index) => {
-            const pos = glitchPositions[index];
+          {/* Albums pulse in/out at stable positions - no shuffling */}
+          {stableAlbums.map((album, index) => {
+            const pos = pulsePositions[index];
             if (!pos) return null;
             return (
               <GlitchAlbum
-                key={`${album.id}-${shuffleKey}`}
+                key={album.id}
                 $delay={pos.delay}
                 $duration={pos.duration}
                 style={{
@@ -703,20 +721,33 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, onAlbumCli
     );
   }
 
-  // Post-login but no albums: show message
+  // Post-login but no albums: show empty state message
+  // Only show this if we've actually completed loading (loadingAlbums was populated then cleared)
+  // Otherwise just show empty grid while initial load starts
   if (albums.length === 0) {
+    // If we have no loadingAlbums either, we might still be initializing - show empty grid
+    if (loadingAlbums.length === 0 && !isLoading) {
+      // Could be initial state before load starts, or genuinely empty library
+      // Show gentle message that doesn't look like an error
+      return (
+        <DesktopContainer>
+          <EmptyGrid />
+          <EmptyLibraryMessage>
+            <h2>LIBRARY EMPTY</h2>
+            <p>
+              <span className="prompt">&gt;</span> No albums detected in your Spotify library.
+            </p>
+            <p>
+              <span className="prompt">&gt;</span> Like some songs on Spotify, then rescan.
+            </p>
+          </EmptyLibraryMessage>
+        </DesktopContainer>
+      );
+    }
+    // We have loadingAlbums but no final albums - still processing
     return (
       <DesktopContainer>
         <EmptyGrid />
-        <EmptyLibraryMessage>
-          <h2>NO DATA FOUND</h2>
-          <p>
-            <span className="prompt">&gt;</span> Your library scan returned 0 albums.
-          </p>
-          <p>
-            <span className="prompt">&gt;</span> Like some songs on Spotify first, then refresh.
-          </p>
-        </EmptyLibraryMessage>
       </DesktopContainer>
     );
   }
