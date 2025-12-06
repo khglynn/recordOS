@@ -141,15 +141,15 @@ const AlbumGrid = styled.div`
   top: 0;
   left: 0;
   width: 100%;
-  height: calc(100vh - 48px); /* Explicit height for Safari */
+  height: calc(100vh - 48px);
   box-sizing: border-box;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 
-  /* CSS Grid - Safari needs explicit display and simpler syntax */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${GRID_ALBUM_MIN_SIZE}px, 1fr));
-  gap: ${GRID_GAP}px;
-  align-content: start;
+  /* Flexbox approach - better Safari compatibility than CSS Grid */
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
 
   /* Fade in when albums load */
   animation: fadeIn 0.5s ease-out;
@@ -158,22 +158,20 @@ const AlbumGrid = styled.div`
     from { opacity: 0; }
     to { opacity: 1; }
   }
-
-  /* Mobile: smaller tiles to ensure minimum 2 columns */
-  @media (max-width: 767px) {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
 `;
 
 /**
  * Individual album cover with entrance animation
  * Uses padding-bottom trick for reliable square aspect ratio
  * Uses CSS variables for animation delay (avoids styled-components class explosion)
+ * Tile width passed via --tile-width CSS variable for flexbox layout
  */
 const AlbumCover = styled.div`
   position: relative;
-  width: 100%;
-  padding-bottom: 100%; /* Square tiles - height equals width */
+  /* Flexbox sizing - use CSS variable from parent */
+  width: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
+  padding-bottom: var(--tile-width, ${GRID_ALBUM_MIN_SIZE}px);
+  margin: 0 ${GRID_GAP}px ${GRID_GAP}px 0;
   cursor: pointer;
   overflow: hidden;
   background: #0a0a0a;
@@ -819,9 +817,11 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   // Determine if we're refreshing (loading while already have albums)
   const isRefreshing = isLoading && albums.length > 0;
 
+  const { tileWidth } = gridGeometry;
+
   return (
     <DesktopContainer>
-      <AlbumGrid>
+      <AlbumGrid style={{ '--tile-width': `${tileWidth}px` }}>
         {albums.map((album, index) => (
           <AlbumCover
             key={album.id}

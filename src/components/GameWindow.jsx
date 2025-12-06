@@ -83,10 +83,11 @@ const StyledWindow = styled(Window)`
 
   ${props => props.$isMobile && !props.$isSolitaire && `
     left: 50% !important;
-    top: 50% !important;
+    /* Position above media player - leave room at bottom for player + taskbar */
+    top: calc(50% - 80px) !important;
     transform: translate(-50%, -50%);
     border-radius: 0;
-    max-height: calc(100vh - 44px - 16px) !important;
+    max-height: calc(100vh - 44px - 160px) !important;
   `}
 `;
 

@@ -77,7 +77,6 @@ const GlobalStyles = createGlobalStyle`
 
   ::-webkit-scrollbar-track {
     background: #1a1a1a;
-    border: 1px solid #0a0a0a;
   }
 
   ::-webkit-scrollbar-thumb {
