@@ -192,7 +192,7 @@ function TrippyGraphics({
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
           <PixelIcon name="sparkles" size={14} />
-          <span>Visualizer</span>
+          <span>Visualizations</span>
         </HeaderTitle>
         <HeaderButtons>
           <HeaderButton onClick={onMinimize}>_</HeaderButton>

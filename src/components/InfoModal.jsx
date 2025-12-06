@@ -103,6 +103,21 @@ const StyledWindowContent = styled(WindowContent)`
   padding: 12px !important;
   overflow-y: auto;
   max-height: calc(85vh - 30px);
+
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 12px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #0d0d0d;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3a;
+  }
 `;
 
 const LogoSection = styled.div`
@@ -164,14 +179,15 @@ const Description = styled.p`
 `;
 
 const StyledFieldset = styled(Fieldset)`
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   background: #0d0d0d !important;
   border-color: #2a2a2a !important;
-  padding: 8px !important;
+  padding: 10px !important;
 
   legend {
     color: #00ff41 !important;
     font-size: 10px;
+    padding: 0 4px;
   }
 `;
 
@@ -196,9 +212,10 @@ const ContactItem = styled.div`
 
 const StyledLink = styled.a`
   color: #00ff41;
-  text-decoration: underline;
+  text-decoration: none;
 
   &:hover {
+    text-decoration: underline;
     color: #00cc33;
   }
 `;

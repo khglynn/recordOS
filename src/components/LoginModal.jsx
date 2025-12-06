@@ -502,7 +502,10 @@ function LoginModal({
           <PixelIcon name="power" size={14} />
           <span>RECORD OS // INITIALIZE</span>
         </HeaderTitle>
-        {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
+        <div style={{ display: 'flex', gap: '2px' }}>
+          <CloseButton onClick={onClose}>_</CloseButton>
+          {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
+        </div>
       </StyledWindowHeader>
 
       <StyledWindowContent>

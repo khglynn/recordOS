@@ -333,7 +333,7 @@ function StartMenu({
         {/* Visualizer */}
         <StyledMenuItem onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}>
           <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
-          Visualizer
+          Visualizations
         </StyledMenuItem>
 
         {/* Games Submenu - Hover flyout */}

@@ -437,6 +437,14 @@ const slowPulse = keyframes`
 `;
 
 /**
+ * Simple fade in animation for loading albums
+ */
+const fadeIn = keyframes`
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 0.85; transform: scale(1); }
+`;
+
+/**
  * Loading container - same grid lines as EmptyGrid but with scanning effect
  * Grid is positioned from top-left with calculated offset to center visually
  */
@@ -493,7 +501,7 @@ const GlitchAlbum = styled.div`
   width: ${GRID_ALBUM_MIN_SIZE}px;
   height: ${GRID_ALBUM_MIN_SIZE}px;
   overflow: hidden;
-  animation: ${slowPulse} ${props => props.$duration || 12}s ease-in-out infinite;
+  animation: ${props => props.$fadeIn ? fadeIn : slowPulse} ${props => props.$fadeIn ? '0.6s' : `${props.$duration || 12}s`} ${props => props.$fadeIn ? 'ease-out forwards' : 'ease-in-out infinite'};
   animation-delay: ${props => props.$delay || 0}s;
 
   img {
@@ -593,9 +601,9 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
 
-  // Generate STABLE random grid positions for loading animation
-  // These positions are calculated once and stay fixed - only opacity animates
-  const pulsePositions = useMemo(() => {
+  // Generate random grid positions for loading animation
+  // 24 albums fade in at random positions across the grid
+  const loadingPositions = useMemo(() => {
     const cellSize = GRID_ALBUM_MIN_SIZE + GRID_GAP;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - 48; // -48 for taskbar
@@ -608,34 +616,38 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
 
     const maxCols = Math.floor(totalGridWidth / cellSize);
     const maxRows = Math.floor(totalGridHeight / cellSize);
+    const totalCells = maxCols * maxRows;
 
-    // Use seeded randomness for stable positions
-    // Spread 8 albums across the grid with large stagger delays
+    // Generate 24 unique random positions
     const usedPositions = new Set();
     const positions = [];
-    const seed = 42; // Fixed seed for reproducible "random" positions
+    const numAlbums = Math.min(24, totalCells);
 
-    for (let i = 0; i < 8; i++) {
-      // Pseudo-random based on index (deterministic)
-      const col = ((i * 7 + seed) % maxCols);
-      const row = ((i * 5 + seed * 2) % maxRows);
-      const posKey = `${col}-${row}`;
+    // Shuffle all possible grid positions
+    const allPositions = [];
+    for (let row = 0; row < maxRows; row++) {
+      for (let col = 0; col < maxCols; col++) {
+        allPositions.push({ col, row });
+      }
+    }
+    // Fisher-Yates shuffle
+    for (let i = allPositions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
+    }
 
-      // Skip if position already used (shouldn't happen with this formula)
-      if (usedPositions.has(posKey)) continue;
-      usedPositions.add(posKey);
-
+    // Take first 24 positions with staggered fade-in delays
+    for (let i = 0; i < numAlbums && i < allPositions.length; i++) {
+      const { col, row } = allPositions[i];
       positions.push({
         x: gridOffsetX + col * cellSize,
         y: gridOffsetY + row * cellSize,
-        // Large stagger - each album pulses at very different times
-        delay: i * 3, // 3 seconds apart
-        duration: 12 + (i % 3) * 4, // 12, 16, or 20 second cycles
+        delay: i * 0.08, // Staggered fade-in (80ms apart)
       });
     }
 
     return positions;
-  }, []); // No dependencies - calculate once and keep stable
+  }, []); // Calculate once on mount
 
   useEffect(() => {
     const newIds = albums.map(a => a.id).filter(id => !seenAlbums.has(id));
@@ -668,40 +680,26 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
     );
   }
 
-  // Loading state: albums pulse in/out at stable positions
+  // Loading state: 24 albums fade in at random grid positions
   if (isLoading && albums.length === 0) {
-    // Use first 8 albums (stable, no shuffling)
-    const stableAlbums = loadingAlbums.slice(0, 8);
-
-    // Calculate grid offset for centering
-    const cellSize = GRID_ALBUM_MIN_SIZE + GRID_GAP;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight - 48;
-    const totalGridWidth = Math.floor(viewportWidth / cellSize) * cellSize;
-    const totalGridHeight = Math.floor(viewportHeight / cellSize) * cellSize;
-    const gridOffsetX = (viewportWidth - totalGridWidth) / 2;
-    const gridOffsetY = (viewportHeight - totalGridHeight) / 2;
+    // Use first 24 albums for loading display
+    const displayAlbums = loadingAlbums.slice(0, 24);
 
     return (
       <DesktopContainer>
-        <LoadingContainer
-          style={{
-            '--grid-offset-x': `${gridOffsetX}px`,
-            '--grid-offset-y': `${gridOffsetY}px`,
-          }}
-        >
+        <LoadingContainer>
           {/* Horizontal scan line */}
           <ScanLine />
 
-          {/* Albums pulse in/out at stable positions - no shuffling */}
-          {stableAlbums.map((album, index) => {
-            const pos = pulsePositions[index];
+          {/* Albums fade in at random grid positions */}
+          {displayAlbums.map((album, index) => {
+            const pos = loadingPositions[index];
             if (!pos) return null;
             return (
               <GlitchAlbum
                 key={album.id}
                 $delay={pos.delay}
-                $duration={pos.duration}
+                $fadeIn
                 style={{
                   left: pos.x,
                   top: pos.y,
@@ -733,12 +731,15 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
         <DesktopContainer>
           <EmptyGrid />
           <EmptyLibraryMessage>
-            <h2>LIBRARY EMPTY</h2>
+            <h2>SCAN FAILURE</h2>
             <p>
-              <span className="prompt">&gt;</span> No albums detected in your Spotify library.
+              <span className="prompt">&gt;</span> ERR_NO_TRACKS: Audio library returned null.
             </p>
             <p>
-              <span className="prompt">&gt;</span> Like some songs on Spotify, then rescan.
+              <span className="prompt">&gt;</span> This is probably our fault.
+            </p>
+            <p>
+              <span className="prompt">&gt;</span> Please try again. We apologize for the inconvenience.
             </p>
           </EmptyLibraryMessage>
         </DesktopContainer>
