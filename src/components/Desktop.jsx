@@ -605,16 +605,17 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const [loadingCycle, setLoadingCycle] = useState(0);
   const containerRef = useRef(null);
 
-  // Cycle through albums every 10 seconds during loading
+  // Cycle through albums every 8 seconds during loading
+  // Shuffles positions and rotates to different albums each cycle
   useEffect(() => {
-    if (!isLoading || loadingAlbums.length <= 4) return;
+    if (!isLoading) return;
 
     const interval = setInterval(() => {
       setLoadingCycle(prev => prev + 1);
-    }, 10000); // 10 seconds per cycle (matches animation duration)
+    }, 8000); // 8 seconds per cycle
 
     return () => clearInterval(interval);
-  }, [isLoading, loadingAlbums.length]);
+  }, [isLoading]);
 
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
