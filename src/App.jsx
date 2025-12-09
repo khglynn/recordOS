@@ -323,7 +323,8 @@ function App() {
         minimized: false,
       };
 
-      setWindows([minesweeperWindow, mediaPlayerWindow]);
+      // Use functional update to preserve any existing windows (like login modal)
+      setWindows(prev => [...prev, minesweeperWindow, mediaPlayerWindow]);
       setActiveWindowId(mediaPlayerWindow.id);
       setHasOpenedInitialWindows(true);
 
