@@ -61,7 +61,7 @@ export function useSpotify() {
 
   // Library state
   const [albums, setAlbums] = useState([]);
-  const [unavailableAlbumIds, setUnavailableAlbumIds] = useState(new Set()); // Albums that threw 403 errors
+  const [unavailableAlbums, setUnavailableAlbums] = useState([]); // Albums that threw 403 errors (full details for error log)
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // True until first cache check completes
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
@@ -483,7 +483,8 @@ export function useSpotify() {
     if (albums.length === 0) return [];
 
     // Step 0: Filter out unavailable albums (403 errors)
-    let candidates = albums.filter(a => !unavailableAlbumIds.has(a.id));
+    const unavailableIds = new Set(unavailableAlbums.map(a => a.id));
+    let candidates = albums.filter(a => !unavailableIds.has(a.id));
 
     // Step 1: Filter by decade if not "all"
     if (decade !== DECADE_OPTIONS.ALL) {
@@ -508,14 +509,14 @@ export function useSpotify() {
 
     console.log(`[Safari Debug] displayAlbums filter:`);
     console.log(`  - Input albums: ${albums.length}`);
-    console.log(`  - Unavailable albums filtered: ${unavailableAlbumIds.size}`);
+    console.log(`  - Unavailable albums filtered: ${unavailableAlbums.length}`);
     console.log(`  - Decade filter: "${decade}"`);
     console.log(`  - After decade filter: ${candidates.length}`);
     console.log(`  - Qualifying (${MIN_SAVED_TRACKS}+ tracks): ${qualifyingAlbums.length}`);
     console.log(`  - Final result: ${result.length}`);
 
     return result;
-  }, [albums, decade, unavailableAlbumIds]);
+  }, [albums, decade, unavailableAlbums]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
@@ -832,10 +833,18 @@ export function useSpotify() {
 
       if (is403Error) {
         console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable - REMOVING FROM GRID`);
-        setUnavailableAlbumIds(prev => {
-          const newSet = new Set([...prev, album.id]);
-          console.log(`[Album Unavailable] Unavailable albums count: ${newSet.size}`);
-          return newSet;
+        setUnavailableAlbums(prev => {
+          // Check if already in list
+          if (prev.some(a => a.id === album.id)) return prev;
+          const newList = [...prev, {
+            id: album.id,
+            name: album.name,
+            artist: album.artist,
+            reason: 'Region restricted (403 Forbidden)',
+            timestamp: new Date().toISOString(),
+          }];
+          console.log(`[Album Unavailable] Unavailable albums count: ${newList.length}`);
+          return newList;
         });
         setPlaybackError({
           code: 'ALBUM_UNAVAILABLE',
@@ -919,6 +928,7 @@ export function useSpotify() {
     albums: displayAlbums,
     allAlbumsCount: albums.length,
     totalSavedTracks: albums.reduce((sum, a) => sum + (a.likedTracks || 0), 0),
+    unavailableAlbums, // Albums hidden due to 403 errors
     isLoading,
     isInitializing,
     loadingProgress,

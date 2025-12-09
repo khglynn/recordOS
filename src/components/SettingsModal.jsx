@@ -224,6 +224,7 @@ function SettingsModal({
   isMobile,
   isLoggedIn,
   onRescanLibrary,
+  unavailableAlbums = [],
 }) {
   const headerRef = useRef(null);
 
@@ -240,6 +241,28 @@ function SettingsModal({
   const handleSliderChange = (e) => {
     const value = parseInt(e.target.value);
     onAlbumCountChange?.(value);
+  };
+
+  // Download error log as JSON file
+  const handleDownloadErrorLog = () => {
+    if (unavailableAlbums.length === 0) return;
+
+    const logContent = {
+      exported: new Date().toISOString(),
+      count: unavailableAlbums.length,
+      description: 'Albums hidden from grid due to playback restrictions (403 errors)',
+      albums: unavailableAlbums,
+    };
+
+    const blob = new Blob([JSON.stringify(logContent, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `recordos-error-log-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -308,6 +331,19 @@ function SettingsModal({
               <ToggleButton onClick={onRescanLibrary}>
                 <PixelIcon name="sync" size={12} />
                 RESCAN
+              </ToggleButton>
+            </SettingRow>
+          </StyledFieldset>
+        )}
+
+        {/* Hidden albums section - only show when there are errors */}
+        {isLoggedIn && unavailableAlbums.length > 0 && (
+          <StyledFieldset label="HIDDEN ALBUMS">
+            <SettingRow>
+              <SettingLabel>{unavailableAlbums.length} album{unavailableAlbums.length === 1 ? '' : 's'} restricted</SettingLabel>
+              <ToggleButton onClick={handleDownloadErrorLog}>
+                <PixelIcon name="download" size={12} />
+                LOG
               </ToggleButton>
             </SettingRow>
           </StyledFieldset>

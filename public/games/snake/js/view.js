@@ -53,10 +53,10 @@
   }
 
   View.prototype.pace = function () {
-    // Slower, more playable speed - starts at ~175ms, speeds up slowly
-    var baseSpeed = 175;
+    // Comfortable starting pace - speeds up gradually as snake grows
+    var baseSpeed = 225;  // 225ms between moves (was 175ms - too fast)
     var speedIncrease = Math.floor(this.player.segments.length / 3) * 5;
-    return Math.max(70, baseSpeed - speedIncrease);
+    return Math.max(90, baseSpeed - speedIncrease);  // Min 90ms (was 70ms)
   }
 
   View.prototype.renderBoard = function () {
