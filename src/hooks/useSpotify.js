@@ -620,17 +620,23 @@ export function useSpotify() {
           console.log('[Album End] Album finished playing');
           setAlbumEnded(true);
 
-          // Play vinyl end sound effect
-          try {
-            const endSound = new Audio('/audio/record-end.mp3');
-            endSound.volume = 0.5;
-            endSound.play().catch(() => {
-              // Audio play failed (likely no user interaction yet)
-              console.log('[Album End] Could not play end sound');
-            });
-          } catch (e) {
-            console.log('[Album End] Audio not available');
-          }
+          // Play turntable end sound effect (licensed via Envato)
+          // Plays once, then again after a short delay for that authentic vinyl feel
+          const playTurntableSound = () => {
+            try {
+              const endSound = new Audio('/sounds/turntable.mp3');
+              endSound.volume = 0.4;
+              return endSound.play().catch(() => {
+                console.log('[Album End] Could not play end sound');
+              });
+            } catch (e) {
+              console.log('[Album End] Audio not available');
+            }
+          };
+
+          // Play once immediately, then once more after 2 seconds
+          playTurntableSound();
+          setTimeout(playTurntableSound, 2000);
         }
       });
 
@@ -662,6 +668,59 @@ export function useSpotify() {
 
     return () => clearInterval(positionIntervalRef.current);
   }, [isPlaying, player]);
+
+  // -------------------------------------------------------------------------
+  // MEDIA SESSION API - System media keys (play/pause/next/prev)
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    // Update metadata when track changes
+    if (currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.name,
+        artist: currentTrack.artist,
+        album: currentTrack.album,
+        artwork: currentTrack.albumArt ? [
+          { src: currentTrack.albumArt, sizes: '300x300', type: 'image/jpeg' },
+          { src: currentTrack.albumArt, sizes: '640x640', type: 'image/jpeg' },
+        ] : [],
+      });
+    }
+
+    // Update playback state
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [currentTrack, isPlaying]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !deviceId) return;
+
+    // Set up action handlers for media keys
+    navigator.mediaSession.setActionHandler('play', async () => {
+      await play(deviceId, {});
+    });
+
+    navigator.mediaSession.setActionHandler('pause', async () => {
+      await pause(deviceId);
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', async () => {
+      await skipToNext(deviceId);
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', async () => {
+      await skipToPrevious(deviceId);
+    });
+
+    // Cleanup
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+    };
+  }, [deviceId]);
 
   // -------------------------------------------------------------------------
   // PLAYBACK CONTROLS

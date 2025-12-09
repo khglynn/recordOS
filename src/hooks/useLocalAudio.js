@@ -294,6 +294,58 @@ export function useLocalAudio() {
   }, []);
 
   // -------------------------------------------------------------------------
+  // MEDIA SESSION API - System media keys (play/pause/next/prev)
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    // Update metadata when track changes
+    if (currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.name,
+        artist: currentTrack.artist,
+        album: 'Record OS Demo',
+        artwork: [
+          { src: '/logo.png', sizes: '512x512', type: 'image/png' },
+        ],
+      });
+    }
+
+    // Update playback state
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [currentTrack, isPlaying]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    // Set up action handlers for media keys
+    navigator.mediaSession.setActionHandler('play', () => {
+      play();
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      pause();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      next();
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      previous();
+    });
+
+    // Cleanup
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+    };
+  }, [play, pause, next, previous]);
+
+  // -------------------------------------------------------------------------
   // RETURN
   // -------------------------------------------------------------------------
 
