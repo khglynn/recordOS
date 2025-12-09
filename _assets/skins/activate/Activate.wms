@@ -1,0 +1,897 @@
+<theme id="Activate" author="Saltmine, LLC" copyright="©2000 Activate.net. All Rights Reserved.">
+
+	<view 
+		id="vFull" 
+		backgroundColor="none" 
+		width="560" height="500" 
+		titleBar="false" 
+		resizable="false"
+	        scriptFile="activate.js;res://wmploc.dll/RT_TEXT/#132;" 
+		timerInterval="333" 
+        	onTimer="OnTimerTick();" 
+		onload="Init();">
+
+		<player
+			PlayState_onchange="OnPlayStateChange();"
+			OpenState_onchange="OnOpenStateChange();">
+		</player>	
+
+		<!-- opening view -->
+		<subview id="vOpen" 
+			zIndex="6" 
+			left="0" top="0" 
+			backgroundImage="visualization_background.bmp" 
+			transparencyColor="#00FF00"
+			visible="true">
+			
+			<button  
+				id="bLeftDoor" 
+				zIndex="8" 
+				left="52" top="0" 
+				image="left_door.bmp"
+				transparencyColor="#00FF00">
+			</button>
+			<button  
+				id="bRightDoor" 
+				zIndex="8" 
+				left="242" top="0" 
+				image="right_door.bmp"
+				transparencyColor="#00FF00"
+				onEndMove="doorOnEndMove();">
+			</button>
+			<button  
+				id="bSideBars" 
+				zIndex="9" 
+				left="0" top="0" 
+				image="player_sidebars_open.bmp"
+				transparencyColor="#00FF00">
+			</button>
+			<button  
+				id="bOpen" 
+				zIndex="10" 
+				left="0" top="0" 
+				upToolTip="" 
+				image="background_main2.bmp" 
+				transparencyColor="#00FF00"
+				onClick="openDoor();">
+			</button>
+		</subview>
+		
+		<!-- metadata view -->
+		<subview id="vNormal" 
+			zIndex="0" 
+			left="0" top="0" 
+			backgroundImage="visualization_background.bmp" 
+			transparencyColor="#00FF00"
+			visible="false">
+
+			<!-- Media source text -->
+			<text
+				id="tNet"
+				left="130" top="40" width="30"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				fontFace="Courier"
+				fontStyle="bold"
+				justification="left" 
+				value="net"
+				visible="true"></text>
+			<text
+				id="tLocal"
+				left="164" top="40" width="50"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				fontFace="Courier"
+				fontStyle="bold"
+				justification="left" 
+				value="local"
+				visible="true"></text>
+			<text
+				id="tCd"
+				left="217" top="40" width="25"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				fontFace="Courier"
+				fontStyle="bold"
+				justification="left" 
+				value="cd"
+				visible="true"></text>
+
+
+			<!-- Media source lights -->
+			<button id="bNet" 
+				zIndex="1" 
+				left="130" top="55" 
+				transparencyColor="#00FF00"
+				image="lightning.bmp"
+				visible="false">
+			</button>
+			<button id="bLocal" 
+				zIndex="1" 
+				left="173" top="55" 
+				transparencyColor="#00FF00"
+				image="lightning.bmp"
+				visible="false">
+				</button>
+			<button id="bCD" 
+				zIndex="1" 
+				left="212" top="55" 
+				transparencyColor="#00FF00"
+				image="lightning.bmp"
+				visible="false">
+			</button>
+
+			<text
+				id="tBandWidth"
+				left="331" top="51" width="15"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				justification="left" 
+				value="@"
+				visible="true">
+		        </text>
+
+			<text
+				id="metadataBandWidth2"
+				left="325" top="51" width="55"
+				toolTip="Network Bandwidth"
+				foregroundColor="#FFFFCC"
+				fontSize="8" 
+				fontStyle="bold"
+				fontFace="Courier"
+				justification="right"
+				value=""><!--wmpprop:network.bandWidth-->
+	        	</text>
+		        <text
+				id="tBandWidth"
+				left="385" top="51" width="25"
+				toolTip="Network Bandwidth"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				justification="left" 
+				value="kbps"
+				visible="true">
+		        </text>
+
+			<!-- Custom Slider -->
+			<slider id="seek" zindex="1"
+                	    left="128" top="69" width="281" height="10"
+                	    toolTip="Seek"
+			direction="Horizontal"
+				thumbImage="progress_barpointer.bmp"
+				image="progress_bar.bmp"
+				hoverImage= "vol_THUMB_UP3.gif"
+				transparencyColor="#00FF00" 
+				borderSize="4"
+				min="0" 							max="wmpprop:player.currentmedia.duration"
+				value="wmpprop:player.controls.currentPosition" 	
+				onDragEnd="player.controls.currentposition=value;">
+	                </slider>
+
+
+			<!-- Metadata -->
+			<text
+				id="metadataBufferingProg"
+				left="335" top="81" width="55"
+				toolTip="Buffering Progress"
+				foregroundColor="#FFFFCC"
+				fontSize="8" 
+				fontStyle="bold"
+				fontFace="Courier"
+				justification="right"
+				value="wmpprop:player.network.bufferingProgress">
+	        	</text>
+
+		        <text
+				id="tBufferPercent"
+				left="395" top="81" width="20"
+				toolTip="Buffering Progress"
+				foregroundColor="#FFFFCC" 
+				fontSize="8"
+				justification="left" 
+				value="%"
+				visible="true">
+		        </text>
+	        	
+
+			<text
+				id="metadataName"
+				left="120" top="98" width="290"
+				foregroundColor="#FFFFCC" 
+				fontSize="14"
+				fontStyle="bold"
+				fontFace="Courier"
+				justification="left" 
+				value=""
+				visible="true">
+		        </text>
+			<text id="metadataArtist"
+                		left="120" top="119" width="290"
+                		foregroundColor="#FFFFCC"
+                		fontSize="8" 
+				fontStyle="bold"
+				fontFace="Courier"
+                		value=""
+				visible="true">
+<!--player.currentmedia.artist   player.currentmedia.album  getiteminfo('artist')-->
+			</text>
+			<text id="metadataAlbum"
+		                left="120" top="134" width="220"
+        		        foregroundColor="#FFFFCC"
+                		fontSize="8" 
+				fontStyle="bold"
+				fontFace="Courier"
+                		value="">
+			</text>
+
+
+			<text id="tPosition"
+		                left="292" top="134" width="100"
+        		        foregroundColor="#FFFFCC"
+				justification="right"
+                		fontSize="8" 
+                		fontStyle="bold"
+				fontFace="Courier"
+				visible="true"
+				value="wmpprop:player.controls.currentPositionString">
+			</text>
+
+			<button id="bAnimation" 
+				zIndex="1" 
+				left="100" top="162" 
+				upToolTip="http://www.activate.net/"
+				transparencyColor="#00FF00"
+				image="logo_animation.gif"
+				onClick="launchURL();">
+			</button>
+
+			<button id="bLeftAd" 
+				zIndex="2" 
+				left="77" top="260" 
+				cursor="hand"
+				upToolTip="Previous"
+				transparencyColor="#00FF00"
+				imageMap="visualbtn_left_map.bmp"
+				image="visualbtn_left.bmp"
+				onClick="previousAd();">
+			</button>
+
+			<button id="bRightAd" 
+				zIndex="2" 
+				left="356" top="260" 
+				cursor="hand"
+				upToolTip="Next"
+				transparencyColor="#00FF00"
+				imageMap="visualbtn_right_map.bmp"
+				image="visualbtn_right.bmp"
+				onClick="nextAd();">
+			</button>
+
+			<button  
+				id="bActivateLogo" 
+				zIndex="1" 
+				left="170" top="287" 
+				upToolTip="Activate web site" 
+				image="activatelogo.bmp" 
+				cursor="hand"
+				onClick="player.launchURL('http://www.activate.net/');">
+			</button>
+
+		</subview>
+	
+		<subview id="vControls" 
+			zIndex="4" 
+			left="0" top="0" 
+			backgroundImage="player_sidebars.bmp" 
+			transparencyColor="#00FF00"
+			visible="false">
+
+			<!-- Player controls -->
+			<buttongroup 
+				zIndex="5" 
+				left="11" top="70" 
+				mappingImage="playbuttons_map.bmp" 
+				image="play_buttons.bmp" 
+				hoverImage="playbuttons_hover.bmp" 
+				downimage="playbuttons_down.bmp"
+				disabledImage="playbuttons_disabled.bmp"
+				transparencyColor="#00FF00">
+				<buttonelement id="bPlay" mappingColor="#00FF00" upToolTip="Play" cursor="hand"
+onClick="player.controls.play();"></buttonelement>				
+				<buttonelement id="bPause" mappingColor="#00DE00" upToolTip="Pause" cursor="hand"
+onclick="player.controls.pause();"></buttonelement>		
+				<buttonelement id="bStop" mappingColor="#02C302" upToolTip="Stop" cursor="hand"
+onClick="player.controls.stop();"></buttonelement>
+				<buttonelement id="bNext" mappingColor="#01A001" upToolTip="Next" cursor="hand" onClick="player.controls.next();"></buttonelement>
+				<buttonelement id="bPrevious" mappingColor="#007300" upToolTip="Previous" cursor="hand" onClick="player.controls.previous();"></buttonelement>								
+			</buttongroup>
+		
+			<!-- View functionality buttons: eq, playlist, video-->
+			<buttongroup 
+				zIndex="5" 
+				left="410" top="70" 
+				mappingImage="right_buttonsmap.bmp" 
+				downImage="right_buttonsdown.bmp"
+				disabledImage="right_buttonsdisabled.bmp"
+				hoverImage="right_buttonshover.bmp"
+				image="right_buttons.bmp"
+				transparencyColor="#00FF00">
+				
+				<buttonelement mappingColor="#00FF00" upToolTip="Info" cursor="hand"onClick="SetVisibility(0);"></buttonelement>
+				<buttonelement mappingColor="#00DE00" upToolTip="Equalizer" cursor="hand"
+onClick="SetVisibility(1);"></buttonelement>
+				<buttonelement mappingColor="#02C302" upToolTip="Video" cursor="hand"
+onClick="SetVisibility(2);"></buttonelement>
+				<buttonelement mappingColor="#01A001" upToolTip="Playlist" cursor="hand"
+onClick="openPl();"></buttonelement>
+				<buttonelement id="bEject" mappingcolor="#007300" upToolTip="Eject" cursor="hand"
+onClick="player.cdromcollection.item(0).eject();"></buttonelement>
+			</buttongroup>
+			
+			<!-- Player functionality buttons: close, minimize, full mode-->
+			<buttongroup 
+				zIndex="5" 
+				left="200" top="0" 
+				mappingImage="activation_map.bmp" 
+				image="activation_buttons.bmp"
+				transparencyColor="#00FF00">
+				
+				<buttonelement mappingColor="#00BB00" upToolTip="Mini Mode" cursor="hand"
+onClick="SetVisibility(3);"></buttonelement>
+				<buttonelement mappingColor="#FFCC00" upToolTip="Return to Full Mode" cursor="hand" onClick="vFull.returnToMediaCenter();"></buttonelement>
+				<buttonelement mappingColor="#BBCC00" upToolTip="Minimize" cursor="hand"
+onClick="vFull.minimize();"></buttonelement>
+				<buttonelement mappingColor="#FF0000" upToolTip="Close" cursor="hand"
+onClick="vFull.close();"></buttonelement>
+			</buttongroup>
+			
+			<!-- Volume slider -->
+			<slider id="sVolume" 
+				zIndex="5" 
+				left="116" top="310" 
+				transparencyColor = "#00FF00"
+				toolTip="Volume" 
+				backgroundImage="volume_slider.bmp" 
+				thumbImage="volume_button.bmp" 
+				borderSize="9"
+				min="0" max="100"
+				value="wmpprop:player.settings.volume" 
+				value_onchange="player.settings.volume=value;player.settings.mute=false;" 
+				direction="horizontal">
+			</slider>
+
+		</subview>
+		
+		<subview id="vEq" 
+			zIndex="0" 
+			left="0" top="0" 
+			backgroundImage="background_equalizer.bmp" 
+			transparencyColor="#00FF00"
+			visible="false">
+
+			<!-- Previous and next visualizations -->
+			<buttongroup 
+				zIndex="" 
+				left="100" top="74" 
+				mappingImage="visualization_map.bmp" 
+				image="visualization_buttons.bmp">
+				
+				<buttonelement 
+					mappingColor="#FF0000" 
+					cursor="hand"
+					upToolTip="Next" 					onClick="vEffects.next();">
+				</buttonelement>
+				<buttonelement 
+					mappingColor="#00FF00" 
+					cursor="hand"
+					upToolTip="Previous" 					onClick="vEffects.previous();">
+				</buttonelement>
+			</buttongroup>
+			
+			<!-- Visual Effects -->
+			<effects id="vEffects" 
+				zIndex="1" 
+				left="134" top="30" width="283" height="111"
+				allowAll="true" 
+				visible="true" 
+				horizontalAlignment="stretch" 
+				verticalAlignment="stretch" 
+				windowed="false">
+			</effects>
+			
+			<!-- Equalizer Sliders -->
+			<equalizerSettings id="eq" enable="true"></equalizerSettings>
+	
+			<slider id="eq1" 
+				zIndex="1" 
+				borderSize="8" 
+				left="82" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel1" 
+				value_onchange="eq.gainLevel1=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq2" 
+				zIndex="1" 
+				borderSize="8" 
+				left="102" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel2" 
+				value_onchange="eq.gainLevel2=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq3" 
+				zIndex="1" 
+				borderSize="8" 
+				left="123" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel3" 
+				value_onchange="eq.gainLevel3=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq4" 
+				zIndex="1" 
+				borderSize="8" 
+				left="142" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel4" 
+				value_onchange="eq.gainLevel4=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq5" 
+				zIndex="1" 
+				borderSize="8" 
+				left="162" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel5" 
+				value_onchange="eq.gainLevel5=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq6" 
+				zIndex="1" 
+				borderSize="8" 
+				left="183" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel6" 
+				value_onchange="eq.gainLevel6=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq7" 
+				zIndex="1" 
+				borderSize="8" 
+				left="202" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel7" 
+				value_onchange="eq.gainLevel7=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq8" 
+				zIndex="1" 
+				borderSize="8" 
+				left="222" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel8" 
+				value_onchange="eq.gainLevel8=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq9" 
+				zIndex="1" 
+				borderSize="8" 
+				left="243" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel9" 
+				value_onchange="eq.gainLevel9=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>
+			<slider id="eq10" 
+				zIndex="1" 
+				borderSize="8" 
+				left="262" top="178" 
+				transparencyColor="#00FF00"
+				toolTip="" 
+				backgroundImage="equalizer_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-20" max="20"
+				value="wmpprop:eq.gainLevel10" 
+				value_onchange="eq.gainLevel10=value;" 
+				direction="vertical"
+				onClick="clearHighlight();">
+			</slider>	
+			
+			<!-- Equalizer settings light -->
+			<buttongroup 
+				zIndex="1" 
+				left="390" top="156" 
+				mappingImage="preset_map.bmp" 
+				image="preset_buttons.bmp"
+				transparencyColor="#00FF00">
+				<buttonelement id="bRock" 
+					mappingColor="#00CC00"
+					cursor="hand"
+					onClick="rockEqualizerSettings();">
+				</buttonelement>
+				<buttonelement id="bJazz" 
+					mappingColor="#990000"
+					cursor="hand"
+					onClick="jazzEqualizerSettings();">
+					</buttonelement>
+				<buttonelement id="bDance" 
+					mappingColor="#009900"
+					cursor="hand"
+					onClick="danceEqualizerSettings()">
+				</buttonelement>
+				<buttonelement id="bReset" 
+					mappingColor="#FF0000"
+					cursor="hand"
+					onClick="resetEqualizerSettings();">
+				</buttonelement>
+			</buttongroup>
+
+			<!-- Equalizer settings highlight -->
+			<button  
+				id="bHighlight1" 
+				zIndex="3" 
+				left="404" top="157" 
+				image="preset_highlight.bmp"
+				visible="false"
+				transparencyColor="#00FF00">
+			</button>
+			<button  
+				id="bHighlight2" 
+				zIndex="3" 
+				left="400" top="182" 
+				image="preset_highlight.bmp"
+				visible="false"
+				transparencyColor="#00FF00">
+			</button>
+			<button  
+				id="bHighlight3" 
+				zIndex="3" 
+				left="395" top="205" 
+				image="preset_highlight.bmp"
+				visible="false"
+				transparencyColor="#00FF00">
+			</button>			
+						
+			<!-- Balance Slider -->
+			<slider id="balance" 
+				zIndex="1"  
+				left="292" top="246" 
+				borderSize="8"
+				toolTip="Balance" 
+				backgroundImage="balance_slider.bmp" 
+				thumbImage="video_button.bmp" 
+				min="-100" max="100"
+				value="wmpprop:player.settings.balance" 
+				value_onchange="player.settings.balance=value;" 
+				direction="horizontal" 
+				transparencyColor="#00FF00">
+			</slider>
+
+			<button  
+				id="bActivateLogo" 
+				zIndex="1" 
+				left="170" top="287" 
+				upToolTip="Activate web site" 
+				image="activatelogo.bmp" 
+				cursor="hand"
+				onClick="player.launchURL('http://www.activate.net/');">
+			</button>
+
+								
+		</subview>		
+
+
+		<subview id="vVideo" 
+			zIndex="0" 
+			left="0" top="0" 
+			backgroundImage="video_background.bmp" 
+			transparencyColor="#00FF00"
+			visible="false">
+			
+
+			<slider id="seekVideo" 
+				zindex="1"
+                		left="180" top="25"
+				transparencyColor="#00FF00"
+        	        	toolTip="Seek"
+				backgroundImage="videoProgress_slider.bmp"
+				thumbImage="video_button.bmp"
+				direction="Horizontal"
+				borderSize="10"
+				min="0" 											max="wmpprop:player.currentmedia.duration"
+				value="wmpprop:player.controls.currentPosition" 	
+				onDragEnd="player.controls.currentposition=value;">
+	                </slider>
+
+			<!-- Video screen -->
+			<video id="vidVideo" 
+				zIndex="1" 
+				left="123" top="47" width="270" height="184"
+				OnVideoStart="StartVideo();" 
+				OnVideoEnd="EndVideo();" 
+				visible="false"
+				enabled="true"
+				stretchToFit="true">
+			</video>
+			
+			<text id="tBufferingProgress"
+		                left="77" top="129" width="30"
+				toolTip="Buffering Progress"
+        		        foregroundColor="#FFFFCC"
+                		fontSize="6" 
+                		fontStyle=""
+				fontFace="Courier"
+				justification="right"
+                		value="wmpprop:player.network.bufferingProgress"
+				visible="true">
+			</text>
+			<text id="tPercent"
+		                left="107" top="129" width="30"
+				toolTip="Buffering Progress"
+        		        foregroundColor="#FFFFCC"
+                		fontSize="6" 
+                		fontStyle=""
+				fontFace="Courier"
+                		value="%"
+				visible="true">
+			</text>
+
+			<buttongroup 
+				zIndex="1" 
+				left="80" top="150"
+				mappingImage="videosize_map.bmp" 
+				hoverImage="videosize_hover.bmp"
+				image="videosize.bmp">
+				<buttonelement id="bFullVideo" 
+					mappingColor="#FF0000"
+					cursor="hand"
+				        upToolTip="Full Screen"
+					onClick="vidVideo.fullScreen=true;">
+				</buttonelement>
+				<!--<buttonelement id="bLargeVideo" 
+					mappingColor="#0000FF"
+					cursor="hand"
+					onClick="showLargeVideo();">
+					</buttonelement>-->
+			</buttongroup>
+			
+			<text id="metadataTime3"
+		                left="75" top="190" width="60"
+        		        foregroundColor="#FFFFCC"
+				justification="left"
+                		fontSize="8" 
+				fontFace="Courier"
+				visible="true"
+				value="wmpprop:player.controls.currentPositionString">
+			</text>
+
+			<!-- Video Settings sliders -->	
+			<videoSettings id="vs" enable="true"></videoSettings>		
+
+			<slider id="hue" 
+				zIndex="1" 
+				left="100" top="253" 
+				transparencyColor="#00FF00"
+				toolTip=""
+				backgroundImage="video_slider.bmp"  
+				thumbImage="video_button.bmp" 
+				min="-127" max="127" 
+				borderSize="10"
+				value="wmpprop:vs.hue" 
+				value_onchange="jscript:vs.hue=value;"
+				direction="horizontal">
+			</slider>
+			
+			<slider id="saturation" 
+				zIndex="1" 
+				left="100" top="273" 
+				transparencyColor="#00FF00"
+				toolTip=""
+				backgroundImage="video_slider.bmp"  
+				thumbImage="video_button.bmp" 
+				min="-127" max="127" 
+				borderSize="10"
+				value="wmpprop:vs.saturation" 
+				value_onchange="jscript:vs.saturation=value;"
+				direction="horizontal">
+			</slider>
+
+			<slider id="brightness" 
+				zIndex="1" 
+				left="247" top="253" toolTip=""
+				transparencyColor="#00FF00"
+				backgroundImage="video_slider.bmp"  
+				thumbImage="video_button.bmp" 
+				min="-127" max="127" 
+				borderSize="10"
+				value="wmpprop:vs.brightness" 
+				value_onchange="jscript:vs.brightness=value;"
+				direction="horizontal">
+			</slider>
+			
+			<slider id="contrast" 
+				zIndex="1" 
+				left="247" top="273" 
+				transparencyColor="#00FF00"
+				toolTip=""
+				backgroundImage="video_slider.bmp"  
+				thumbImage="video_button.bmp" 
+				min="-127" max="127" 
+				borderSize="10"
+				value="wmpprop:vs.contrast" 
+				value_onchange="jscript:vs.contrast=value;"
+				direction="horizontal">
+			</slider>
+			
+			<button  
+				id="bResetVideo" 
+				zIndex="1" 
+				left="73" top="284" 
+				upToolTip="Reset Video" 
+				image="video_button.bmp" 
+				transparencyColor="#00FF00"
+				cursor="hand"
+				onClick="resetVideoSettings();">
+			</button>
+
+			<button  
+				id="bActivateLogo" 
+				zIndex="1" 
+				left="170" top="287" 
+				upToolTip="Activate web site" 
+				image="activatelogo.bmp" 
+				cursor="hand"
+				onClick="player.launchURL('http://www.activate.net/');">
+			</button>
+			
+		</subview>
+		
+<!--		<subview id="vLargeVideo"
+			zIndex="10"
+			left="0" top="0"
+			backgroundImage="video_large.bmp" 
+			transparencyColor="#00FF00"
+			onClick="showLargeVideo();"
+			visible="false">
+-->
+			<!-- Video screen --><!--
+			<video id="vidLargeVideo" 
+				zIndex="11" 
+				left="9" top="9" width="540" height="380"
+				OnVideoStart="StartVideo();" 
+				OnVideoEnd="EndVideo();" 
+				visible="false"
+				enabled="false"
+				stretchToFit="true"
+				onClick="showLargeVideo();">
+			</video>
+		</subview>-->
+
+		<subview id="vPlaylist" 
+			zIndex="-1" 
+			left="95" top="162" 
+			backgroundImage="playlist_drawer.bmp" 
+			transparencyColor="#00FF00"
+			onEndMove="playlistOnEndMove();">
+			
+			<!-- Playlist -->		
+			<playlist id="plPlaylist" 
+				zIndex="0" 
+				left="8" top="6" width="216" height="149" 
+				visible="false" 
+				backgroundColor="#ECECC3" 
+				foregroundColor="#000000"
+				columnsVisible="false" 
+				columns="name=Name;Duration=Time" 
+				editbuttonsvisible="false" 
+				movebuttonsvisible="false" 
+				toolbarMargin="0" 
+				toolbarVisible="true"
+				playlistItemsVisible="true" 
+				visible="false">
+			</playlist>
+
+		</subview>			
+
+		<!-- MINI MODE -->
+		<subview 
+			id="vMini" 
+			zIndex="-1" 
+			left="0" top="0" 
+			backgroundImage="minibackground.bmp" 
+			transparencyColor="#00FF00"
+			visible="false">
+			
+			<!-- Mini Player controls -->
+			<buttongroup 
+				zIndex="2" 
+				left="34" top="115" 
+				mappingImage="play_btn_map.bmp" 
+				image="play_btn_up.bmp" 
+				hoverImage="play_btn_hover.bmp" 
+				downimage="play_btn_down.bmp"
+				transparencyColor="#00FF00">
+				<buttonelement id="bPlay2" mappingColor="#00FF00" upToolTip="Play" cursor="hand"
+onClick="player.controls.play();"></buttonelement>						
+				<buttonelement id="bStop2" mappingColor="#00CC00" upToolTip="Stop" cursor="hand"
+onClick="player.controls.stop();"></buttonelement>
+				<buttonelement id="bNext2" mappingColor="#0000FF" upToolTip="Next" cursor="hand" onClick="player.controls.next();"></buttonelement>
+				<buttonelement id="bPrevious2" mappingColor="#0000CC" upToolTip="Previous" cursor="hand" onClick="player.controls.previous();"></buttonelement>								
+			</buttongroup>
+
+			<!-- Mini Player functionality buttons: close, minimize, full mode-->
+			<buttongroup 
+				zIndex="2" 
+				left="72" top="3" 
+				mappingImage="min_btn_map.bmp" 
+				image="min_btn_up.bmp"
+				transparencyColor="#00FF00">
+				
+				<buttonelement mappingColor="#00CC00" upToolTip="Regular Mode" cursor="hand"
+onClick="SetVisibility(0);"></buttonelement>
+				<buttonelement mappingColor="#FFCC00" upToolTip="Return to Full Mode" cursor="hand" onClick="vFull.returnToMediaCenter();"></buttonelement>
+				<buttonelement mappingColor="#CCCC00" upToolTip="Minimize" cursor="hand"
+onClick="vFull.minimize();"></buttonelement>
+				<buttonelement mappingColor="#FF0000" upToolTip="Close" cursor="hand"
+onClick="vFull.close();"></buttonelement>
+			</buttongroup>
+
+			<text id="metadataTime2"
+		                left="19" top="64" width="60"
+        		        foregroundColor="#FFFFCC"
+				justification="right"
+                		fontSize="8" 
+				fontFace="Courier"
+				visible="true"
+				value="wmpprop:player.controls.currentPositionString">
+			</text>
+		</subview>
+	</view>
+
+</theme>

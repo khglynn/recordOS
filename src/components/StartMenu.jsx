@@ -26,7 +26,7 @@ const MenuContainer = styled.div`
   position: fixed;
   bottom: 50px;
   left: 4px;
-  z-index: 10000;
+  z-index: 110000; /* Higher than everything including taskbar (100000) */
 
   animation: slideUp 0.15s ease-out;
 
@@ -135,7 +135,7 @@ const Submenu = styled.div`
   left: 100%;
   top: -6px;
   margin-left: -2px;
-  z-index: 10001;
+  z-index: 110001; /* Higher than MenuContainer */
   padding-left: 4px;
 `;
 

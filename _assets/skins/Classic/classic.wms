@@ -1,0 +1,314 @@
+<!--
+    ©2000 Microsoft Corporation. All rights reserved.
+-->
+
+<theme
+    author="Microsoft Corporation"
+    copyright="©2000 Microsoft Corporation. All rights reserved."
+    >
+
+<view       width="285" height="359"
+            minWidth="255" minHeight="176"
+            title="Windows Media Player"
+            scriptFile="classic.js;res://wmploc.dll/RT_TEXT/#132"
+            width_onchange="SizeChange();" height_onchange="SizeChange();"
+            onload="OnLoad();"
+            >
+
+        <player         URL_onchange="OnURLChange();"
+                        PlayState_onchange="OnPlayStateChange();"
+						OpenState_onchange="OnOpenStateChange();"
+                        >
+        </player>
+
+        <mediacenter    videoZoom_onchange="StartPlaying();"
+                        >
+        </mediacenter>
+
+        <!--    The navigation bar -->
+
+        <subview        width="jscript:view.width" height="1"
+                        backgroundColor="#FFFFFF" horizontalAlignment="stretch"
+                        >
+        </subview>
+
+        <subview        id="navbar"  left="0" top="1"
+                        width="jscript:view.width" height="23"
+                        horizontalAlignment="stretch"
+                        backgroundColor="#D6D3CE"
+                        >
+
+            <button     left="2" top="1"
+                        image="toggle_up.bmp"
+                        hoverImage="toggle_hover.bmp"
+                        downImage="toggle_down.bmp"
+                        upToolTip="Return to Full Mode"
+                        onClick="view.ReturnToMediaCenter();"
+                        >
+            </button>
+
+        </subview>
+
+        <subview        top="jscript:navbar.top + navbar.height"
+                        width="jscript:navbar.width" height="1"
+                        backgroundColor="#848284" horizontalAlignment="stretch"
+                        >
+        </subview>
+
+        <!--    The video window - and replacement icon view -->
+
+        <subview        id="videoview" left="0" top="25"
+                        width="jscript:view.width" height="183" 
+                        backgroundColor="#000000" 
+                        horizontalAlignment="stretch" verticalAlignment="stretch"
+                        >
+
+            <wmpVideo      id="video" windowless="false"
+                        width="jscript:videoview.width"
+                        height="jscript:videoview.height"
+                        horizontalAlignment="stretch" verticalAlignment="stretch"
+                        backgroundColor="#000000"
+                        >
+            </wmpVideo>
+
+            <button     id="wmlogo" image="icon_wmlogo.bmp" enabled="false" 
+                        horizontalAlignment="center" verticalAlignment="center"
+                        >
+            </button>
+
+        </subview>
+
+        <!--    The controls and info section -->
+
+        <subview        id="cpane"
+                        left="0" top="jscript:videoview.top+videoview.height" width="jscript:view.width" height="jscript:view.height - top"
+                        horizontalAlignment="stretch" verticalAlignment="bottom"
+                        backgroundColor="#D6D3CE"
+                        >
+
+            <slider     id="seek" left="4" top="5" toolTip="Seek"
+						width="jscript:cpane.width-10;"
+                        backgroundImage="currentpos_background.bmp"
+                        thumbImage="currentpos_thumb.bmp"
+                        transparencyColor="#FF00FF"
+                        horizontalalignment="stretch" borderSize="7"
+                        min="0" max="wmpprop:player.currentmedia.duration"
+						value="wmpprop:player.Controls.currentPosition"
+						onDragEnd="player.controls.currentposition=value;"
+                        >
+            </slider>
+
+            <playbutton id="play"   left="5" top="25"
+                        image="play_up.bmp"
+                        hoverImage="play_hover.bmp"
+                        downImage="play_down.bmp"
+                        disabledImage="play_disabled.bmp" 
+                        >
+            </playbutton>
+            <pausebutton id="pause"  left="26" top="25"
+                        image="pause_up.bmp"
+                        hoverImage="pause_hover.bmp"
+                        downImage="pause_down.bmp"
+                        disabledImage="pause_disabled.bmp"
+                        >
+            </pausebutton>
+            <stopbutton id="stop"  left="47" top="25"
+                        image="stop_up.bmp"
+                        hoverImage="stop_hover.bmp"
+                        downImage="stop_down.bmp"
+                        disabledImage="stop_disabled.bmp"
+                        >
+            </stopbutton>
+
+            <subview    left="70" top="25" backgroundImage="divider.bmp">
+            </subview>
+
+            <prevbutton id="prev"  left="76" top="25"
+                        image="prev_up.bmp"
+                        hoverImage="prev_hover.bmp"
+                        downImage="prev_down.bmp"
+                        disabledImage="prev_disabled.bmp"
+                        >
+            </prevbutton>
+            <rewbutton  id="rw"  left="98" top="25"
+                        image="rw_up.bmp"
+                        hoverImage="rw_hover.bmp"
+                        downImage="rw_down.bmp"
+                        disabledImage="rw_disabled.bmp"
+                        >
+            </rewbutton>
+            <ffwdbutton id="ffw"  left="120" top="25"
+                        image="ffw_up.bmp"
+                        hoverImage="ffw_hover.bmp"
+                        downImage="ffw_down.bmp"
+                        disabledImage="ffw_disabled.bmp"
+                        >
+            </ffwdbutton>
+            <nextbutton id="next"  left="142" top="25"
+                        image="next_up.bmp"
+                        hoverImage="next_hover.bmp"
+                        downImage="next_down.bmp"
+                        disabledImage="next_disabled.bmp"
+                        >
+            </nextbutton>
+
+            <subview    left="165" top="25" backgroundImage="divider.bmp">
+            </subview>
+
+            <button     id="mute"  left="210" top="25" width="21"
+                        image="mute_up.bmp"
+                        hoverImage="mute_hover.bmp"
+                        downImage="mute_down.bmp"
+                        sticky="true" upToolTip="Mute"
+                        down="wmpprop:player.settings.mute"
+                        horizontalAlignment="right"
+                        onclick="player.settings.mute=down;"
+                        >
+            </button>
+
+            <slider     id="volume"  left="232" top="25" width="48"
+						toolTip="Volume" borderSize="5"
+                        backgroundImage="volume_background.bmp"
+                        thumbImage="volume_thumb.bmp"
+                        value="wmpprop:player.settings.volume"
+                        value_onchange="player.settings.volume=value"
+                        horizontalAlignment="right"
+                        >
+            </slider>
+
+            <!-- info pane subview -->
+
+            <subview    top="55" width="jscript:cpane.width"
+                        height="jscript:cpane.height-top"
+                        backgroundColor="#000000"
+                        horizontalAlignment="stretch"
+                        >
+
+                <subview    width="jscript:cpane.width" height="1" backgroundColor="#848284" horizontalAlignment="Stretch">
+                </subview>
+                <subview    width="1" height="jscript:cpane.height" backgroundColor="#848284">
+                </subview>
+
+                <text       id="show_label" top="5" width="75" height="15"
+                            fontsize="9"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            justification="right" value="Show:"
+                            >
+                </text>
+
+                <text       id="show" top="jscript:show_label.top" 
+							left="jscript:show_label.left+show_label.width+10" 
+							width="jscript:cpane.width-show_label.width-10"
+							height="jscript:show_label.height"
+                            fontsize="jscript:show_label.fontsize"
+                            justification="left"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            value=""
+                            >
+                </text>
+
+                <subview    top="22" width="jscript:cpane.width" height="1" backgroundColor="#848284" horizontalAlignment="Stretch">
+                </subview>
+
+                <text       id="clip_label" top="25" width="75" height="15"
+                            fontsize="9"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            justification="right"
+                            value="Clip:"
+                            >
+                </text>
+
+                <text       id="clip" top="jscript:clip_label.top" 
+							left="jscript:clip_label.left+clip_label.width+10" 
+							width="jscript:cpane.width - clip_label.width-10"
+							height="jscript:clip_label.height"
+                            fontsize="jscript:clip_label.fontsize"
+                            justification="left"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            value=""
+                            >
+                </text>
+
+                <text       id="author_label" top="40" width="75" height="15"
+                            fontsize="9" justification="right"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            value="Author:"
+                            >
+                </text>
+
+                <text       id="author" top="jscript:author_label.top" 
+							left="jscript:author_label.left+author_label.width + 10" 
+							width="jscript:cpane.width-author_label.width-10"
+							height="jscript:author_label.height"
+                            fontsize="jscript:clip_label.fontsize"
+                            justification="left"
+                            backgroundColor="#000000" foregroundColor="#FFFFFF"
+                            value=""
+                            >
+                </text>
+
+                <text       id="copyright_label" top="55" width="75" height="15"
+                            fontsize="9"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000" justification="right"
+                            value="Copyright:"
+                            >
+                </text>
+
+                <text       id="copyright" top="jscript:copyright_label.top" 
+							left="jscript:copyright_label.left+copyright_label.width + 10" 
+							width="jscript:cpane.width-copyright_label.width-10" height="jscript:copyright_label.height"
+                            fontsize="jscript:copyright_label.fontsize"
+                            justification="left"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            value=""
+                            >
+                </text>
+
+                <subview    top="74" width="jscript:cpane.width" height="1" backgroundColor="#848284" horizontalAlignment="Stretch">
+                </subview>
+
+                <text       id="info"  top="78" left="20" height="15"
+                            fontsize="9"
+                            foregroundColor="#FFFFFF" backgroundColor="#000000"
+                            value=""
+                            >
+                </text>
+
+                <text       id="tracktime" fontsize="9"
+                            top="78" left="125" width="80" height="15"
+                            foregroundColor="#FFFFFF"
+                            backgroundColor="#000000" justification="right"
+                            value="wmpprop:player.controls.currentPositionString"
+                            horizontalAlignment="right"
+                            >
+                </text>
+                <text       left="JScript:tracktime.left+tracktime.width+2"
+                            top="78" fontsize="9" value="/"
+                            foregroundColor="#FFFFFF"
+                            backgroundColor="#000000"
+                            horizontalAlignment="right"
+                            >
+                </text>
+                <text       left="JScript:tracktime.left+tracktime.width+8"
+                            top="78" width="60" height="15"
+                            fontsize="9"
+                            foregroundColor="#FFFFFF"
+                            backgroundColor="#000000"
+                            value="wmpprop:player.currentMedia.durationString"
+                            horizontalAlignment="right"
+                            >
+                </text>
+
+                <subview    id="stereo" left="jscript:cpane.width-30" top="75" width="22" height="20"
+                            horizontalAlignment="right"
+                            >
+                </subview>
+            </subview>
+        </subview>
+
+        <text id="xWMP" enabled="false" visible="false"
+         toolTip="Windows Media Player"
+         >
+        </text>
+    </view>
+</theme>

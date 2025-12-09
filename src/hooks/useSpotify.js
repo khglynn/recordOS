@@ -73,6 +73,19 @@ export function useSpotify() {
   const [albumsByDecade, setAlbumsByDecade] = useState({}); // { '2020s': [...], '2010s': [...] }
   const [completedDecades, setCompletedDecades] = useState(new Set()); // Tracks which decades are finalized
 
+  // Compute dominant decade (memoized)
+  const dominantDecade = useMemo(() => {
+    let max = 0;
+    let dominant = null;
+    for (const [dec, decadeAlbums] of Object.entries(albumsByDecade)) {
+      if (decadeAlbums.length > max) {
+        max = decadeAlbums.length;
+        dominant = dec;
+      }
+    }
+    return dominant ? DECADE_LABELS[dominant] : null;
+  }, [albumsByDecade]);
+
   // Playback state
   const [player, setPlayer] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
@@ -858,18 +871,7 @@ export function useSpotify() {
     decadeStatus,
     albumsByDecade,
     hasReadyDecade: Object.values(decadeStatus).some(s => s === 'ready'),
-    dominantDecade: (() => {
-      // Find decade with most albums
-      let max = 0;
-      let dominant = null;
-      for (const [dec, albums] of Object.entries(albumsByDecade)) {
-        if (albums.length > max) {
-          max = albums.length;
-          dominant = dec;
-        }
-      }
-      return dominant ? DECADE_LABELS[dominant] : null;
-    })(),
+    dominantDecade,
     decadeOrder: DECADE_ORDER,
     decadeLabels: DECADE_LABELS,
 

@@ -46,7 +46,17 @@
       "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS log --oneline -3)",
       "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS add -A)",
       "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS commit -m \"$(cat <<''EOF''\nWIP: Safari debug logging, mobile UX, demo tracks fallback\n\nWork in progress on Safari compatibility:\n- Add [Safari Debug] console logging throughout fetchLibrary\n- Mobile window positioning (MediaPlayer bottom, others centered)\n- Demo tracks fallback for non-Premium users\n- Loading animation: 4 albums, CSS variables, stretched tile calculation\n- Various modal/window styling improvements\n\nSafari issues still being diagnosed:\n- Albums stacking instead of grid\n- Cache not persisting on refresh\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS push)"
+      "Bash(git -C /Users/KevinHG/Desktop/KevinIsDev/claude-code-cli/recordOS push)",
+      "Bash(find:*)",
+      "Bash(env)",
+      "Bash(claude mcp describe:*)",
+      "Bash(claude mcp:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_navigate"
     ],
     "deny": [],
     "ask": []
