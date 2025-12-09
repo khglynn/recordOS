@@ -25,6 +25,7 @@ import {
   Button,
 } from 'react95';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -108,6 +109,53 @@ const StyledWindowContent = styled(WindowContent)`
   padding: 0 !important;
   display: flex;
   flex-direction: column;
+  position: relative;
+`;
+
+/* Album Ended Overlay */
+const AlbumEndedOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 20px;
+  text-align: center;
+`;
+
+const AlbumEndedTitle = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: #00ff41;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+`;
+
+const AlbumEndedMessage = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.7);
+  margin-bottom: 16px;
+`;
+
+const AlbumEndedButton = styled(Button)`
+  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
+  color: #00ff41 !important;
+  border-color: #00ff41 !important;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  padding: 8px 16px;
+
+  &:hover {
+    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
+  }
 `;
 
 /* Now Playing Display - compact like Windows Media Player */
@@ -370,6 +418,7 @@ function MediaPlayer({
   volume,
   isMuted,
   playbackError,
+  albumEnded,
   onClose,
   onMinimize,
   onFocus,
@@ -383,13 +432,15 @@ function MediaPlayer({
   onOpenVisualizer,
   onEnableDemoMode,
   onDismissError,
+  onDismissAlbumEnded,
   windowPosition,
   onDragStart,
   isMobile,
 }) {
   const headerRef = useRef(null);
 
-  const handleMouseDown = (e) => {
+  // Handle both mouse and touch events for dragging
+  const handlePointerDown = (e) => {
     if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
       if (e.target.tagName !== 'BUTTON') {
         onDragStart?.(e);
@@ -416,7 +467,8 @@ function MediaPlayer({
         left: windowPosition?.x ?? 150,
         top: windowPosition?.y ?? 150,
       }}
-      onMouseDown={handleMouseDown}
+      onMouseDown={handlePointerDown}
+      onTouchStart={handlePointerDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
@@ -424,12 +476,28 @@ function MediaPlayer({
           <span>Media Player</span>
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={onMinimize}>_</HeaderButton>
-          <HeaderButton onClick={onClose}>×</HeaderButton>
+          <Tooltip text="Minimize">
+            <HeaderButton onClick={onMinimize}>_</HeaderButton>
+          </Tooltip>
+          <Tooltip text="Close">
+            <HeaderButton onClick={onClose}>×</HeaderButton>
+          </Tooltip>
         </HeaderButtons>
       </StyledWindowHeader>
 
       <StyledWindowContent>
+        {/* Album Ended Overlay */}
+        {albumEnded && (
+          <AlbumEndedOverlay>
+            <PixelIcon name="disc" size={32} color="#00ff41" style={{ marginBottom: 12 }} />
+            <AlbumEndedTitle>Record Complete</AlbumEndedTitle>
+            <AlbumEndedMessage>Select another album to continue</AlbumEndedMessage>
+            <AlbumEndedButton onClick={onDismissAlbumEnded}>
+              DISMISS
+            </AlbumEndedButton>
+          </AlbumEndedOverlay>
+        )}
+
         {/* Now Playing - compact display */}
         <NowPlayingArea>
           {currentTrack?.albumArt ? (
@@ -483,31 +551,40 @@ function MediaPlayer({
           {/* Controls */}
           <ControlsRow>
             <TransportButtons>
-              <TransportButton onClick={onPrevious}>
-                <PixelIcon name="prev" size={14} />
-              </TransportButton>
-              <TransportButton
-                $isPlay
-                onClick={isPlaying ? onPause : onPlay}
-              >
-                <PixelIcon name={isPlaying ? "pause" : "play"} size={14} />
-              </TransportButton>
-              <TransportButton onClick={onNext}>
-                <PixelIcon name="next" size={14} />
-              </TransportButton>
-              {/* Visualizer button */}
-              <TransportButton onClick={onOpenVisualizer} title="WMP[ish] Visualizations">
-                <PixelIcon name="sparkles" size={14} />
-              </TransportButton>
+              <Tooltip text="Previous">
+                <TransportButton onClick={onPrevious}>
+                  <PixelIcon name="prev" size={14} />
+                </TransportButton>
+              </Tooltip>
+              <Tooltip text={isPlaying ? "Pause" : "Play"}>
+                <TransportButton
+                  $isPlay
+                  onClick={isPlaying ? onPause : onPlay}
+                >
+                  <PixelIcon name={isPlaying ? "pause" : "play"} size={14} />
+                </TransportButton>
+              </Tooltip>
+              <Tooltip text="Next">
+                <TransportButton onClick={onNext}>
+                  <PixelIcon name="next" size={14} />
+                </TransportButton>
+              </Tooltip>
+              <Tooltip text="Visualizer">
+                <TransportButton onClick={onOpenVisualizer}>
+                  <PixelIcon name="sparkles" size={14} />
+                </TransportButton>
+              </Tooltip>
             </TransportButtons>
 
             <VolumeControl>
-              <VolumeIcon
-                $muted={isMuted}
-                onClick={onMuteToggle}
-              >
-                <PixelIcon name={isMuted || volume === 0 ? "volumeMute" : "volume"} size={14} />
-              </VolumeIcon>
+              <Tooltip text={isMuted ? "Unmute" : "Mute"}>
+                <VolumeIcon
+                  $muted={isMuted}
+                  onClick={onMuteToggle}
+                >
+                  <PixelIcon name={isMuted || volume === 0 ? "volumeMute" : "volume"} size={14} />
+                </VolumeIcon>
+              </Tooltip>
               <VolumeSlider
                 type="range"
                 min="0"

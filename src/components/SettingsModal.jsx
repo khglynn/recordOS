@@ -252,6 +252,7 @@ function SettingsModal({
         top: position?.y ?? 100,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>

@@ -127,9 +127,6 @@ function App() {
     localStorage.setItem('recordos_album_count', displayAlbumCount.toString());
   }, [displayAlbumCount]);
 
-  // Loading window position (separate from managed windows for simplicity)
-  const [loadingWindowPos, setLoadingWindowPos] = useState(null);
-
   // Track when loading completes to show loaded modal
   const [showLoadedModal, setShowLoadedModal] = useState(false);
   const [wasLoading, setWasLoading] = useState(false);
@@ -144,6 +141,78 @@ function App() {
       setWasLoading(false);
     }
   }, [spotify.isLoading, wasLoading, spotify.allAlbumsCount]);
+
+  // -------------------------------------------------------------------------
+  // SYNC LOGIN WINDOW TO WINDOWS ARRAY
+  // -------------------------------------------------------------------------
+  // This integrates the login modal into the window system so it appears in
+  // taskbar, can be minimized, and doesn't always stay on top.
+
+  const loginWindowId = useRef(null);
+
+  useEffect(() => {
+    if (loginModalOpen) {
+      // Add login window if not already present
+      const existingLogin = windows.find(w => w.type === 'login');
+      if (!existingLogin) {
+        const id = generateWindowId();
+        loginWindowId.current = id;
+        const centerX = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - 340) / 2) : 200;
+        const centerY = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - 500) / 2) : 100;
+
+        setWindows(prev => [...prev, {
+          id,
+          type: 'login',
+          title: showConfigStep ? 'System Configuration' : 'Record OS // Initialize',
+          data: {},
+          position: { x: centerX, y: centerY },
+          minimized: false,
+        }]);
+        setActiveWindowId(id);
+      }
+    } else {
+      // Remove login window
+      if (loginWindowId.current) {
+        setWindows(prev => prev.filter(w => w.id !== loginWindowId.current));
+        loginWindowId.current = null;
+      }
+    }
+  }, [loginModalOpen, showConfigStep]);
+
+  // -------------------------------------------------------------------------
+  // SYNC LOADING WINDOW TO WINDOWS ARRAY
+  // -------------------------------------------------------------------------
+
+  const loadingWindowId = useRef(null);
+
+  useEffect(() => {
+    if (spotify.isLoading) {
+      // Add loading window if not already present
+      const existingLoading = windows.find(w => w.type === 'loading');
+      if (!existingLoading) {
+        const id = generateWindowId();
+        loadingWindowId.current = id;
+        const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 180) : 300;
+        const centerY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 80) : 200;
+
+        setWindows(prev => [...prev, {
+          id,
+          type: 'loading',
+          title: 'Scanning Library...',
+          data: {},
+          position: { x: centerX, y: centerY },
+          minimized: false,
+        }]);
+        setActiveWindowId(id);
+      }
+    } else {
+      // Remove loading window
+      if (loadingWindowId.current) {
+        setWindows(prev => prev.filter(w => w.id !== loadingWindowId.current));
+        loadingWindowId.current = null;
+      }
+    }
+  }, [spotify.isLoading]);
 
   // Calculate top decade from albums
   const getTopDecade = () => {
@@ -173,24 +242,21 @@ function App() {
   // Step 2: After OAuth, show config modal
   // Step 3: After execute, show the app
 
-  // Check if user has cached albums to avoid modal flash on page refresh
-  const hasCachedAlbums = () => {
-    const cached = localStorage.getItem('recordos_albums_cache');
-    const cacheTime = localStorage.getItem('recordos_albums_cache_time');
-    if (cached && cacheTime) {
-      const age = Date.now() - parseInt(cacheTime);
-      return age < 60 * 60 * 1000; // 1 hour cache
-    }
-    return false;
-  };
+  // Check if this is an OAuth return (code in URL)
+  const isOAuthReturn = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('code');
 
-  // Don't show login modal if user is logged in with valid cached albums
+  // Don't show login modal if user is logged in (either with cache OR returning user)
+  // Only show if NOT logged in, OR if this is an OAuth return (need to show config)
   const [loginModalOpen, setLoginModalOpen] = useState(() => {
-    return !(isLoggedIn && hasCachedAlbums());
+    if (isOAuthReturn) return true; // OAuth return - will show config modal
+    if (isLoggedIn) return false;   // Returning user - skip modal, let loading happen
+    return true;                    // Not logged in - show login modal
   });
-  const [showConfigStep, setShowConfigStep] = useState(false);
+  const [showConfigStep, setShowConfigStep] = useState(isOAuthReturn);
   const [hasCompletedSetup, setHasCompletedSetup] = useState(() => {
-    return isLoggedIn && hasCachedAlbums();
+    // Complete if logged in with cache, OR logged in returning user (will auto-load)
+    return isLoggedIn && !isOAuthReturn;
   });
 
   // Check if user just returned from OAuth
@@ -203,9 +269,11 @@ function App() {
       setShowConfigStep(true);
       setLoginModalOpen(true);
     } else if (isLoggedIn && !hasCompletedSetup) {
-      // Already logged in from previous session - show config
-      setShowConfigStep(true);
-      setLoginModalOpen(true);
+      // Returning user with expired/no cache
+      // Skip config modal and let loading start automatically
+      // This prevents the "flash of config modal" on page refresh
+      setHasCompletedSetup(true);
+      setLoginModalOpen(false);
     } else if (isLoggedIn && hasCompletedSetup) {
       // Fully set up - hide modal
       setLoginModalOpen(false);
@@ -266,6 +334,33 @@ function App() {
       }
     }
   }, [isLoggedIn, hasOpenedInitialWindows, localAudio, isMobile]);
+
+  // -------------------------------------------------------------------------
+  // POST-AUTH: Recover audio state after Spotify OAuth redirect
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    // Check if returning from auth with saved state
+    const savedStateStr = sessionStorage.getItem('recordos_pre_auth_state');
+    if (!savedStateStr) return;
+
+    try {
+      const savedState = JSON.parse(savedStateStr);
+      sessionStorage.removeItem('recordos_pre_auth_state'); // Clear after reading
+
+      // Only resume if audio was playing before auth
+      if (savedState.wasPlaying && localAudio.fadeIn) {
+        // Small delay to let the page settle, then fade back in
+        const timer = setTimeout(() => {
+          localAudio.fadeIn(500);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.error('Failed to restore pre-auth state:', e);
+      sessionStorage.removeItem('recordos_pre_auth_state');
+    }
+  }, []); // Run once on mount
 
   // -------------------------------------------------------------------------
   // WINDOW MANAGEMENT
@@ -419,18 +514,28 @@ function App() {
     const win = windows.find(w => w.id === windowId);
     if (!win) return;
 
+    // Get coordinates from mouse or touch event
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
     // Get window element dimensions
     const windowEl = e.target.closest('[data-window]');
     const rect = windowEl?.getBoundingClientRect();
 
+    // Prevent default touch behavior (scrolling) during drag
+    if (e.touches) {
+      e.preventDefault();
+    }
+
     setDragging({
       windowId,
-      startX: e.clientX - win.position.x,
-      startY: e.clientY - win.position.y,
+      startX: clientX - win.position.x,
+      startY: clientY - win.position.y,
       width: rect?.width || 400,
       height: rect?.height || 300,
       initialX: win.position.x,
       initialY: win.position.y,
+      isTouch: !!e.touches,
     });
   }, [windows]);
 
@@ -456,14 +561,25 @@ function App() {
     let currentX = dragging.initialX;
     let currentY = dragging.initialY;
 
-    const handleMouseMove = (e) => {
-      currentX = Math.max(0, e.clientX - dragging.startX);
-      currentY = Math.max(0, e.clientY - dragging.startY);
+    // Handle both mouse and touch move events
+    const handleMove = (e) => {
+      // Get coordinates from mouse or touch event
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      // Prevent scrolling during touch drag
+      if (e.touches) {
+        e.preventDefault();
+      }
+
+      currentX = Math.max(0, clientX - dragging.startX);
+      currentY = Math.max(0, clientY - dragging.startY);
       outline.style.left = `${currentX}px`;
       outline.style.top = `${currentY}px`;
     };
 
-    const handleMouseUp = () => {
+    // Handle both mouse and touch end events
+    const handleEnd = () => {
       // Remove outline
       outline.remove();
       dragOutlineRef.current = null;
@@ -477,13 +593,20 @@ function App() {
       setDragging(null);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    // Add both mouse and touch event listeners
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
 
     return () => {
       outline.remove();
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
     };
   }, [dragging]);
 
@@ -670,16 +793,7 @@ function App() {
         onOpenGame={handleOpenGame}
       />
 
-      {/* Loading Window (shown while scanning library) */}
-      {spotify.isLoading && (
-        <LoadingWindow
-          loadingProgress={spotify.loadingProgress}
-          position={loadingWindowPos}
-          onPositionChange={setLoadingWindowPos}
-        />
-      )}
-
-      {/* Windows */}
+      {/* Windows (includes Login, Loading, and all other windows) */}
       {windows.map((w, index) => {
         if (w.minimized) return null;
 
@@ -694,7 +808,7 @@ function App() {
           onClose: () => closeWindow(w.id),
           onMinimize: () => minimizeWindow(w.id),
           onFocus: () => focusWindow(w.id),
-          onDragStart: isMobile ? null : (e) => handleDragStart(w.id, e),
+          onDragStart: (e) => handleDragStart(w.id, e),
           isMobile,
         };
 
@@ -722,6 +836,7 @@ function App() {
                 volume={audio.volume}
                 isMuted={audio.isMuted}
                 playbackError={!demoModeForced ? spotify.playbackError : null}
+                albumEnded={!demoModeForced && spotify.albumEnded}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -732,6 +847,7 @@ function App() {
                 onOpenVisualizer={handleOpenTrippyGraphics}
                 onEnableDemoMode={handleEnableDemoMode}
                 onDismissError={handleDismissPlaybackError}
+                onDismissAlbumEnded={spotify.clearAlbumEnded}
               />
             );
 
@@ -778,22 +894,54 @@ function App() {
               />
             );
 
+          case 'login':
+            return (
+              <LoginModal
+                {...commonProps}
+                canClose={canCloseLogin}
+                onExecute={handleExecute}
+                user={spotify.user}
+                isPostAuth={isLoggedIn && showConfigStep}
+                isLoading={spotify.isLoading}
+                loadingProgress={spotify.loadingProgress}
+                onBeforeAuth={async () => {
+                  // Preserve audio state before auth redirect
+                  const wasPlaying = localAudio.isPlaying;
+                  sessionStorage.setItem('recordos_pre_auth_state', JSON.stringify({
+                    wasPlaying,
+                    trackPosition: localAudio.position,
+                  }));
+                  // Fade out audio gracefully
+                  if (wasPlaying) {
+                    await localAudio.fadeOut(500);
+                  }
+                }}
+              />
+            );
+
+          case 'loading':
+            return (
+              <LoadingWindow
+                {...commonProps}
+                loadingProgress={spotify.loadingProgress}
+                decadeStatus={spotify.decadeStatus}
+                albumsByDecade={spotify.albumsByDecade}
+                decadeOrder={spotify.decadeOrder}
+                decadeLabels={spotify.decadeLabels}
+                hasReadyDecade={spotify.hasReadyDecade}
+                onExploreEarly={() => {
+                  // Minimize loading window, let user explore early
+                  setWindows(prev => prev.map(w =>
+                    w.id === 'loading' ? { ...w, minimized: true } : w
+                  ));
+                }}
+              />
+            );
+
           default:
             return null;
         }
       })}
-
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-        canClose={canCloseLogin}
-        onExecute={handleExecute}
-        user={spotify.user}
-        isPostAuth={isLoggedIn && showConfigStep}
-        isLoading={spotify.isLoading}
-        loadingProgress={spotify.loadingProgress}
-      />
 
       {/* Loaded Modal - shown after library scan completes */}
       <LoadedModal
@@ -809,6 +957,15 @@ function App() {
         onKeepWindows={() => {
           // Just dismiss the modal
           setShowLoadedModal(false);
+        }}
+        // Decade picker props
+        decadeStatus={spotify.decadeStatus}
+        albumsByDecade={spotify.albumsByDecade}
+        decadeOrder={spotify.decadeOrder}
+        decadeLabels={spotify.decadeLabels}
+        onDecadeSelect={(decade) => {
+          // Set the decade filter
+          spotify.setDecade(decade);
         }}
       />
 

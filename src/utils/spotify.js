@@ -324,11 +324,12 @@ export async function getSavedTracks(limit = 50, offset = 0) {
  * Get ALL saved tracks (handles pagination)
  */
 /**
- * Get all saved tracks with progressive album callback
+ * Get all saved tracks with progressive callbacks
  * @param {Function} onProgress - Called with { loaded, total } after each batch
  * @param {Function} onAlbumBatch - Called with array of album objects as they're discovered
+ * @param {Function} onTrackBatch - Called with array of track items (including added_at) for decade detection
  */
-export async function getAllSavedTracks(onProgress, onAlbumBatch) {
+export async function getAllSavedTracks(onProgress, onAlbumBatch, onTrackBatch) {
   const tracks = [];
   const seenAlbumIds = new Set();
   let offset = 0;
@@ -362,6 +363,11 @@ export async function getAllSavedTracks(onProgress, onAlbumBatch) {
       if (newAlbums.length > 0) {
         onAlbumBatch(newAlbums);
       }
+    }
+
+    // Pass track batch with added_at for decade completion detection
+    if (onTrackBatch && response.items.length > 0) {
+      onTrackBatch(response.items);
     }
 
     if (onProgress) {

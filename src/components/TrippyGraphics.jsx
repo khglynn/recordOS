@@ -188,6 +188,7 @@ function TrippyGraphics({
         height: size?.height ?? 400,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>

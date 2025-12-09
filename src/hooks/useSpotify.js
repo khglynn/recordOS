@@ -33,7 +33,10 @@ import {
 } from '../utils/spotify';
 import {
   DECADE_OPTIONS,
+  DECADE_ORDER,
+  DECADE_LABELS,
   getDecadeFromDate,
+  getDecadeCompletionThreshold,
   DEFAULT_THRESHOLD,
   TARGET_ALBUM_COUNT,
   MIN_SAVED_TRACKS,
@@ -64,6 +67,12 @@ export function useSpotify() {
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
   const [loadingAlbums, setLoadingAlbums] = useState([]); // Album art discovered during loading
 
+  // Progressive decade loading state
+  const [scanPhase, setScanPhase] = useState('idle'); // 'idle' | 'scanning' | 'complete'
+  const [decadeStatus, setDecadeStatus] = useState({}); // { '2020s': 'ready', '2010s': 'scanning', ... }
+  const [albumsByDecade, setAlbumsByDecade] = useState({}); // { '2020s': [...], '2010s': [...] }
+  const [completedDecades, setCompletedDecades] = useState(new Set()); // Tracks which decades are finalized
+
   // Playback state
   const [player, setPlayer] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
@@ -78,6 +87,7 @@ export function useSpotify() {
     localStorage.getItem(STORAGE_KEYS.MUTED) === 'true'
   );
   const [playbackError, setPlaybackError] = useState(null);
+  const [albumEnded, setAlbumEnded] = useState(false); // True when album finishes playing
 
   // Audio analysis for visualizer
   const [audioAnalysis, setAudioAnalysis] = useState(null);
@@ -214,13 +224,22 @@ export function useSpotify() {
     setIsInitializing(false);
 
     setIsLoading(true);
+    setScanPhase('scanning');
     setLoadingProgress({ loaded: 0, total: 0 });
     setLoadingAlbums([]); // Reset loading albums
+    setDecadeStatus({}); // Reset decade status
+    setAlbumsByDecade({}); // Reset albums by decade
+    setCompletedDecades(new Set()); // Reset completed decades
 
     try {
       // Map to accumulate album data and liked track counts
       const albumDataMap = new Map();
       const seenAlbumImages = new Set(); // Track unique album images for loading display
+
+      // Progressive decade tracking (local state for callbacks)
+      const localAlbumsByDecade = {}; // { '2020s': Map<id, album>, ... }
+      const localCompletedDecades = new Set();
+      let lowestSavedYear = 9999; // Track oldest save year seen
 
       console.log('[Safari Debug] Starting getAllSavedTracks...');
 
@@ -241,6 +260,73 @@ export function useSpotify() {
           if (newImages.length > 0) {
             setLoadingAlbums(prev => [...prev, ...newImages]);
           }
+
+          // Process albums by decade
+          for (const album of newAlbums) {
+            const decade = getDecadeFromDate(album.releaseDate);
+            if (decade) {
+              if (!localAlbumsByDecade[decade]) {
+                localAlbumsByDecade[decade] = new Map();
+              }
+              if (!localAlbumsByDecade[decade].has(album.id)) {
+                localAlbumsByDecade[decade].set(album.id, {
+                  ...album,
+                  likedTracks: 0,
+                  likedTrackIds: new Set(),
+                });
+              }
+            }
+          }
+        },
+        // Track batch callback - detect decade completion via added_at
+        (trackItems) => {
+          // Process each track to update decade status
+          for (const item of trackItems) {
+            const savedYear = new Date(item.added_at).getFullYear();
+            if (savedYear < lowestSavedYear) {
+              lowestSavedYear = savedYear;
+
+              // Check if any decades should be marked complete
+              for (const dec of DECADE_ORDER) {
+                if (!localCompletedDecades.has(dec)) {
+                  const threshold = getDecadeCompletionThreshold(dec);
+                  if (threshold > 0 && lowestSavedYear < threshold) {
+                    localCompletedDecades.add(dec);
+                    console.log(`[Decade Complete] ${dec} is now complete (saw save from ${lowestSavedYear})`);
+                  }
+                }
+              }
+            }
+
+            // Update album liked track count in real-time
+            const album = item.track.album;
+            const decade = getDecadeFromDate(album.release_date);
+            if (decade && localAlbumsByDecade[decade]) {
+              const albumData = localAlbumsByDecade[decade].get(album.id);
+              if (albumData && !albumData.likedTrackIds.has(item.track.id)) {
+                albumData.likedTrackIds.add(item.track.id);
+                albumData.likedTracks += 1;
+              }
+            }
+          }
+
+          // Update React state with current decade status
+          const newStatus = {};
+          for (const dec of DECADE_ORDER) {
+            if (localAlbumsByDecade[dec] && localAlbumsByDecade[dec].size > 0) {
+              newStatus[dec] = localCompletedDecades.has(dec) ? 'ready' : 'scanning';
+            }
+          }
+          setDecadeStatus(newStatus);
+
+          // Update albums by decade (convert Maps to sorted arrays)
+          const newAlbumsByDecade = {};
+          for (const [dec, albumMap] of Object.entries(localAlbumsByDecade)) {
+            newAlbumsByDecade[dec] = Array.from(albumMap.values())
+              .sort((a, b) => b.likedTracks - a.likedTracks);
+          }
+          setAlbumsByDecade(newAlbumsByDecade);
+          setCompletedDecades(new Set(localCompletedDecades));
         }
       );
 
@@ -331,11 +417,35 @@ export function useSpotify() {
       console.log(`[Safari Debug] setAlbums called, clearing loading state...`);
       setLoadingAlbums([]); // Clear loading albums
       setIsLoading(false);
-      console.log(`[Safari Debug] fetchLibrary complete!`);
+      setScanPhase('complete');
+
+      // Mark all decades with albums as 'ready' now that scan is complete
+      const finalDecadeStatus = {};
+      for (const dec of DECADE_ORDER) {
+        if (localAlbumsByDecade[dec] && localAlbumsByDecade[dec].size > 0) {
+          finalDecadeStatus[dec] = 'ready';
+        }
+      }
+      setDecadeStatus(finalDecadeStatus);
+
+      // Final albums by decade with properly sorted data
+      const finalAlbumsByDecade = {};
+      for (const [dec, albumMap] of Object.entries(localAlbumsByDecade)) {
+        finalAlbumsByDecade[dec] = Array.from(albumMap.values())
+          .map(a => ({
+            ...a,
+            likedTrackIds: Array.from(a.likedTrackIds),
+          }))
+          .sort((a, b) => b.likedTracks - a.likedTracks);
+      }
+      setAlbumsByDecade(finalAlbumsByDecade);
+
+      console.log(`[Safari Debug] fetchLibrary complete! Decades:`, Object.keys(finalDecadeStatus));
     } catch (err) {
       console.error('Failed to fetch library:', err);
       setLoadingAlbums([]); // Clear loading albums on error too
       setIsLoading(false);
+      setScanPhase('idle');
     }
   }, [loggedIn]);
 
@@ -486,6 +596,29 @@ export function useSpotify() {
           // Fetch audio analysis for visualizer
           getAudioAnalysis(track.id).then(setAudioAnalysis).catch(() => {});
         }
+
+        // Detect album end: no more tracks AND playback stopped naturally
+        // (paused, position near end of track)
+        const nextTracks = state.track_window.next_tracks || [];
+        const isLastTrack = nextTracks.length === 0;
+        const trackEnded = state.paused && state.position === 0 && state.duration > 0;
+
+        if (isLastTrack && trackEnded) {
+          console.log('[Album End] Album finished playing');
+          setAlbumEnded(true);
+
+          // Play vinyl end sound effect
+          try {
+            const endSound = new Audio('/audio/record-end.mp3');
+            endSound.volume = 0.5;
+            endSound.play().catch(() => {
+              // Audio play failed (likely no user interaction yet)
+              console.log('[Album End] Could not play end sound');
+            });
+          } catch (e) {
+            console.log('[Album End] Audio not available');
+          }
+        }
       });
 
       await spotifyPlayer.connect();
@@ -609,6 +742,7 @@ export function useSpotify() {
 
     try {
       setPlaybackError(null); // Clear any previous error
+      setAlbumEnded(false);   // Clear album-ended state for new album
       await play(deviceId, {
         contextUri: album.uri,
       });
@@ -719,6 +853,26 @@ export function useSpotify() {
     loadingAlbums,
     refreshLibrary: fetchLibrary,
 
+    // Progressive decade loading
+    scanPhase,
+    decadeStatus,
+    albumsByDecade,
+    hasReadyDecade: Object.values(decadeStatus).some(s => s === 'ready'),
+    dominantDecade: (() => {
+      // Find decade with most albums
+      let max = 0;
+      let dominant = null;
+      for (const [dec, albums] of Object.entries(albumsByDecade)) {
+        if (albums.length > max) {
+          max = albums.length;
+          dominant = dec;
+        }
+      }
+      return dominant ? DECADE_LABELS[dominant] : null;
+    })(),
+    decadeOrder: DECADE_ORDER,
+    decadeLabels: DECADE_LABELS,
+
     // Settings
     decade,
     setDecade: handleDecadeChange,
@@ -733,6 +887,8 @@ export function useSpotify() {
     audioAnalysis,
     playbackError,
     clearPlaybackError: () => setPlaybackError(null),
+    albumEnded,
+    clearAlbumEnded: () => setAlbumEnded(false),
 
     // Playback controls
     play: handlePlay,

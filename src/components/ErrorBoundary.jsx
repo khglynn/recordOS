@@ -120,9 +120,9 @@ class ErrorBoundary extends Component {
           <Title>RECORD OS</Title>
 
           <Message>
-            A fatal exception has occurred at {new Date().toLocaleTimeString()}.
+            A fatal exception has occurred at {new Date().toLocaleTimeString()}
             <br /><br />
-            The current application will be terminated.
+            The current application will be terminated
             <br /><br />
             * Press RELOAD to restart the application.
             <br />

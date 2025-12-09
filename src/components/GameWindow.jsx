@@ -20,6 +20,7 @@ import {
   Button,
 } from 'react95';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // GAME SOURCES
@@ -230,6 +231,7 @@ function GameWindow({
       $isSolitaire={gameType === 'solitaire'}
       style={windowStyle}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
@@ -237,12 +239,16 @@ function GameWindow({
           <span>{config.title}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>
-            <PixelIcon name="minus" size={10} />
-          </HeaderButton>
-          <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>
-            <PixelIcon name="close" size={10} />
-          </HeaderButton>
+          <Tooltip text="Minimize">
+            <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>
+              <PixelIcon name="minus" size={10} />
+            </HeaderButton>
+          </Tooltip>
+          <Tooltip text="Close">
+            <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>
+              <PixelIcon name="close" size={10} />
+            </HeaderButton>
+          </Tooltip>
         </HeaderButtons>
       </StyledWindowHeader>
 

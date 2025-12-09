@@ -22,6 +22,7 @@ import {
   Anchor,
 } from 'react95';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -305,13 +306,16 @@ function InfoModal({
         top: position?.y ?? 100,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
           <PixelIcon name="info" size={14} />
           <span>About Record OS</span>
         </HeaderTitle>
-        <HeaderButton onClick={onClose}>×</HeaderButton>
+        <Tooltip text="Close">
+          <HeaderButton onClick={onClose}>×</HeaderButton>
+        </Tooltip>
       </StyledWindowHeader>
 
       <StyledWindowContent>
@@ -325,7 +329,7 @@ function InfoModal({
 
         <SystemMessage>
           <span className="prompt">&gt;</span>
-          Audio visualization terminal.
+          Audio visualization terminal
           <br />
           <span className="prompt">&gt;</span>
           Displays your most-loved albums,

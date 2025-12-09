@@ -11,6 +11,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react';
+// Note: useState/useEffect still needed for displayedPercent tracking
 import styled from 'styled-components';
 import {
   Window,
@@ -18,6 +19,7 @@ import {
   WindowContent,
 } from 'react95';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -25,7 +27,7 @@ import PixelIcon from './PixelIcon';
 
 const StyledWindow = styled(Window)`
   position: fixed;
-  z-index: 10001;
+  z-index: ${props => props.$zIndex || 1000};
   width: 360px;
 
   /* Dark theme */
@@ -51,13 +53,36 @@ const StyledWindow = styled(Window)`
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
-  background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
-  color: #00ff41 !important;
+  background: ${props => props.$active
+    ? 'linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%)'
+    : 'linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)'} !important;
+  color: ${props => props.$active ? '#00ff41' : '#4a4a4a'} !important;
   cursor: move;
   display: flex;
   justify-content: space-between;
   align-items: center;
   user-select: none;
+`;
+
+const HeaderButtons = styled.div`
+  display: flex;
+  gap: 2px;
+`;
+
+const HeaderButton = styled.button`
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 10px;
+  border: 1px solid #4a4a4a;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #00ff41;
+  cursor: pointer;
+
+  &:hover {
+    background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+  }
 `;
 
 const HeaderTitle = styled.span`
@@ -133,25 +158,111 @@ const AnimatedDots = styled.span`
   }
 `;
 
+const DecadeSection = styled.div`
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #2a2a2a;
+`;
+
+const DecadeSectionTitle = styled.div`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+`;
+
+const DecadeList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const DecadeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+`;
+
+const DecadeIcon = styled.span`
+  width: 14px;
+  text-align: center;
+  color: ${props => props.$ready ? '#00ff41' : 'rgba(0, 255, 65, 0.3)'};
+`;
+
+const DecadeName = styled.span`
+  color: ${props => props.$ready ? '#00ff41' : 'rgba(0, 255, 65, 0.5)'};
+  flex: 1;
+`;
+
+const DecadeCount = styled.span`
+  color: ${props => props.$ready ? '#00ff41' : 'rgba(0, 255, 65, 0.3)'};
+  font-size: 10px;
+`;
+
+const DecadeStatus = styled.span`
+  font-size: 9px;
+  color: ${props => props.$ready ? '#00ff41' : 'rgba(0, 255, 65, 0.4)'};
+  text-transform: uppercase;
+`;
+
+const ExploreButton = styled.button`
+  width: 100%;
+  margin-top: 16px;
+  padding: 8px 16px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid #00ff41;
+  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%);
+  color: #00ff41;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%);
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 function LoadingWindow({
-  loadingProgress,
+  // Standard window props from window management system
+  isActive,
+  zIndex,
   position,
-  onPositionChange,
+  onClose,
+  onMinimize,
+  onFocus,
+  onDragStart,
+  isMobile,
+  // Loading-specific props
+  loadingProgress,
+  // Progressive decade props
+  decadeStatus = {},
+  albumsByDecade = {},
+  decadeOrder = [],
+  decadeLabels = {},
+  hasReadyDecade = false,
+  onExploreEarly,
 }) {
   const headerRef = useRef(null);
-  const windowRef = useRef(null);
-  const dragOutlineRef = useRef(null);
-  const [dragging, setDragging] = useState(null);
   const [displayedPercent, setDisplayedPercent] = useState(0);
-
-  // Use provided position or center
-  const defaultX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 180) : 300;
-  const defaultY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 80) : 200;
-  const currentPos = position || { x: defaultX, y: defaultY };
 
   const loaded = loadingProgress?.loaded || 0;
   const total = loadingProgress?.total || 0;
@@ -171,81 +282,36 @@ function LoadingWindow({
     }
   }, [loaded, total]);
 
-  // Handle drag start
   const handleMouseDown = (e) => {
     if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
-      const rect = windowRef.current?.getBoundingClientRect();
-      setDragging({
-        startX: e.clientX - currentPos.x,
-        startY: e.clientY - currentPos.y,
-        width: rect?.width || 360,
-        height: rect?.height || 150,
-        initialX: currentPos.x,
-        initialY: currentPos.y,
-      });
+      if (e.target.tagName !== 'BUTTON') {
+        onDragStart?.(e);
+      }
     }
+    onFocus?.();
   };
-
-  // Outline drag effect (same as other windows)
-  useEffect(() => {
-    if (!dragging) return;
-
-    const outline = document.createElement('div');
-    outline.style.cssText = `
-      position: fixed;
-      border: 2px dashed #00ff41;
-      pointer-events: none;
-      z-index: 999999;
-      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-      left: ${dragging.initialX}px;
-      top: ${dragging.initialY}px;
-      width: ${dragging.width}px;
-      height: ${dragging.height}px;
-    `;
-    document.body.appendChild(outline);
-    dragOutlineRef.current = outline;
-
-    let currentX = dragging.initialX;
-    let currentY = dragging.initialY;
-
-    const handleMouseMove = (e) => {
-      currentX = Math.max(0, e.clientX - dragging.startX);
-      currentY = Math.max(0, e.clientY - dragging.startY);
-      outline.style.left = `${currentX}px`;
-      outline.style.top = `${currentY}px`;
-    };
-
-    const handleMouseUp = () => {
-      outline.remove();
-      dragOutlineRef.current = null;
-      onPositionChange?.({ x: currentX, y: currentY });
-      setDragging(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      outline.remove();
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [dragging, onPositionChange]);
 
   return (
     <StyledWindow
-      ref={windowRef}
+      data-window
+      $zIndex={zIndex}
       style={{
-        left: currentPos.x,
-        top: currentPos.y,
+        left: position?.x ?? 300,
+        top: position?.y ?? 200,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
-      <StyledWindowHeader ref={headerRef}>
+      <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
           <PixelIcon name="disc" size={14} />
           <span>SCANNING LIBRARY...</span>
         </HeaderTitle>
+        <HeaderButtons>
+          <Tooltip text="Minimize">
+            <HeaderButton onClick={onMinimize}>_</HeaderButton>
+          </Tooltip>
+        </HeaderButtons>
       </StyledWindowHeader>
 
       <StyledWindowContent>
@@ -262,6 +328,47 @@ function LoadingWindow({
           <span>{loaded.toLocaleString()} / {total > 0 ? total.toLocaleString() : '...'} tracks</span>
           <span>{displayedPercent}%</span>
         </ProgressDetails>
+
+        {/* Decade status list */}
+        {Object.keys(decadeStatus).length > 0 && (
+          <DecadeSection>
+            <DecadeSectionTitle>Decades Discovered</DecadeSectionTitle>
+            <DecadeList>
+              {decadeOrder.map(decade => {
+                const status = decadeStatus[decade];
+                const albums = albumsByDecade[decade] || [];
+                if (!status) return null;
+
+                const isReady = status === 'ready';
+                return (
+                  <DecadeRow key={decade}>
+                    <DecadeIcon $ready={isReady}>
+                      {isReady ? '✓' : '○'}
+                    </DecadeIcon>
+                    <DecadeName $ready={isReady}>
+                      {decadeLabels[decade] || decade}
+                    </DecadeName>
+                    <DecadeCount $ready={isReady}>
+                      [{albums.length} albums]
+                    </DecadeCount>
+                    <DecadeStatus $ready={isReady}>
+                      {isReady ? 'READY' : 'scanning...'}
+                    </DecadeStatus>
+                  </DecadeRow>
+                );
+              })}
+            </DecadeList>
+
+            {/* Explore early button */}
+            <ExploreButton
+              disabled={!hasReadyDecade}
+              onClick={onExploreEarly}
+            >
+              <PixelIcon name="monitor" size={12} />
+              Minimize & Explore
+            </ExploreButton>
+          </DecadeSection>
+        )}
       </StyledWindowContent>
     </StyledWindow>
   );

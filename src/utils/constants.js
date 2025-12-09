@@ -87,6 +87,29 @@ export const DECADE_LABELS = {
   [DECADE_OPTIONS.CLASSIC]: 'Pre-1980',
 };
 
+// Ordered list of decades (newest to oldest) for progressive loading
+export const DECADE_ORDER = [
+  DECADE_OPTIONS.D2020,
+  DECADE_OPTIONS.D2010,
+  DECADE_OPTIONS.D2000,
+  DECADE_OPTIONS.D1990,
+  DECADE_OPTIONS.D1980,
+  DECADE_OPTIONS.CLASSIC,
+];
+
+// Get saved year threshold for decade completion detection
+// When we see a track saved before this year, that decade is complete
+export const getDecadeCompletionThreshold = (decade) => {
+  switch (decade) {
+    case DECADE_OPTIONS.D2020: return 2020; // If saved before 2020, 2020s is complete
+    case DECADE_OPTIONS.D2010: return 2010;
+    case DECADE_OPTIONS.D2000: return 2000;
+    case DECADE_OPTIONS.D1990: return 1990;
+    case DECADE_OPTIONS.D1980: return 1980;
+    default: return 0; // Classic never completes via threshold
+  }
+};
+
 // Helper to get decade from release date
 export const getDecadeFromDate = (releaseDate) => {
   if (!releaseDate) return null;

@@ -10,7 +10,7 @@
  * Voice: Retro-corporate with alien computer undertones
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import styled from 'styled-components';
 import {
   Window,
@@ -21,6 +21,7 @@ import {
 } from 'react95';
 import { loginWithSpotify } from '../utils/spotify';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -32,7 +33,7 @@ const StyledWindow = styled(Window)`
   position: fixed;
   width: 340px;
   max-width: 95vw;
-  z-index: 1200; /* Above other windows (1100) but below taskbar (100000) */
+  z-index: ${props => props.$zIndex || 1000};
 
   background: #1a1a1a !important;
   box-shadow:
@@ -50,11 +51,15 @@ const StyledWindow = styled(Window)`
 `;
 
 const StyledWindowHeader = styled(WindowHeader)`
-  background: linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%) !important;
-  color: #00ff41 !important;
+  background: ${props => props.$active
+    ? 'linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%)'
+    : 'linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)'} !important;
+  color: ${props => props.$active ? '#00ff41' : '#4a4a4a'} !important;
+  cursor: move;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  user-select: none;
 `;
 
 const HeaderTitle = styled.span`
@@ -251,6 +256,24 @@ const Footer = styled.div`
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
+const AuthWarning = styled.div`
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px dashed rgba(0, 255, 65, 0.3);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.5);
+  line-height: 1.6;
+  text-align: center;
+
+  .warning-icon {
+    color: rgba(0, 255, 65, 0.6);
+    margin-right: 4px;
+  }
+`;
+
 const CloseButton = styled(Button)`
   min-width: 20px;
   width: 20px;
@@ -308,91 +331,42 @@ const UserStatus = styled.div`
 // ============================================================================
 
 function LoginModal({
-  isOpen,
+  // Standard window props from window management system
+  isActive,
+  zIndex,
+  position,
   onClose,
+  onMinimize,
+  onFocus,
+  onDragStart,
+  isMobile,
+  // Login-specific props
   onExecute,
   user,
   isPostAuth,
   isLoading,
   loadingProgress,
   canClose,
+  // Auth transition props
+  onBeforeAuth,
 }) {
-  // Window position state - initialize centered
-  const [position, setPosition] = useState(() => {
-    if (typeof window === 'undefined') return { x: 200, y: 100 };
-    return {
-      x: Math.max(0, (window.innerWidth - 340) / 2),
-      y: Math.max(0, (window.innerHeight - 500) / 2),
-    };
-  });
-  const [dragging, setDragging] = useState(null);
-  const windowRef = useRef(null);
-  const dragOutlineRef = useRef(null);
+  const headerRef = useRef(null);
 
-  // Handle drag start
-  const handleDragStart = useCallback((e) => {
-    if (!position) return;
-
-    const rect = windowRef.current?.getBoundingClientRect();
-    setDragging({
-      startX: e.clientX - position.x,
-      startY: e.clientY - position.y,
-      width: rect?.width || 420,
-      height: rect?.height || 500,
-      initialX: position.x,
-      initialY: position.y,
-    });
-  }, [position]);
-
-  // Outline drag effect
-  useEffect(() => {
-    if (!dragging) return;
-
-    // Create outline element (pure DOM, no React)
-    const outline = document.createElement('div');
-    outline.style.cssText = `
-      position: fixed;
-      border: 2px dashed #00ff41;
-      pointer-events: none;
-      z-index: 999999;
-      box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-      left: ${dragging.initialX}px;
-      top: ${dragging.initialY}px;
-      width: ${dragging.width}px;
-      height: ${dragging.height}px;
-    `;
-    document.body.appendChild(outline);
-    dragOutlineRef.current = outline;
-
-    let currentX = dragging.initialX;
-    let currentY = dragging.initialY;
-
-    const handleMouseMove = (e) => {
-      currentX = Math.max(0, e.clientX - dragging.startX);
-      currentY = Math.max(0, e.clientY - dragging.startY);
-      outline.style.left = `${currentX}px`;
-      outline.style.top = `${currentY}px`;
-    };
-
-    const handleMouseUp = () => {
-      outline.remove();
-      dragOutlineRef.current = null;
-      setPosition({ x: currentX, y: currentY });
-      setDragging(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      outline.remove();
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [dragging]);
+  const handleMouseDown = (e) => {
+    if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
+      if (e.target.tagName !== 'BUTTON') {
+        onDragStart?.(e);
+      }
+    }
+    onFocus?.();
+  };
 
   const handleLogin = async () => {
     try {
+      // Fade out audio and preserve state before redirect
+      if (onBeforeAuth) {
+        await onBeforeAuth();
+      }
       await loginWithSpotify();
     } catch (error) {
       console.error('Login error:', error);
@@ -403,23 +377,30 @@ function LoginModal({
     onExecute?.();
   };
 
-  if (!isOpen) return null;
-
   // STEP 2: Post-auth configuration
   if (isPostAuth) {
     return (
       <StyledWindow
-        ref={windowRef}
-        style={{ left: position.x, top: position.y }}
+        data-window
+        $zIndex={zIndex}
+        style={{ left: position?.x ?? 200, top: position?.y ?? 100 }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleMouseDown}
       >
         <StyledWindowHeader
-          onMouseDown={handleDragStart}
+          ref={headerRef}
+          $active={isActive}
           style={{ cursor: 'grab' }}
         >
           <HeaderTitle>
             <PixelIcon name="sliders" size={14} />
             <span>SYSTEM CONFIGURATION</span>
           </HeaderTitle>
+          <div style={{ display: 'flex', gap: '2px' }}>
+            <Tooltip text="Minimize">
+              <CloseButton onClick={onMinimize}>_</CloseButton>
+            </Tooltip>
+          </div>
         </StyledWindowHeader>
 
         <StyledWindowContent>
@@ -491,11 +472,15 @@ function LoginModal({
   // STEP 1: Initial connection
   return (
     <StyledWindow
-      ref={windowRef}
-      style={{ left: position.x, top: position.y }}
+      data-window
+      $zIndex={zIndex}
+      style={{ left: position?.x ?? 200, top: position?.y ?? 100 }}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader
-        onMouseDown={handleDragStart}
+        ref={headerRef}
+        $active={isActive}
         style={{ cursor: 'grab' }}
       >
         <HeaderTitle>
@@ -503,8 +488,14 @@ function LoginModal({
           <span>RECORD OS // INITIALIZE</span>
         </HeaderTitle>
         <div style={{ display: 'flex', gap: '2px' }}>
-          <CloseButton onClick={onClose}>_</CloseButton>
-          {canClose && <CloseButton onClick={onClose}>×</CloseButton>}
+          <Tooltip text="Minimize">
+            <CloseButton onClick={onMinimize}>_</CloseButton>
+          </Tooltip>
+          {canClose && (
+            <Tooltip text="Close">
+              <CloseButton onClick={onClose}>×</CloseButton>
+            </Tooltip>
+          )}
         </div>
       </StyledWindowHeader>
 
@@ -534,10 +525,18 @@ function LoginModal({
           <PixelIcon name="login" size={14} /> CONNECT TO SPOTIFY
         </SpotifyButton>
 
-        <Footer>
-          Requires Spotify Premium for audio playback.
+        <AuthWarning>
+          <span className="warning-icon">&gt;</span>
+          Auth will pause current session
           <br />
-          All data processed locally.
+          <span className="warning-icon">&gt;</span>
+          Best experienced on Chrome desktop
+        </AuthWarning>
+
+        <Footer>
+          Requires Spotify Premium for audio playback
+          <br />
+          All data processed locally
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

@@ -198,6 +198,76 @@ export function useLocalAudio() {
   }, [isMuted, volume]);
 
   // -------------------------------------------------------------------------
+  // FADE IN/OUT FOR AUTH TRANSITIONS
+  // -------------------------------------------------------------------------
+
+  const fadeOut = useCallback((durationMs = 500) => {
+    return new Promise((resolve) => {
+      if (!audioRef.current || !isPlaying) {
+        resolve();
+        return;
+      }
+
+      const steps = 20;
+      const stepDuration = durationMs / steps;
+      const startVolume = audioRef.current.volume;
+      const volumeStep = startVolume / steps;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const newVolume = Math.max(0, startVolume - (volumeStep * currentStep));
+        audioRef.current.volume = newVolume;
+
+        if (currentStep >= steps) {
+          clearInterval(fadeInterval);
+          audioRef.current.pause();
+          resolve();
+        }
+      }, stepDuration);
+    });
+  }, [isPlaying]);
+
+  const fadeIn = useCallback((durationMs = 500) => {
+    return new Promise((resolve) => {
+      if (!audioRef.current) {
+        resolve();
+        return;
+      }
+
+      // Initialize audio context if needed
+      initAudioContext();
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+
+      const targetVolume = isMuted ? 0 : volume / 100;
+      audioRef.current.volume = 0;
+
+      audioRef.current.play().then(() => {
+        const steps = 20;
+        const stepDuration = durationMs / steps;
+        const volumeStep = targetVolume / steps;
+        let currentStep = 0;
+
+        const fadeInterval = setInterval(() => {
+          currentStep++;
+          const newVolume = Math.min(targetVolume, volumeStep * currentStep);
+          audioRef.current.volume = newVolume;
+
+          if (currentStep >= steps) {
+            clearInterval(fadeInterval);
+            resolve();
+          }
+        }, stepDuration);
+      }).catch((err) => {
+        console.error('Failed to play audio:', err);
+        resolve();
+      });
+    });
+  }, [initAudioContext, isMuted, volume]);
+
+  // -------------------------------------------------------------------------
   // GET FREQUENCY DATA FOR VISUALIZER
   // -------------------------------------------------------------------------
 
@@ -250,6 +320,8 @@ export function useLocalAudio() {
     seek,
     setVolume: handleVolumeChange,
     toggleMute,
+    fadeOut,
+    fadeIn,
 
     // Visualizer data
     getFrequencyData,

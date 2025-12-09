@@ -28,6 +28,7 @@ import {
   TableHeadCell,
   ScrollView,
 } from 'react95';
+import Tooltip from './Tooltip';
 import PixelIcon from './PixelIcon';
 
 // ============================================================================
@@ -361,6 +362,7 @@ function TrackListModal({
         top: position?.y ?? 100,
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleMouseDown}
     >
       <StyledWindowHeader ref={headerRef} $active={isActive}>
         <HeaderTitle>
@@ -368,8 +370,12 @@ function TrackListModal({
           <span>{album.name}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>_</HeaderButton>
-          <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>×</HeaderButton>
+          <Tooltip text="Minimize">
+            <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>_</HeaderButton>
+          </Tooltip>
+          <Tooltip text="Close">
+            <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>×</HeaderButton>
+          </Tooltip>
         </HeaderButtons>
       </StyledWindowHeader>
 
