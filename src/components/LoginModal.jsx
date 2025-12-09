@@ -254,22 +254,10 @@ const Footer = styled.div`
   margin-top: 20px;
   text-align: center;
   font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const AuthWarning = styled.div`
-  width: 100%;
-  margin-top: 16px;
-  padding: 12px;
-  background: rgba(0, 255, 65, 0.05);
-  border: 1px dashed rgba(0, 255, 65, 0.3);
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 10px;
-  color: rgba(0, 255, 65, 0.5);
-  line-height: 1.6;
-  text-align: center;
+  line-height: 1.8;
 
   .warning-icon {
-    color: rgba(0, 255, 65, 0.6);
+    color: rgba(0, 255, 65, 0.5);
     margin-right: 4px;
   }
 `;
@@ -512,10 +500,7 @@ function LoginModal({
 
         <SystemMessage>
           <span className="prompt">&gt;</span>
-          This system displays your most-loved albums
-          <br />
-          <span className="prompt">&gt;</span>
-          ranked by saved track count.
+          This system displays your most-loved albums ranked by saved track count
           <br />
           <span className="prompt">&gt;</span>
           Establish connection to begin...
@@ -525,18 +510,12 @@ function LoginModal({
           <PixelIcon name="login" size={14} /> CONNECT TO SPOTIFY
         </SpotifyButton>
 
-        <AuthWarning>
-          <span className="warning-icon">&gt;</span>
-          Auth will pause current session
-          <br />
-          <span className="warning-icon">&gt;</span>
-          Best experienced on Chrome desktop
-        </AuthWarning>
-
         <Footer>
-          Requires Spotify Premium for audio playback
+          <span className="warning-icon">&gt;</span>Auth will pause current session
           <br />
-          All data processed locally
+          <span className="warning-icon">&gt;</span>Best experienced on Chrome desktop
+          <br />
+          Requires Spotify Premium for audio playback
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

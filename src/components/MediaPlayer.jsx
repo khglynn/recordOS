@@ -569,7 +569,7 @@ function MediaPlayer({
                   <PixelIcon name="next" size={14} />
                 </TransportButton>
               </Tooltip>
-              <Tooltip text="Visualizer">
+              <Tooltip text="WMP[ish] Visualizer" position="above">
                 <TransportButton onClick={onOpenVisualizer}>
                   <PixelIcon name="sparkles" size={14} />
                 </TransportButton>

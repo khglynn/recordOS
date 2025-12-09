@@ -4,19 +4,48 @@
  * ============================================================================
  *
  * Matrix-styled tooltip that appears on hover over icon buttons.
- * Positioned above the element by default.
+ *
+ * Props:
+ * - text: The tooltip text to display
+ * - position: "above" (default) or "below" - where to show the tooltip
+ * - delay: Delay in ms before showing tooltip (default: 400)
  */
 
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 
 const TooltipWrapper = styled.div`
   position: relative;
   display: inline-flex;
 `;
 
+const aboveStyles = css`
+  bottom: calc(100% + 8px);
+  top: auto;
+
+  /* Arrow pointing down */
+  &::after {
+    top: 100%;
+    bottom: auto;
+    border-top-color: #00ff41;
+    border-bottom-color: transparent;
+  }
+`;
+
+const belowStyles = css`
+  top: calc(100% + 8px);
+  bottom: auto;
+
+  /* Arrow pointing up */
+  &::after {
+    bottom: 100%;
+    top: auto;
+    border-bottom-color: #00ff41;
+    border-top-color: transparent;
+  }
+`;
+
 const TooltipContent = styled.span`
   position: absolute;
-  bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
 
@@ -41,21 +70,23 @@ const TooltipContent = styled.span`
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition-delay: 0s;
 
   /* Ensure it's above other elements */
   z-index: 9999;
   pointer-events: none;
 
-  /* Arrow pointing down */
+  /* Arrow base */
   &::after {
     content: '';
     position: absolute;
-    top: 100%;
     left: 50%;
     transform: translateX(-50%);
     border: 4px solid transparent;
-    border-top-color: #00ff41;
   }
+
+  /* Position-specific styles */
+  ${props => props.$position === 'below' ? belowStyles : aboveStyles}
 `;
 
 const TooltipTrigger = styled.div`
@@ -64,6 +95,7 @@ const TooltipTrigger = styled.div`
   &:hover + ${TooltipContent} {
     opacity: 1;
     visibility: visible;
+    transition-delay: ${props => props.$delay || 400}ms;
   }
 `;
 
@@ -71,15 +103,17 @@ const TooltipTrigger = styled.div`
  * Tooltip component that wraps around any element.
  *
  * @param {string} text - The tooltip text to display
+ * @param {string} position - "above" (default) or "below"
+ * @param {number} delay - Delay in ms before showing (default: 400)
  * @param {ReactNode} children - The element to wrap
  */
-function Tooltip({ text, children }) {
+function Tooltip({ text, position = 'above', delay = 400, children }) {
   if (!text) return children;
 
   return (
     <TooltipWrapper>
-      <TooltipTrigger>{children}</TooltipTrigger>
-      <TooltipContent>{text}</TooltipContent>
+      <TooltipTrigger $delay={delay}>{children}</TooltipTrigger>
+      <TooltipContent $position={position}>{text}</TooltipContent>
     </TooltipWrapper>
   );
 }
