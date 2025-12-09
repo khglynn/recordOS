@@ -143,6 +143,61 @@ function App() {
   }, [spotify.isLoading, wasLoading, spotify.allAlbumsCount]);
 
   // -------------------------------------------------------------------------
+  // LOGIN FLOW STATE
+  // -------------------------------------------------------------------------
+  // Two-step flow:
+  // Step 1: Show login modal on first load or when logged out
+  // Step 2: After OAuth, show config modal
+  // Step 3: After execute, show the app
+
+  // Check if this is an OAuth return (code in URL)
+  const isOAuthReturn = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('code');
+
+  // Don't show login modal if user is logged in (either with cache OR returning user)
+  // Only show if NOT logged in, OR if this is an OAuth return (need to show config)
+  const [loginModalOpen, setLoginModalOpen] = useState(() => {
+    if (isOAuthReturn) return true; // OAuth return - will show config modal
+    if (isLoggedIn) return false;   // Returning user - skip modal, let loading happen
+    return true;                    // Not logged in - show login modal
+  });
+  const [showConfigStep, setShowConfigStep] = useState(isOAuthReturn);
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(() => {
+    // Complete if logged in with cache, OR logged in returning user (will auto-load)
+    return isLoggedIn && !isOAuthReturn;
+  });
+
+  // Check if user just returned from OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasCode = params.has('code');
+
+    if (hasCode) {
+      // User just came back from Spotify OAuth - show config step
+      setShowConfigStep(true);
+      setLoginModalOpen(true);
+    } else if (isLoggedIn && !hasCompletedSetup) {
+      // Returning user with expired/no cache
+      // Skip config modal and let loading start automatically
+      // This prevents the "flash of config modal" on page refresh
+      setHasCompletedSetup(true);
+      setLoginModalOpen(false);
+    } else if (isLoggedIn && hasCompletedSetup) {
+      // Fully set up - hide modal
+      setLoginModalOpen(false);
+    }
+  }, [isLoggedIn, hasCompletedSetup]);
+
+  // Mark setup complete once loading starts OR albums are loaded (from cache)
+  useEffect(() => {
+    if (isLoggedIn && (spotify.isLoading || spotify.allAlbumsCount > 0)) {
+      // Loading or albums ready - close modal and show desktop
+      setHasCompletedSetup(true);
+      setLoginModalOpen(false);
+    }
+  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount]);
+
+  // -------------------------------------------------------------------------
   // SYNC LOGIN WINDOW TO WINDOWS ARRAY
   // -------------------------------------------------------------------------
   // This integrates the login modal into the window system so it appears in
@@ -233,61 +288,6 @@ function App() {
   const getTotalTracks = () => {
     return spotify.albums.reduce((sum, album) => sum + (album.likedTracks || 0), 0);
   };
-
-  // -------------------------------------------------------------------------
-  // LOGIN FLOW STATE
-  // -------------------------------------------------------------------------
-
-  // Step 1: Show login modal on first load or when logged out
-  // Step 2: After OAuth, show config modal
-  // Step 3: After execute, show the app
-
-  // Check if this is an OAuth return (code in URL)
-  const isOAuthReturn = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('code');
-
-  // Don't show login modal if user is logged in (either with cache OR returning user)
-  // Only show if NOT logged in, OR if this is an OAuth return (need to show config)
-  const [loginModalOpen, setLoginModalOpen] = useState(() => {
-    if (isOAuthReturn) return true; // OAuth return - will show config modal
-    if (isLoggedIn) return false;   // Returning user - skip modal, let loading happen
-    return true;                    // Not logged in - show login modal
-  });
-  const [showConfigStep, setShowConfigStep] = useState(isOAuthReturn);
-  const [hasCompletedSetup, setHasCompletedSetup] = useState(() => {
-    // Complete if logged in with cache, OR logged in returning user (will auto-load)
-    return isLoggedIn && !isOAuthReturn;
-  });
-
-  // Check if user just returned from OAuth
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const hasCode = params.has('code');
-
-    if (hasCode) {
-      // User just came back from Spotify OAuth - show config step
-      setShowConfigStep(true);
-      setLoginModalOpen(true);
-    } else if (isLoggedIn && !hasCompletedSetup) {
-      // Returning user with expired/no cache
-      // Skip config modal and let loading start automatically
-      // This prevents the "flash of config modal" on page refresh
-      setHasCompletedSetup(true);
-      setLoginModalOpen(false);
-    } else if (isLoggedIn && hasCompletedSetup) {
-      // Fully set up - hide modal
-      setLoginModalOpen(false);
-    }
-  }, [isLoggedIn, hasCompletedSetup]);
-
-  // Mark setup complete once loading starts OR albums are loaded (from cache)
-  useEffect(() => {
-    if (isLoggedIn && (spotify.isLoading || spotify.allAlbumsCount > 0)) {
-      // Loading or albums ready - close modal and show desktop
-      setHasCompletedSetup(true);
-      setLoginModalOpen(false);
-    }
-  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount]);
 
   // -------------------------------------------------------------------------
   // PRE-LOGIN: Open initial windows (Minesweeper, Media Player muted)
