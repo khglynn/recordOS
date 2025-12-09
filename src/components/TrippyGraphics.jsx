@@ -125,6 +125,16 @@ const ControlBar = styled.div`
   border-top: 1px solid #2a2a2a;
 `;
 
+const MobileWarning = styled.div`
+  background: rgba(0, 255, 65, 0.05);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding: 4px 8px;
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.6);
+  font-family: 'Consolas', 'Courier New', monospace;
+  text-align: center;
+`;
+
 const ControlButton = styled.button`
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
@@ -194,6 +204,7 @@ function TrippyGraphics({
         <HeaderTitle>
           <PixelIcon name="sparkles" size={14} />
           <span>WMP[ish] Visualizations</span>
+          {isMobile && <span style={{ fontSize: '8px', opacity: 0.5, marginLeft: '4px' }}>[EXPERIMENTAL]</span>}
         </HeaderTitle>
         <HeaderButtons>
           <HeaderButton onClick={onMinimize}>_</HeaderButton>
@@ -202,6 +213,11 @@ function TrippyGraphics({
       </StyledWindowHeader>
 
       <StyledWindowContent>
+        {isMobile && (
+          <MobileWarning>
+            &gt; WEBGL SUBSTRATE: UNSTABLE ON PORTABLE DEVICES // PROCEED WITH CAUTION
+          </MobileWarning>
+        )}
         <VisualizerIframe
           ref={iframeRef}
           src="/visualizer/index.html"
