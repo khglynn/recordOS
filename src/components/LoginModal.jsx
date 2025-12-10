@@ -3,11 +3,12 @@
  * LOGIN MODAL COMPONENT
  * ============================================================================
  *
- * Two-step authentication flow:
- * 1. Connect to Spotify (OAuth)
- * 2. Configure display threshold (post-auth)
+ * Pre-auth login screen for connecting to Spotify.
+ * After OAuth completes, this modal closes and LibraryScanner takes over.
  *
  * Voice: Retro-corporate with alien computer undertones
+ *
+ * Updated: 2025-12-10 - Removed post-auth config step (now handled by LibraryScanner)
  */
 
 import { useRef } from 'react';
@@ -17,7 +18,6 @@ import {
   WindowHeader,
   WindowContent,
   Button,
-  Fieldset,
 } from 'react95';
 import { loginWithSpotify } from '../utils/spotify';
 import PixelIcon from './PixelIcon';
@@ -26,8 +26,6 @@ import Tooltip from './Tooltip';
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
-
-/* No dimming overlay - windows stack naturally, login is just on top */
 
 const StyledWindow = styled(Window)`
   position: fixed;
@@ -119,11 +117,6 @@ const SystemMessage = styled.div`
     color: #00ff41;
     margin-right: 8px;
   }
-
-  .highlight {
-    color: #00ff41;
-    font-weight: bold;
-  }
 `;
 
 const SpotifyButton = styled(Button)`
@@ -149,103 +142,6 @@ const SpotifyButton = styled(Button)`
   &:active {
     background: linear-gradient(180deg, #1db954 0%, #169c46 100%) !important;
   }
-`;
-
-const ExecuteButton = styled(Button)`
-  width: 100%;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  letter-spacing: 1px;
-  margin-top: 16px;
-
-  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
-  color: #00ff41 !important;
-  border-color: #00ff41 !important;
-
-  &:hover:not(:disabled) {
-    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
-  }
-
-  &:disabled {
-    cursor: wait;
-    /* Keep text visible when loading */
-    color: #00ff41 !important;
-    background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
-  }
-`;
-
-const LoadingBar = styled.div`
-  width: 100%;
-  margin-top: 16px;
-  padding: 16px;
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  text-align: center;
-`;
-
-const LoadingText = styled.div`
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 14px;
-  color: #00ff41;
-  margin-bottom: 12px;
-  letter-spacing: 1px;
-`;
-
-const ProgressBarContainer = styled.div`
-  width: 100%;
-  height: 20px;
-  background: #1a1a1a;
-  border: 1px solid #00ff41;
-  position: relative;
-  overflow: hidden;
-`;
-
-const ProgressBarFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #00ff41 0%, #00cc33 100%);
-  transition: width 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-`;
-
-const ProgressPercent = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
-  color: #000;
-  font-weight: bold;
-  text-shadow: 0 0 2px rgba(0, 255, 65, 0.8);
-`;
-
-const StyledFieldset = styled(Fieldset)`
-  width: 100%;
-  margin-top: 16px;
-  background: #0d0d0d !important;
-  border-color: #2a2a2a !important;
-  padding: 16px;
-
-  legend {
-    color: #00ff41 !important;
-    font-size: 11px;
-    font-family: 'Consolas', 'Courier New', monospace;
-    letter-spacing: 1px;
-  }
-`;
-
-const ThresholdExplainer = styled.p`
-  font-size: 12px;
-  color: rgba(0, 255, 65, 0.6);
-  margin: 12px 0 0;
-  line-height: 1.6;
-  font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const Footer = styled.div`
@@ -279,41 +175,6 @@ const CloseButton = styled(Button)`
   }
 `;
 
-const UserInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px;
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  margin-bottom: 16px;
-`;
-
-const UserAvatar = styled.img`
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  border: 1px solid #00ff41;
-`;
-
-const UserDetails = styled.div`
-  flex: 1;
-`;
-
-const UserName = styled.div`
-  font-size: 12px;
-  color: #00ff41;
-  font-weight: bold;
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const UserStatus = styled.div`
-  font-size: 10px;
-  color: rgba(0, 255, 65, 0.6);
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -327,15 +188,8 @@ function LoginModal({
   onMinimize,
   onFocus,
   onDragStart,
-  isMobile,
   // Login-specific props
-  onExecute,
-  user,
-  isPostAuth,
-  isLoading,
-  loadingProgress,
   canClose,
-  // Auth transition props
   onBeforeAuth,
 }) {
   const headerRef = useRef(null);
@@ -361,103 +215,6 @@ function LoginModal({
     }
   };
 
-  const handleExecute = () => {
-    onExecute?.();
-  };
-
-  // STEP 2: Post-auth configuration
-  if (isPostAuth) {
-    return (
-      <StyledWindow
-        data-window
-        $zIndex={zIndex}
-        style={{ left: position?.x ?? 200, top: position?.y ?? 100 }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
-      >
-        <StyledWindowHeader
-          ref={headerRef}
-          $active={isActive}
-          style={{ cursor: 'grab' }}
-        >
-          <HeaderTitle>
-            <PixelIcon name="sliders" size={14} />
-            <span>SYSTEM CONFIGURATION</span>
-          </HeaderTitle>
-          <div style={{ display: 'flex', gap: '2px' }}>
-            <Tooltip text="Minimize">
-              <CloseButton onClick={onMinimize}>_</CloseButton>
-            </Tooltip>
-          </div>
-        </StyledWindowHeader>
-
-        <StyledWindowContent>
-          {user && (
-            <UserInfo>
-              {user.images?.[0]?.url && (
-                <UserAvatar src={user.images[0].url} alt={user.display_name} />
-              )}
-              <UserDetails>
-                <UserName>{user.display_name}</UserName>
-                <UserStatus>CONNECTION ESTABLISHED</UserStatus>
-              </UserDetails>
-            </UserInfo>
-          )}
-
-          <SystemMessage>
-            <span className="prompt">&gt;</span>
-            Audio library access granted.
-            <br />
-            <span className="prompt">&gt;</span>
-            Analyzing your <span className="highlight">saved tracks</span>...
-            <br />
-            <span className="prompt">&gt;</span>
-            Building your <span className="highlight">Top 50</span> most loved albums.
-          </SystemMessage>
-
-          <StyledFieldset label="TOP 50 ALGORITHM">
-            <ThresholdExplainer>
-              Your most loved albums, ranked by how many tracks you've saved from each.
-              <br /><br />
-              Albums with 100% saved tracks appear first, working down until we have your Top 50.
-            </ThresholdExplainer>
-          </StyledFieldset>
-
-          {isLoading ? (
-            <LoadingBar>
-              <LoadingText>
-                SCANNING LIBRARY... {loadingProgress?.loaded || 0} / {loadingProgress?.total || '?'} tracks
-              </LoadingText>
-              <ProgressBarContainer>
-                <ProgressBarFill
-                  style={{
-                    width: loadingProgress?.total
-                      ? `${(loadingProgress.loaded / loadingProgress.total) * 100}%`
-                      : '0%'
-                  }}
-                />
-                {loadingProgress?.total > 0 && (
-                  <ProgressPercent>
-                    {Math.round((loadingProgress.loaded / loadingProgress.total) * 100)}%
-                  </ProgressPercent>
-                )}
-              </ProgressBarContainer>
-            </LoadingBar>
-          ) : (
-            <ExecuteButton onClick={handleExecute}>
-              <PixelIcon name="play" size={14} /> EXECUTE
-            </ExecuteButton>
-          )}
-
-          <Footer>
-            RECORD OS v3.0 // AUDIO VISUALIZATION SYSTEM
-          </Footer>
-        </StyledWindowContent>
-      </StyledWindow>
-    );
-  }
-
-  // STEP 1: Initial connection
   return (
     <StyledWindow
       data-window

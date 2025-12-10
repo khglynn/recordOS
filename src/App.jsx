@@ -31,8 +31,7 @@ import TrippyGraphics from './components/TrippyGraphics';
 import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
 import SettingsModal from './components/SettingsModal';
-import LoadingWindow from './components/LoadingWindow';
-import LoadedModal from './components/LoadedModal';
+import LibraryScanner from './components/LibraryScanner';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -127,20 +126,18 @@ function App() {
     localStorage.setItem('recordos_album_count', displayAlbumCount.toString());
   }, [displayAlbumCount]);
 
-  // Track when loading completes to show loaded modal
-  const [showLoadedModal, setShowLoadedModal] = useState(false);
-  const [wasLoading, setWasLoading] = useState(false);
+  // -------------------------------------------------------------------------
+  // LIBRARY SCANNER STATE
+  // -------------------------------------------------------------------------
+  // The LibraryScanner window persists after scan completes (unlike the old
+  // LoadingWindow which closed). If minimized when complete, auto-restore it.
 
-  // Detect when loading transitions from true to false (completed)
-  useEffect(() => {
-    if (spotify.isLoading) {
-      setWasLoading(true);
-    } else if (wasLoading && !spotify.isLoading && spotify.allAlbumsCount > 0) {
-      // Loading just finished, show the loaded modal
-      setShowLoadedModal(true);
-      setWasLoading(false);
-    }
-  }, [spotify.isLoading, wasLoading, spotify.allAlbumsCount]);
+  const scannerWindowId = useRef(null);
+  const prevIsLoadingRef = useRef(false);
+
+  // Derive scan state from spotify hook (no separate state needed)
+  const scanState = spotify.isLoading ? 'scanning' :
+    (spotify.allAlbumsCount > 0 ? 'complete' : 'idle');
 
   // -------------------------------------------------------------------------
   // LOGIN FLOW STATE (Consolidated to fix race condition)
@@ -166,9 +163,6 @@ function App() {
     return true;                     // Not logged in - show login prompt
   });
 
-  // Config step shown after OAuth return
-  const [showConfigStep, setShowConfigStep] = useState(isOAuthReturn);
-
   // Track if user has completed setup (so returning users don't see config modal)
   const [hasCompletedSetup, setHasCompletedSetup] = useState(() => {
     // If logged in (has cached token) and NOT OAuth return → already set up
@@ -177,24 +171,28 @@ function App() {
 
   // SINGLE consolidated effect for automatic login modal state changes
   // This replaces the previous two competing effects that caused race conditions
+  //
+  // New flow (Dec 2025): After OAuth, we auto-start library scan instead of
+  // showing a config step. The LibraryScanner window opens automatically.
   useEffect(() => {
     const hasCode = new URLSearchParams(window.location.search).has('code');
 
-    if (hasCode) {
-      // OAuth return - ensure modal is open and show config step
-      setShowConfigStep(true);
-      setLoginModalOpen(true);
+    if (hasCode && isLoggedIn && !hasCompletedSetup) {
+      // OAuth just completed - close login modal and start library scan
+      setLoginModalOpen(false);
+      setHasCompletedSetup(true);
+      // Auto-start library scan (this will open LibraryScanner window)
+      spotify.refreshLibrary();
     } else if (isLoggedIn) {
-      // Logged in - check if we should auto-close modal
+      // Logged in (returning user or scan in progress) - close modal
       if (spotify.isLoading || spotify.allAlbumsCount > 0 || hasCompletedSetup) {
-        // Loading started, albums loaded, or already completed setup → close modal
         setHasCompletedSetup(true);
         setLoginModalOpen(false);
       }
     }
     // Note: We intentionally don't auto-open modal when !isLoggedIn here
     // because the initial state already handles that. This prevents the race.
-  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup]);
+  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup, spotify]);
 
   // -------------------------------------------------------------------------
   // SYNC LOGIN WINDOW TO WINDOWS ARRAY
@@ -217,7 +215,7 @@ function App() {
         setWindows(prev => [...prev, {
           id,
           type: 'login',
-          title: showConfigStep ? 'System Configuration' : 'Record OS // Initialize',
+          title: 'Record OS // Initialize',
           data: {},
           position: { x: centerX, y: centerY },
           minimized: false,
@@ -231,27 +229,27 @@ function App() {
         loginWindowId.current = null;
       }
     }
-  }, [loginModalOpen, showConfigStep]);
+  }, [loginModalOpen]);
 
   // -------------------------------------------------------------------------
-  // SYNC LOADING WINDOW TO WINDOWS ARRAY
+  // SYNC LIBRARY SCANNER WINDOW TO WINDOWS ARRAY
   // -------------------------------------------------------------------------
-
-  const loadingWindowId = useRef(null);
+  // Opens when scanning starts, stays open after complete (unlike old LoadingWindow).
+  // Auto-expands if minimized when scan completes.
 
   useEffect(() => {
+    // Open scanner when loading starts
     if (spotify.isLoading) {
-      // Add loading window if not already present
-      const existingLoading = windows.find(w => w.type === 'loading');
-      if (!existingLoading) {
+      const existingScanner = windows.find(w => w.type === 'libraryScanner');
+      if (!existingScanner) {
         const id = generateWindowId();
-        loadingWindowId.current = id;
-        const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 180) : 300;
-        const centerY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 80) : 200;
+        scannerWindowId.current = id;
+        const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 190) : 300;
+        const centerY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 150) : 200;
 
         setWindows(prev => [...prev, {
           id,
-          type: 'loading',
+          type: 'libraryScanner',
           title: 'Scanning Library...',
           data: {},
           position: { x: centerX, y: centerY },
@@ -259,14 +257,35 @@ function App() {
         }]);
         setActiveWindowId(id);
       }
-    } else {
-      // Remove loading window
-      if (loadingWindowId.current) {
-        setWindows(prev => prev.filter(w => w.id !== loadingWindowId.current));
-        loadingWindowId.current = null;
+    }
+
+    // Auto-expand scanner if it was minimized when scan completes
+    const wasLoading = prevIsLoadingRef.current;
+    const justFinished = wasLoading && !spotify.isLoading && spotify.allAlbumsCount > 0;
+
+    if (justFinished && scannerWindowId.current) {
+      const scanner = windows.find(w => w.id === scannerWindowId.current);
+      if (scanner?.minimized) {
+        // Restore the scanner window
+        setWindows(prev => prev.map(w =>
+          w.id === scannerWindowId.current
+            ? { ...w, minimized: false, title: 'Scan Complete' }
+            : w
+        ));
+        setActiveWindowId(scannerWindowId.current);
+      } else if (scanner) {
+        // Update title even if not minimized
+        setWindows(prev => prev.map(w =>
+          w.id === scannerWindowId.current
+            ? { ...w, title: 'Scan Complete' }
+            : w
+        ));
       }
     }
-  }, [spotify.isLoading]);
+
+    // Track loading state for next render
+    prevIsLoadingRef.current = spotify.isLoading;
+  }, [spotify.isLoading, spotify.allAlbumsCount, windows]);
 
   // Calculate top decade from albums
   const getTopDecade = () => {
@@ -647,14 +666,12 @@ function App() {
   }, [openWindow]);
 
   const handleOpenLogin = useCallback(() => {
-    setShowConfigStep(false);
     setLoginModalOpen(true);
   }, []);
 
   const handleLogout = useCallback(() => {
     spotify.logout();
     setHasCompletedSetup(false);
-    setShowConfigStep(false);
     setLoginModalOpen(true);
     setWindows([]);
     setSelectedAlbum(null);
@@ -678,14 +695,18 @@ function App() {
     setIsStartMenuOpen(prev => !prev);
   }, []);
 
-  const handleExecute = useCallback(() => {
-    // Trigger library fetch
-    spotify.refreshLibrary();
-  }, [spotify]);
-
   const handleRescanLibrary = useCallback(() => {
     // Force refresh library - bypass cache
     spotify.refreshLibrary(true);
+  }, [spotify]);
+
+  // Handler for decade selection from LibraryScanner
+  // Minimizes all windows and sets the decade filter
+  const handleSelectDecade = useCallback((decade) => {
+    // Set the decade filter
+    spotify.setDecade(decade);
+    // Minimize all windows so user can see their album grid
+    setWindows(prev => prev.map(w => ({ ...w, minimized: true })));
   }, [spotify]);
 
   // Close start menu when clicking elsewhere
@@ -900,11 +921,6 @@ function App() {
               <LoginModal
                 {...commonProps}
                 canClose={canCloseLogin}
-                onExecute={handleExecute}
-                user={spotify.user}
-                isPostAuth={isLoggedIn && showConfigStep}
-                isLoading={spotify.isLoading}
-                loadingProgress={spotify.loadingProgress}
                 onBeforeAuth={async () => {
                   // Preserve audio state before auth redirect
                   const wasPlaying = localAudio.isPlaying;
@@ -920,22 +936,20 @@ function App() {
               />
             );
 
-          case 'loading':
+          case 'libraryScanner':
             return (
-              <LoadingWindow
+              <LibraryScanner
                 {...commonProps}
+                scanState={scanState}
                 loadingProgress={spotify.loadingProgress}
+                totalTracks={spotify.totalSavedTracks}
+                albumCount={spotify.allAlbumsCount}
                 decadeStatus={spotify.decadeStatus}
                 albumsByDecade={spotify.albumsByDecade}
                 decadeOrder={spotify.decadeOrder}
                 decadeLabels={spotify.decadeLabels}
-                hasReadyDecade={spotify.hasReadyDecade}
-                onExploreEarly={() => {
-                  // Minimize loading window, let user explore early
-                  setWindows(prev => prev.map(w =>
-                    w.id === 'loading' ? { ...w, minimized: true } : w
-                  ));
-                }}
+                topDecade={getTopDecade()}
+                onSelectDecade={handleSelectDecade}
               />
             );
 
@@ -943,32 +957,6 @@ function App() {
             return null;
         }
       })}
-
-      {/* Loaded Modal - shown after library scan completes */}
-      <LoadedModal
-        isOpen={showLoadedModal}
-        savedTracksCount={spotify.totalSavedTracks}
-        albumCount={spotify.allAlbumsCount}
-        topDecade={getTopDecade()}
-        onExplore={() => {
-          // Minimize all windows (not close) and dismiss modal
-          setWindows(prev => prev.map(w => ({ ...w, minimized: true })));
-          setShowLoadedModal(false);
-        }}
-        onKeepWindows={() => {
-          // Just dismiss the modal
-          setShowLoadedModal(false);
-        }}
-        // Decade picker props
-        decadeStatus={spotify.decadeStatus}
-        albumsByDecade={spotify.albumsByDecade}
-        decadeOrder={spotify.decadeOrder}
-        decadeLabels={spotify.decadeLabels}
-        onDecadeSelect={(decade) => {
-          // Set the decade filter
-          spotify.setDecade(decade);
-        }}
-      />
 
       {/* Taskbar */}
       <Taskbar
