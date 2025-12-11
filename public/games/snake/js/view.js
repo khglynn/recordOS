@@ -101,16 +101,19 @@
     this.endGame = true;
     var $splash = this.$splash.show().find("span");
     var playerWon = (this.board.winner === this.player);
-    var status = playerWon ? "You win!" : "Game over!";
+    var status = playerWon ? "// VICTORY //" : "// TERMINATED //";
     var finalScore = this.player.score;
-    var $h2 = $("<h2>").text(status);
-    var $score = $("<p>").text("Final Score: " + finalScore).css({
-      'font-size': '14px',
-      'margin': '10px 0'
-    });
-    var $button = $("<button>").text("Play Again");
 
-    $splash.append($h2, $score, $button);
+    // Terminal-style game over screen
+    var $box = $("<div>").addClass("terminal-box");
+    var $title = $("<div>").addClass("terminal-title").text(status);
+    var $stats = $("<div>").addClass("terminal-text").html(
+      '<span class="prompt">&gt;</span> FINAL SCORE: ' + finalScore
+    );
+    var $button = $("<button>").addClass("terminal-btn").text("REINITIALIZE");
+
+    $box.append($title, $stats, $button);
+    $splash.append($box);
     this._endGame();
   }
 

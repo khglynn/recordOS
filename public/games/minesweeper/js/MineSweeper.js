@@ -1,25 +1,13 @@
 /* globals alert */
 /**
  MineSweeper.js
- Author: Michael C. Butler
- Url: https://github.com/michaelbutler/minesweeper
+ Author: Michael C. Butler (original)
+ Modified for Record OS: Simplified - removed timer, levels, best times
+ Added mobile flagging support (long-press + toggle button)
 
- Dependencies: jQuery, jQuery UI CSS (for icons)
+ Original: https://github.com/michaelbutler/minesweeper
 
- This file is part of MineSweeper.js.
-
- Minesweeper.js is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Minesweeper.js is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Minesweeper.js.  If not, see <http://www.gnu.org/licenses/>.
+ GPL v3 License
  */
 
 var MineSweeper;
@@ -27,21 +15,10 @@ var MineSweeper;
 jQuery(function ($) {
   'use strict';
 
-  // standard level configurations
-  let levels = {
-    beginner: {
-      boardSize: [9, 9],
-      numMines: 10,
-    },
-    intermediate: {
-      boardSize: [16, 16],
-      numMines: 40,
-    },
-    expert: {
-      boardSize: [30, 16],
-      numMines: 99,
-    },
-  };
+  // Fixed configuration: 9x9 grid with editable mine count
+  const DEFAULT_BOARD_SIZE = [9, 9];
+  const DEFAULT_MINES = 10;
+  const MAX_MINES = 80; // 81 cells - 1 safe cell
 
   // "Static Constants"
   let STATE_UNKNOWN = 'unknown',
@@ -52,11 +29,8 @@ jQuery(function ($) {
     STATE_QUESTION = 'question';
   let LEFT_MOUSE_BUTTON = 1,
     RIGHT_MOUSE_BUTTON = 3;
-  let MAX_X = 30,
-    MAX_Y = 30;
 
   MineSweeper = function () {
-    // prevent namespace pollution
     if (!(this instanceof MineSweeper)) {
       throw 'Invalid use of Minesweeper';
     }
@@ -64,12 +38,12 @@ jQuery(function ($) {
     this.options = {};
     this.grid = [];
     this.running = true;
-    // Controls whether mines were assigned to cells yet. First click should always be safe.
     this.minesDealt = false;
+    this.flagMode = false; // Mobile flag toggle mode
     this.defaults = {
       selector: '#minesweeper',
-      boardSize: levels.beginner.boardSize,
-      numMines: levels.beginner.numMines,
+      boardSize: DEFAULT_BOARD_SIZE,
+      numMines: DEFAULT_MINES,
       pathToCellToucher: 'js/cell_toucher.js',
     };
 
@@ -82,7 +56,6 @@ jQuery(function ($) {
       if (!window.JSON) {
         throw 'This application requires a JSON parser.';
       }
-      // insert progress animation before the grid
       if ($('.ajax-loading').length < 1) {
         msUI.before('<div class="invisible ajax-loading"></div>');
       }
@@ -92,18 +65,14 @@ jQuery(function ($) {
       msObj.resetDisplays();
       msObj.initHandlers(msUI);
       msObj.initCleanUpTimer();
+      msObj.initMobileHandlers(msUI);
       return msObj;
     };
 
-    /**
-     *
-     * @param taskType get_adjacent, touch_adjacent, or calc_win
-     * @param payload number or object with {x: ?, y: ?}
-     */
     this.callWorker = function (taskType, payload) {
       $('.ajax-loading').removeClass('invisible');
       let job = {
-        type: taskType, // message type
+        type: taskType,
         grid: msObj.grid,
       };
       if (typeof payload === 'number') {
@@ -117,7 +86,6 @@ jQuery(function ($) {
 
     this.initWorkers = function (wPath) {
       if (window.Worker) {
-        // Create a background web worker to process the grid "painting" with a stack
         msObj.worker = new Worker(wPath);
         msObj.worker.onmessage = function (e) {
           let data = JSON.parse(e.data);
@@ -138,10 +106,68 @@ jQuery(function ($) {
           !msObj.RIGHT_MOUSE_DOWN &&
           msObj.board.find('.cell.test').length > 0
         ) {
-          // Reset cell push down states periodically if mouse buttons are up
           msObj.board.find('.cell').removeClass('test');
         }
       }, 150);
+    };
+
+    // Mobile touch support: long-press to flag + toggle button
+    this.initMobileHandlers = function (msUI) {
+      let longPressTimer = null;
+      let longPressTriggered = false;
+      const LONG_PRESS_DURATION = 400; // ms
+
+      // Touch start - begin long-press timer
+      msUI.on('touchstart', '.cell', function (ev) {
+        let targ = $(ev.target);
+        longPressTriggered = false;
+
+        longPressTimer = setTimeout(function () {
+          longPressTriggered = true;
+          // Trigger flag action (same as right-click)
+          msObj.handleRightClick(targ);
+          // Visual feedback
+          targ.addClass('long-press-feedback');
+          setTimeout(() => targ.removeClass('long-press-feedback'), 150);
+        }, LONG_PRESS_DURATION);
+      });
+
+      // Touch end - clear timer and handle tap
+      msUI.on('touchend', '.cell', function (ev) {
+        let targ = $(ev.target);
+        clearTimeout(longPressTimer);
+
+        if (longPressTriggered) {
+          // Long-press was triggered, don't do tap action
+          ev.preventDefault();
+          return;
+        }
+
+        // Regular tap - check flag mode
+        if (msObj.flagMode) {
+          ev.preventDefault();
+          msObj.handleRightClick(targ);
+        } else {
+          // Default tap = reveal (handled by mouseup)
+        }
+      });
+
+      // Cancel long-press if user moves finger
+      msUI.on('touchmove', '.cell', function () {
+        clearTimeout(longPressTimer);
+      });
+
+      // Touch cancel
+      msUI.on('touchcancel', '.cell', function () {
+        clearTimeout(longPressTimer);
+      });
+
+      // Flag mode toggle button handler
+      msUI.on('click', '.flag-toggle', function (ev) {
+        ev.preventDefault();
+        msObj.flagMode = !msObj.flagMode;
+        $(this).toggleClass('active', msObj.flagMode);
+      });
     };
 
     this.initHandlers = function (msUI) {
@@ -186,7 +212,6 @@ jQuery(function ($) {
           (ev.which === LEFT_MOUSE_BUTTON && msObj.RIGHT_MOUSE_DOWN) ||
           (ev.which === RIGHT_MOUSE_BUTTON && msObj.LEFT_MOUSE_DOWN)
         ) {
-          // This occurs when player is holding BOTH the left and right mouse buttons down simultaneously
           let x = targ.attr('data-x') - 1;
           let ud = targ.parent().prev();
           let i;
@@ -222,69 +247,16 @@ jQuery(function ($) {
 
       $('.new-game').on('click', function (ev) {
         ev.preventDefault();
-        msObj.stopTimer();
-        msObj.timer = '';
         msObj.running = true;
-        msObj.paused = false;
-        msObj.board.removeClass('paused');
+        msObj.flagMode = false;
+        $('.flag-toggle').removeClass('active');
         msObj.setBoardOptions();
         msObj.clearBoard();
         msObj.redrawBoard();
         msObj.resetDisplays();
       });
-
-      $('#level').on('change', function () {
-        let input = $('.game_settings input');
-        if ($('#level option:selected').val() === 'custom') {
-          input.prop('disabled', false);
-        } else {
-          input.prop('disabled', true);
-        }
-        $('.new-game').trigger('click');
-      });
-
-      $('#bestTimes').on('click', function () {
-        let beginnerTime = localStorage.getItem('best_time_beginner') || 'None';
-        let intermediateTime =
-          localStorage.getItem('best_time_intermediate') || 'None';
-        let expertTime = localStorage.getItem('best_time_expert') || 'None';
-        let beginnerName =
-          localStorage.getItem('beginner_record_holder') || 'None';
-        let intermediateName =
-          localStorage.getItem('intermediate_record_holder') || 'None';
-        let expertName = localStorage.getItem('expert_record_holder') || 'None';
-        alert(
-          'Best times:\nBeginner:     ' +
-            beginnerName +
-            ' : ' +
-            beginnerTime +
-            '\n' +
-            'Intermediate: ' +
-            intermediateName +
-            ' : ' +
-            intermediateTime +
-            '\n' +
-            'Expert:       ' +
-            expertName +
-            ' : ' +
-            expertTime
-        );
-      });
-
-      $('.msPause').on('click', function (ev) {
-        ev.preventDefault();
-        if (msObj.paused) {
-          msObj.resumeGame();
-        } else if (msObj.timer) {
-          msObj.pauseGame();
-        }
-      });
     };
 
-    /**
-     * @return void
-     * @param cell jQuery representation of cell
-     */
     this.handleRightClick = function (cell) {
       if (!(cell instanceof jQuery)) {
         throw 'Parameter must be jQuery instance';
@@ -295,7 +267,6 @@ jQuery(function ($) {
       let obj = msObj.getCellObj(cell);
 
       if (obj.state === STATE_NUMBER) {
-        // auto clear neighbor cells
         if (msObj.LEFT_MOUSE_DOWN || msObj.MODIFIER_KEY_DOWN) {
           msObj.callWorker('get_adjacent', obj);
         }
@@ -321,21 +292,12 @@ jQuery(function ($) {
       msObj.drawCell(cell);
     };
 
-    /**
-     * @return void
-     * @param cell jQuery representation of cell
-     */
     this.handleLeftClick = function (cell) {
-      // cell = jQuery object
-      // obj = memory state
       if (!(cell instanceof jQuery)) {
         throw 'Parameter must be jQuery instance';
       }
       if (!msObj.running) {
         return;
-      }
-      if (!msObj.timer) {
-        msObj.startTimer();
       }
       if (!msObj.minesDealt) {
         let x = parseInt(cell.attr('data-x'), 10);
@@ -345,11 +307,9 @@ jQuery(function ($) {
 
       let obj = msObj.getCellObj(cell);
       if (obj.state === STATE_OPEN || obj.state === STATE_FLAGGED) {
-        // ignore clicks on these
         return;
       }
       if (obj.state === STATE_NUMBER) {
-        // auto clear neighbor cells
         if (msObj.RIGHT_MOUSE_DOWN) {
           msObj.callWorker('get_adjacent', obj);
         }
@@ -357,42 +317,19 @@ jQuery(function ($) {
       }
 
       if (obj.mine) {
-        // game over
         msObj.gameOver(cell);
         return;
       }
 
       if (msObj.worker) {
-        // Asynchronously
         msObj.callWorker('touch_adjacent', obj);
       } else {
-        // Synchronously
         if (!window.touchAdjacent) {
           throw 'Could not load ' + msObj.options.pathToCellToucher;
         }
         msObj.grid = window.touchAdjacent(obj, msObj.grid);
-        // redraw board from memory representation
         msObj.redrawBoard();
       }
-    };
-
-    this.pauseGame = function () {
-      // hide board so they can't cheat
-      msObj.board.addClass('paused');
-      // pause stopwatch
-      msObj.stopTimer();
-      // toggle button
-      $('.msPause').html('Resume');
-      msObj.paused = true;
-    };
-
-    this.resumeGame = function () {
-      // show board
-      msObj.board.removeClass('paused');
-      // resume stopwatch
-      msObj.resumeTimer();
-      // toggle button
-      msObj.paused = false;
     };
 
     this.handleWorkerMessage = function (data) {
@@ -414,7 +351,6 @@ jQuery(function ($) {
       $('.ajax-loading').addClass('invisible');
     };
 
-    // return memory representation for jQuery instance
     this.getCellObj = function (domObj) {
       let gridobj, x, y;
       try {
@@ -437,14 +373,12 @@ jQuery(function ($) {
     this.getRandomMineArray = function (safeX, safeY) {
       let width = msObj.options.boardSize[0],
         height = msObj.options.boardSize[1],
-        // Total Mines is a percentage of the total number of cells
         totalMines = msObj.options.numMines,
         array = [],
         x,
         max,
         infiniteLoop = 0;
 
-      // Put all mines in the beginning
       for (x = 0, max = width * height; x < max; x++) {
         if (x < totalMines) {
           array[x] = 1;
@@ -453,8 +387,6 @@ jQuery(function ($) {
         }
       }
 
-      // shuffle array so it's like pulling out of a 'hat'
-      // credit: http://sedition.com/perl/javascript-fy.html
       function fisherYates(myArray) {
         let i = myArray.length,
           j,
@@ -487,92 +419,27 @@ jQuery(function ($) {
       return array;
     };
 
-    // set the board size and mine density
+    // Set board options from mine count input
     this.setBoardOptions = function () {
-      let level = $('#level').val();
+      let numMines = parseInt($('#numMines').val(), 10);
 
-      if (level === 'custom') {
-        let dimX = parseInt($('#dim_x').val(), 10);
-        let dimY = parseInt($('#dim_y').val(), 10);
-        let numMines = parseInt($('#numMines').val(), 10);
-
-        // rationalise options JIC
-        if (isNaN(dimX) || dimX === 0) {
-          dimX = 1;
-        } else if (dimX > MAX_X) {
-          dimX = MAX_X;
-        }
-        if (isNaN(dimY) || dimY === 0) {
-          dimY = 1;
-        } else if (dimY > MAX_Y) {
-          dimY = MAX_Y;
-        }
-        if (isNaN(numMines) || numMines === 0) {
-          numMines = 1;
-        } else if (numMines >= dimX * dimY) {
-          numMines = dimX * dimY - 1;
-        }
-        // refresh display with updated values
-        $('#dim_x').val(dimX);
-        $('#dim_y').val(dimY);
-        $('#num_mines').val(numMines);
-
-        msObj.options.boardSize = [dimX, dimY];
-        msObj.options.numMines = numMines;
-      } else {
-        msObj.options.boardSize = levels[level].boardSize;
-        msObj.options.numMines = levels[level].numMines;
+      // Validate mine count
+      if (isNaN(numMines) || numMines < 1) {
+        numMines = 1;
+      } else if (numMines > MAX_MINES) {
+        numMines = MAX_MINES;
       }
-    };
 
-    this.startTimer = function () {
-      let timerElement = $('#timer');
-      timerElement.val(0);
-      $('.msPause').show();
-      msObj.resumeTimer();
-      /*msObj.timer = window.setInterval(function () {
-        let curr = parseInt(timerElement.val(), 10);
-        timerElement.val(curr + 1);
-      }, 1000);*/
-    };
-
-    this.stopTimer = function () {
-      if (msObj.timer) {
-        window.clearInterval(msObj.timer);
-      }
-    };
-
-    this.resumeTimer = function () {
-      $('.msPause').html('Pause');
-      let timerElement = $('#timer');
-      console.log('resuming timer');
-      msObj.timer = window.setInterval(function () {
-        let curr = parseInt(timerElement.val(), 10);
-        timerElement.val(curr + 1);
-      }, 1000);
+      $('#numMines').val(numMines);
+      msObj.options.boardSize = DEFAULT_BOARD_SIZE;
+      msObj.options.numMines = numMines;
     };
 
     this.resetDisplays = function () {
-      let level = $('#level option:selected').val();
-      let numMines;
-
-      if (level === 'custom') {
-        numMines = $('#numMines').val();
-      } else {
-        numMines = levels[level].numMines;
-      }
-
+      let numMines = msObj.options.numMines;
       $('#mine_flag_display').val(numMines);
-      $('#timer').val(0);
-      $('.msPause').hide();
     };
 
-    /**
-     * Distribute the mines randomly, being careful to avoid the safeX and safeY coord, which is where the player
-     * first clicked.
-     * @param safeX
-     * @param safeY
-     */
     this.assignMines = function (safeX, safeY) {
       if (msObj.minesDealt) {
         return;
@@ -593,7 +460,6 @@ jQuery(function ($) {
       msObj.minesDealt = true;
     };
 
-    // clear & initialize the internal cell memory grid
     this.clearBoard = function () {
       let width = msObj.options.boardSize[0],
         height = msObj.options.boardSize[1],
@@ -615,13 +481,10 @@ jQuery(function ($) {
         }
       }
 
-      // Insert the board cells in DOM
       if (!msObj.board) {
         $(msObj.options.selector)
           .html('')
-          .append(msObj.getTemplate('settings'))
-          .append(msObj.getTemplate('actions'))
-          .append(msObj.getTemplate('status'))
+          .append(msObj.getTemplate('controls'))
           .append('<div class="board-wrap"></div>');
         msObj.board = $('.board-wrap');
         msObj.board
@@ -714,14 +577,7 @@ jQuery(function ($) {
       }
     };
 
-    /**
-     * @param cellParam
-     * @return void
-     */
     this.gameOver = function (cellParam) {
-      msObj.stopTimer();
-      $('.msPause').hide();
-
       let width = msObj.options.boardSize[0],
         height = msObj.options.boardSize[1],
         x,
@@ -748,63 +604,24 @@ jQuery(function ($) {
     };
 
     this.winGame = function () {
-      msObj.stopTimer();
-      $('.msPause').hide();
       msObj.running = false;
-      let time = $('#timer').val();
-      alert('You win!\nYour time: ' + time);
-      msObj.checkBestTime(time);
-    };
-
-    this.checkBestTime = function (time) {
-      let level = $('#level').val();
-      if (level === 'custom') {
-        return;
-      }
-      let bestTime = localStorage.getItem('best_time_' + level);
-      if (!bestTime || parseInt(time, 10) < parseInt(bestTime, 10)) {
-        let displayName = localStorage.getItem(level + '_record_holder');
-        if (!displayName) {
-          displayName = localStorage.getItem('beginner_record_holder');
-        }
-        if (!displayName) {
-          displayName = localStorage.getItem('intermediate_record_holder');
-        }
-        if (!displayName) {
-          displayName = localStorage.getItem('expert_record_holder');
-        }
-        if (!displayName) {
-          displayName = 'Your name';
-        }
-        let name = window.prompt(
-          'Congrats! You beat the best ' + level + ' time!',
-          displayName
-        );
-
-        localStorage.setItem('best_time_' + level, time);
-        localStorage.setItem(level + '_record_holder', name);
-      }
+      alert('You win!');
     };
 
     this.getTemplate = function (template) {
       let templates = {
-        settings:
-          '<div class="game_settings"><select id="level" class="msLevel"><option value="beginner">Beginner</option>' +
-          '<option value="intermediate">Intermediate</option><option value="expert">Expert</option>' +
-          '<option value="custom">Custom</option></select>' +
-          '<input type="text" id="dim_x" class="msDimX" placeholder="x" size="5" disabled value="20" />' +
-          '<input type="text" id="dim_y" class="msDimY" placeholder="y" size="5" disabled value="20" />' +
-          '<input type="text" id="numMines" class="msNumMines" placeholder="mines" size="5" disabled />' +
+        controls:
+          '<div class="game_controls">' +
+          '<button class="flag-toggle">FLAG</button>' +
+          '<div class="mine-count-wrap">' +
+          '<label>MINES</label>' +
+          '<input type="number" id="numMines" value="10" min="1" max="80" />' +
+          '</div>' +
+          '<div class="mine-remaining-wrap">' +
+          '<label>LEFT</label>' +
+          '<input type="text" id="mine_flag_display" value="10" readonly />' +
+          '</div>' +
           '</div>',
-        actions:
-          '<div class="game_actions"><button class="new-game">New Game</button>' +
-          '<button id="bestTimes">Best times</button></div>' +
-          '<button id="pause" class="msPause">Pause</button></div>',
-        status:
-          '<div class="game_status"><label>Time:</label>' +
-          '<input type="text" id="timer" class="msTimer" size="6" value="0" readonly />' +
-          '<label>Mines:</label>' +
-          '<input type="text" id="mine_flag_display" class="msMineFlagDisplay" size="6" value="10" disabled />',
       };
 
       return templates[template];

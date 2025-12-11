@@ -46,7 +46,7 @@ const GAME_CONFIG = {
     iconName: 'gamepad',
     url: '/games/snake/index.html',
     width: 340,
-    height: 460,  // Fits: header (62px) + board (326px) + score (43px) + padding
+    height: 420,  // Board (340) + score (30) + padding
   },
 };
 

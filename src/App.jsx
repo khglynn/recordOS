@@ -243,11 +243,9 @@ function App() {
         setActiveWindowId(id);
       }
     } else {
-      // Remove login window
-      if (loginWindowId.current) {
-        setWindows(prev => prev.filter(w => w.id !== loginWindowId.current));
-        loginWindowId.current = null;
-      }
+      // Remove login window - filter by type to catch any edge cases
+      setWindows(prev => prev.filter(w => w.type !== 'login'));
+      loginWindowId.current = null;
     }
   }, [loginModalOpen]);
 
@@ -389,10 +387,10 @@ function App() {
 
       // Only resume if audio was playing before auth
       if (savedState.wasPlaying && localAudio.fadeIn) {
-        // 2s delay to let Spotify SDK initialize after OAuth return, then fade back in
+        // 4s delay to let Spotify SDK initialize after OAuth return, then fade back in
         const timer = setTimeout(() => {
           localAudio.fadeIn(500);
-        }, 2000);
+        }, 4000);
         return () => clearTimeout(timer);
       }
     } catch (e) {
@@ -434,7 +432,28 @@ function App() {
     }
 
     const id = generateWindowId();
-    const position = isMobile ? { x: 0, y: 0 } : getInitialPosition(windows.length);
+
+    // Game window sizes for proper centering (matches GameWindow.jsx GAME_CONFIG)
+    const gameWindowSizes = {
+      minesweeper: { width: 264, height: 410 },  // +4 border, +30 header
+      solitaire: { width: 704, height: 550 },
+      snake: { width: 344, height: 450 },
+    };
+
+    // Calculate position - center games/modals, cascade others
+    let position;
+    if (isMobile) {
+      position = { x: 0, y: 0 };
+    } else if (gameWindowSizes[type]) {
+      // Center game windows based on their actual size
+      const size = gameWindowSizes[type];
+      position = {
+        x: Math.max(20, (window.innerWidth - size.width) / 2),
+        y: Math.max(20, (window.innerHeight - size.height - 44) / 2), // -44 for taskbar
+      };
+    } else {
+      position = getInitialPosition(windows.length);
+    }
 
     let title = '';
     switch (type) {

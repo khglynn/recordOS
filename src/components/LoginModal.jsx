@@ -255,7 +255,7 @@ function LoginModal({
         </StatusText>
 
         <SpotifyButton onClick={handleLogin}>
-          <PixelIcon name="login" size={14} /> CONNECT TO SPOTIFY
+          <PixelIcon name="login" size={14} color="currentColor" /> CONNECT TO SPOTIFY
         </SpotifyButton>
 
         <Footer>

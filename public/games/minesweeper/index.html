@@ -2,11 +2,13 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>Minesweeper</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <link rel="stylesheet" href="css/minesweeper.css" type="text/css" />
     <link rel="stylesheet" href="css/smoothness/jquery-ui-1.9.2.custom.min.css" type="text/css" />
     <!-- Source: https://github.com/michaelbutler/minesweeper -->
+    <!-- Modified for Record OS: Simplified, mobile flagging added -->
     <style>
       /* Record OS Dark Theme Override */
       html, body {
@@ -15,6 +17,9 @@
         background: #0a0a0a;
         color: #00ff41;
         font-family: 'Consolas', 'Courier New', monospace;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
       }
 
       /* Hide unnecessary elements */
@@ -28,68 +33,70 @@
         display: inline-block;
       }
 
-      /* Settings and status styling - match board width */
-      .game_settings, .game_actions, .game_status {
-        margin: 6px 0;
-        font-size: 11px;
+      /* Simplified controls bar - single row */
+      .game_controls {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-wrap: nowrap;
+        gap: 8px;
         align-items: center;
+        margin-bottom: 6px;
+        font-size: 10px;
       }
 
-      .game_settings select,
-      .game_settings input {
+      /* Small button style (like settings window) */
+      .game_controls button {
+        background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+        color: #00ff41;
+        border: 1px solid #4a4a4a;
+        padding: 3px 8px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 9px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+
+      .game_controls button:hover {
+        background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+      }
+
+      /* Flag toggle - highlighted when active */
+      .game_controls .flag-toggle.active {
+        background: linear-gradient(180deg, #0d3d0d 0%, #0a2a0a 100%);
+        border-color: #00ff41;
+        color: #00ff41;
+        text-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+      }
+
+      /* Mine count inputs */
+      .mine-count-wrap,
+      .mine-remaining-wrap {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .game_controls label {
+        color: rgba(0, 255, 65, 0.6);
+        font-size: 9px;
+      }
+
+      .game_controls input {
         background: #1a1a1a;
         color: #00ff41;
         border: 1px solid #3a3a3a;
         padding: 2px 4px;
         font-family: 'Consolas', 'Courier New', monospace;
         font-size: 10px;
-      }
-
-      /* Compact select dropdown */
-      .game_settings select {
-        width: 70px;
-      }
-
-      /* Compact number inputs */
-      .game_settings input[type="text"],
-      .game_settings input[type="number"] {
-        width: 32px;
+        width: 28px;
         text-align: center;
       }
 
-      .game_settings label {
+      .game_controls input[readonly] {
+        background: #0d0d0d;
         color: rgba(0, 255, 65, 0.7);
-      }
-
-      .game_actions button,
-      .game_status button {
-        background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
-        color: #00ff41;
-        border: 2px solid #3a3a3a;
-        border-right-color: #0a0a0a;
-        border-bottom-color: #0a0a0a;
-        padding: 6px 12px;
-        font-family: 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
-        cursor: pointer;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      .game_actions button:hover,
-      .game_status button:hover {
-        background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%);
-      }
-
-      .game_actions button:active,
-      .game_status button:active {
-        background: linear-gradient(180deg, #0d3d0d 0%, #0a2a0a 100%);
-        border-color: #0a0a0a;
-        border-right-color: #3a3a3a;
-        border-bottom-color: #3a3a3a;
+        width: 24px;
       }
 
       /* Board styling */
@@ -112,6 +119,7 @@
         width: 24px;
         height: 24px;
         line-height: 20px;
+        touch-action: manipulation;
       }
 
       .board-wrap .row .cell:hover {
@@ -139,6 +147,12 @@
         color: white;
       }
 
+      /* Long-press feedback */
+      .board-wrap .row .cell.long-press-feedback {
+        background-color: rgba(0, 255, 65, 0.5) !important;
+        transition: background-color 0.15s;
+      }
+
       /* Number colors - Matrix theme */
       .cell[data-number='1'] { color: #00ff41; }
       .cell[data-number='2'] { color: #00cc33; }
@@ -149,23 +163,28 @@
       .cell[data-number='7'] { color: #ff6bff; }
       .cell[data-number='8'] { color: #ffffff; }
 
-      /* Status text */
-      .game_status {
-        color: #00ff41;
+      /* Mobile help text */
+      .mobile-help {
+        display: none;
+        font-size: 9px;
+        color: rgba(0, 255, 65, 0.5);
+        margin-top: 8px;
+        text-align: center;
       }
 
-      .game_status input {
-        background: #1a1a1a;
-        color: #00ff41;
-        border: 1px solid #3a3a3a;
-        padding: 2px 4px;
-        width: 50px;
-        font-family: 'Consolas', 'Courier New', monospace;
+      /* Show mobile help only on touch devices */
+      @media (pointer: coarse) {
+        .mobile-help {
+          display: block;
+        }
       }
     </style>
   </head>
   <body>
     <div id="minesweeper"></div>
+    <div class="mobile-help">
+      // LONG-PRESS TO FLAG // TAP TO REVEAL //
+    </div>
     <script src="js/MineSweeper.js" type="text/javascript"></script>
     <script>
       jQuery(function ($) {
