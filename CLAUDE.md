@@ -30,16 +30,14 @@ See `src/components/InfoModal.jsx` for copy examples.
 
 ## Current Status
 
-**Last updated:** 2025-12-10
+**Last updated:** 2025-12-11
 
-Modal consolidation complete. Games polished (Minesweeper, Snake, Solitaire). Auth flow bugs fixed.
+Modal system refactored (WindowFrame component). Desktop modals positioned near top. Mobile Solitaire fills viewport. Games polished.
 
-**Recent work:** `claude-plans/2025-12-10-polish-and-games.md`
+**Recent work:** `claude-plans/2025-12-11-modal-refactor.md`
 
 **Remaining polish:**
 - Live track counts during scan
-- Decade button 3x3 grid layout
-- InfoModal copy + buymeacoffee URL
 - Solitaire card icon in taskbar
 - Loading indicator in taskbar
 
