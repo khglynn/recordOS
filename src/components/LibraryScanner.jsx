@@ -358,7 +358,9 @@ function LibraryScanner({
           <Tooltip text="Minimize">
             <HeaderButton onClick={onMinimize}>_</HeaderButton>
           </Tooltip>
-          {/* No close button - scanner stays available until user logs out */}
+          <Tooltip text="Close">
+            <HeaderButton onClick={onClose}>×</HeaderButton>
+          </Tooltip>
         </HeaderButtons>
       </StyledWindowHeader>
 
