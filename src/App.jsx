@@ -58,20 +58,20 @@ const React95Reset = createGlobalStyle`
 // Generate unique window ID
 const generateWindowId = () => `window-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-// Initial window positions - centered vertically with cascade offset
-// Most windows are ~400x350, so offset by half that for centering
+// Initial window positions - near top with cascade offset
+// Position modals closer to top of screen for better visibility
 const getInitialPosition = (index) => {
-  if (typeof window === 'undefined') return { x: 200, y: 150 };
+  if (typeof window === 'undefined') return { x: 200, y: 80 };
 
   const centerX = Math.max(50, window.innerWidth / 2 - 200);
-  const centerY = Math.max(50, window.innerHeight / 2 - 200);
+  const topY = 80; // Fixed offset from top (not centered)
 
   // Cascade offset (wraps after 5 windows to avoid going off-screen)
   const cascadeOffset = (index % 5) * 30;
 
   return {
     x: centerX + cascadeOffset,
-    y: centerY + cascadeOffset,
+    y: topY + cascadeOffset,
   };
 };
 
@@ -433,7 +433,7 @@ function App() {
     const gameWindowSizes = {
       minesweeper: { width: 264, height: 370 },  // 340 content + 30 header
       solitaire: { width: 704, height: 550 },
-      snake: { width: 334, height: 388 },        // 358 content + 30 header
+      snake: { width: 334, height: 420 },        // 390 content + 30 header
     };
 
     // Calculate position - center games/modals, cascade others
@@ -1035,6 +1035,7 @@ function App() {
         onOpenSettings={handleOpenSettings}
         onOpenLogin={handleOpenLogin}
         decadeStatus={spotify.decadeStatus}
+        isMobile={isMobile}
       />
     </ThemeProvider>
   );

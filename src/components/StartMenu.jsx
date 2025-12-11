@@ -11,10 +11,7 @@
 import { useState } from 'react';
 import styled from 'styled-components';
 import { MenuList, MenuListItem, Separator } from 'react95';
-import {
-  DECADE_OPTIONS,
-  DECADE_LABELS,
-} from '../utils/constants';
+import { DECADE_LABELS } from '../utils/constants';
 import PixelIcon from './PixelIcon';
 import { useMobile } from '../hooks/useMobile';
 
@@ -392,7 +389,7 @@ function StartMenu({
                   Snake
                 </StyledMenuItem>
                 <StyledMenuItem onClick={() => handleMenuItemClick(() => onOpenGame('solitaire'))}>
-                  <MenuIcon><PixelIcon name="gamepad" size={14} /></MenuIcon>
+                  <MenuIcon><PixelIcon name="cards" size={14} /></MenuIcon>
                   Solitaire
                 </StyledMenuItem>
               </StyledMenuList>
@@ -405,35 +402,21 @@ function StartMenu({
         {/* Decade Filter - Only when logged in */}
         {isLoggedIn && (
           <>
-            <SubmenuWrapper
-              onMouseEnter={() => setActiveSubmenu('decade')}
-              onMouseLeave={() => setActiveSubmenu(null)}
-            >
-              <StyledMenuItem data-submenu>
-                <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
-                Decade: {DECADE_LABELS[decade] || 'All'}
-              </StyledMenuItem>
-              {activeSubmenu === 'decade' && (
-                <Submenu>
-                  <StyledMenuList>
-                    {Object.entries(DECADE_OPTIONS).map(([key, value]) => {
-                      const ready = isDecadeReady(value);
-                      return (
-                        <StyledMenuItem
-                          key={key}
-                          data-checked={decade === value}
-                          data-disabled={!ready}
-                          onClick={ready ? () => handleMenuItemClick(() => onDecadeChange(value)) : undefined}
-                        >
-                          <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
-                          {DECADE_LABELS[value]}
-                        </StyledMenuItem>
-                      );
-                    })}
-                  </StyledMenuList>
-                </Submenu>
-              )}
-            </SubmenuWrapper>
+            <DecadeRow style={{ opacity: hasReadyDecades ? 1 : 0.4 }}>
+              <DecadeArrow
+                onClick={() => cycleDecade('prev')}
+                disabled={!hasReadyDecades}
+                style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
+              >◀</DecadeArrow>
+              <DecadeLabel>
+                {hasReadyDecades ? (DECADE_LABELS[decade] || 'All Decades') : 'SCANNING...'}
+              </DecadeLabel>
+              <DecadeArrow
+                onClick={() => cycleDecade('next')}
+                disabled={!hasReadyDecades}
+                style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
+              >▶</DecadeArrow>
+            </DecadeRow>
             <StyledSeparator />
           </>
         )}

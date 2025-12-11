@@ -82,7 +82,9 @@ npm run build
 Self-hosted in `public/games/`:
 - **Minesweeper** - `public/games/minesweeper/` (simplified, mobile flagging)
 - **Snake** - `public/games/snake/` (terminal UI, D-pad controls)
-- **Solitaire** - External: `https://retro-solitare-4recordos.vercel.app` (repo: `khglynn/wy-solo`)
+
+External (separate repo for cleaner codebase):
+- **Solitaire** - `https://github.com/khglynn/wy-solo` → deployed at `retro-solitare-4recordos.vercel.app` (can modify if needed)
 
 ## Browser Quirks
 

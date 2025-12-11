@@ -121,9 +121,9 @@ const WindowTabs = styled.div`
   flex: 1;
   overflow: hidden;
 
-  /* Hide on mobile - Start Menu only */
+  /* On mobile, still show but with limited width for persistent tabs */
   @media (max-width: 767px) {
-    display: none;
+    flex: 0 1 auto;
   }
 `;
 
@@ -253,6 +253,7 @@ function Taskbar({
   onOpenSettings,
   onOpenLogin,
   decadeStatus = {},
+  isMobile = false,
 }) {
   const startButtonRef = useRef(null);
 
@@ -336,9 +337,12 @@ function Taskbar({
 
         <TaskbarDivider />
 
-        {/* Open Window Tabs */}
+        {/* Open Window Tabs - On mobile, only show persistent types (Player, Scanner) */}
         <WindowTabs>
-          {openWindows.map((window) => (
+          {(isMobile
+            ? openWindows.filter(w => ['mediaPlayer', 'libraryScanner'].includes(w.type))
+            : openWindows
+          ).map((window) => (
             <WindowTab
               key={window.id}
               $active={activeWindow === window.id}

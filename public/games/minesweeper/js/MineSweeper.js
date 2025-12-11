@@ -15,10 +15,10 @@ var MineSweeper;
 jQuery(function ($) {
   'use strict';
 
-  // Fixed configuration: 9x12 grid with editable mine count
-  const DEFAULT_BOARD_SIZE = [9, 12];
+  // Fixed configuration: 9x11 grid with editable mine count
+  const DEFAULT_BOARD_SIZE = [9, 11];
   const DEFAULT_MINES = 10;
-  const MAX_MINES = 107; // 108 cells - 1 safe cell
+  const MAX_MINES = 98; // 99 cells - 1 safe cell
 
   // "Static Constants"
   let STATE_UNKNOWN = 'unknown',

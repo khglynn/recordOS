@@ -32,7 +32,7 @@ const GAME_CONFIG = {
     iconName: 'zap',
     url: '/games/minesweeper/index.html',
     width: 260,
-    height: 340,  // 9x12 grid (288px) + controls bar (40px) + margins
+    height: 340,  // 9x11 grid (264px) + controls bar + window chrome
   },
   solitaire: {
     title: 'Solitaire',
@@ -46,7 +46,7 @@ const GAME_CONFIG = {
     iconName: 'gamepad',
     url: '/games/snake/index.html',
     width: 330,   // Game board (320) + borders
-    height: 358,  // Board (320px) + borders (6px) + controls bar (32px)
+    height: 390,  // Board (320px) + borders (6px) + controls bar (~50px) + margin
   },
 };
 
@@ -57,6 +57,7 @@ const GAME_CONFIG = {
 const StyledWindow = styled(Window)`
   position: fixed;
   z-index: ${props => props.$zIndex || 1000};
+  overflow: hidden; /* Clip content to window frame */
 
   /* Dark theme */
   background: #1a1a1a !important;
@@ -80,6 +81,8 @@ const StyledWindow = styled(Window)`
     left: 0 !important;
     top: 0 !important;
     border-radius: 0;
+    display: flex;
+    flex-direction: column;
   `}
 
   ${props => props.$isMobile && !props.$isSolitaire && `

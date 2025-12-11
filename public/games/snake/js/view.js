@@ -112,7 +112,7 @@
     var $box = $("<div>").addClass("terminal-box");
     var $title = $("<div>").addClass("terminal-title").text(status);
     var $stats = $("<div>").addClass("terminal-text").html(
-      '<span class="prompt">&gt;</span> FINAL SCORE: ' + finalScore
+      'FINAL SCORE: ' + finalScore
     );
     var $button = $("<button>").addClass("terminal-btn").text("REINITIALIZE");
 
@@ -163,7 +163,7 @@
     var $box = $("<div>").addClass("terminal-box");
     var $title = $("<div>").addClass("terminal-title").text("// PAUSED //");
     var $text = $("<div>").addClass("terminal-text").html(
-      '<span class="prompt">&gt;</span> PRESS SPACE TO RESUME'
+      'PRESS SPACE TO RESUME'
     );
     var $button = $("<button>").addClass("terminal-btn").text("RESUME");
 

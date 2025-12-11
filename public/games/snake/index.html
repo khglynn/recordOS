@@ -63,6 +63,27 @@
         letter-spacing: 1px;
       }
 
+      /* Arrow buttons at edges */
+      .arrow-btn {
+        background: transparent;
+        border: none;
+        color: rgba(0, 255, 65, 0.5);
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px 8px;
+        font-family: 'Consolas', monospace;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .arrow-btn:hover {
+        color: #00ff41;
+      }
+
+      .arrow-btn:active {
+        color: #00ff41;
+        text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+      }
+
       /* ============================================
          MOBILE D-PAD - Overlay on game
          ============================================ */
@@ -258,10 +279,12 @@
       <h2 class="snake-score"></h2>
     </figure>
 
-    <!-- Controls bar: SCORE left, PAUSE right -->
+    <!-- Controls bar: Arrow | SCORE | PAUSE | Arrow -->
     <div class="controls-bar" id="controls-bar">
+      <button class="arrow-btn" id="arrow-left" data-dir="W">←</button>
       <div class="score-display" id="score-display">SCORE: 0</div>
-      <button class="pause-btn" id="pause-btn">PAUSE</button>
+      <button class="pause-btn" id="pause-btn">RESUME</button>
+      <button class="arrow-btn" id="arrow-right" data-dir="E">→</button>
     </div>
 
     <script>
@@ -293,7 +316,7 @@
         }
       }
 
-      // Tap support
+      // Tap support for D-pad
       dirBtns.forEach(function(btn) {
         btn.addEventListener('touchstart', function(e) {
           e.preventDefault();
@@ -303,6 +326,19 @@
           e.preventDefault();
           handleDirection(this.getAttribute('data-dir'));
         });
+      });
+
+      // Arrow buttons in controls bar
+      var arrowLeft = document.getElementById('arrow-left');
+      var arrowRight = document.getElementById('arrow-right');
+
+      arrowLeft.addEventListener('click', function(e) {
+        e.preventDefault();
+        handleDirection('W');
+      });
+      arrowRight.addEventListener('click', function(e) {
+        e.preventDefault();
+        handleDirection('E');
       });
 
       // Drag support - detect which button finger moves over

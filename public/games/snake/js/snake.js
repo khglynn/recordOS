@@ -7,6 +7,7 @@
     this.tagName = "snake";
     this.segments = [[4, 4], [4, 5], [5, 5]];
     this.board = board;
+    this.dirQueue = []; // Queue for rapid direction changes
   }
 
   Snake.prototype.currentPos = function () {
@@ -19,6 +20,15 @@
   }
 
   Snake.prototype.move = function () {
+    // Process direction queue - apply first valid direction
+    while (this.dirQueue.length > 0) {
+      var nextDir = this.dirQueue.shift();
+      if (this.safeMove(this.nextPos(nextDir))) {
+        this.dir = nextDir;
+        break; // Apply one direction per move tick
+      }
+    }
+
     var nextPos = this.nextPos();
 
     if (!this.safeMove(nextPos)) {
@@ -37,8 +47,10 @@
 
   Snake.prototype.changeDir = function (dir) {
     if (!SnakeGame.Util.DIRECTIONS[dir]) { return; }
-    if (this.safeMove(this.nextPos(dir))) {
-      this.dir = dir;
+    // Queue direction changes for processing on next move tick
+    // This allows rapid inputs to be buffered instead of lost
+    if (this.dirQueue.length < 3) {
+      this.dirQueue.push(dir);
     }
   }
 

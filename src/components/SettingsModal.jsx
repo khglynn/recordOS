@@ -8,98 +8,18 @@
  * Contains:
  * - Scanlines toggle
  * - Album count slider (24-120 in increments of 12)
+ *
+ * Updated: 2025-12-11 - Refactored to use WindowFrame
  */
 
-import { useRef } from 'react';
 import styled from 'styled-components';
-import {
-  Window,
-  WindowHeader,
-  WindowContent,
-  Button,
-  Fieldset,
-} from 'react95';
+import { Fieldset } from 'react95';
 import PixelIcon from './PixelIcon';
-import Tooltip from './Tooltip';
+import WindowFrame from './WindowFrame';
 
 // ============================================================================
-// STYLED COMPONENTS
+// STYLED COMPONENTS (Content-specific only)
 // ============================================================================
-
-const MODAL_WIDTH = 300;
-
-const StyledWindow = styled(Window)`
-  position: fixed;
-  width: ${MODAL_WIDTH}px;
-  max-width: 95vw;
-  z-index: ${props => props.$zIndex || 1000};
-
-  /* Dark theme */
-  background: #1a1a1a !important;
-  box-shadow:
-    inset 1px 1px 0 #3a3a3a,
-    inset -1px -1px 0 #0a0a0a,
-    0 0 20px rgba(0, 255, 65, 0.1),
-    0 8px 32px rgba(0, 0, 0, 0.5) !important;
-
-  animation: windowAppear 0.15s ease-out;
-
-  @keyframes windowAppear {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  /* Mobile: centered, hug content */
-  ${props => props.$isMobile && `
-    width: calc(100vw - 16px) !important;
-    max-width: calc(100vw - 16px) !important;
-    max-height: calc(100vh - 44px - 16px) !important;
-    left: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%);
-    border-radius: 0;
-  `}
-`;
-
-const StyledWindowHeader = styled(WindowHeader)`
-  background: ${props => props.$active
-    ? 'linear-gradient(90deg, #0a2a0a 0%, #0d3d0d 50%, #0a2a0a 100%)'
-    : 'linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)'} !important;
-  color: ${props => props.$active ? '#00ff41' : '#4a4a4a'} !important;
-  cursor: move;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-`;
-
-const HeaderTitle = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const HeaderButton = styled(Button)`
-  min-width: 20px;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  font-size: 10px;
-
-  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%) !important;
-  color: #00ff41 !important;
-  border-color: #4a4a4a !important;
-
-  &:hover {
-    background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%) !important;
-  }
-`;
-
-const StyledWindowContent = styled(WindowContent)`
-  background: #1a1a1a !important;
-  padding: 12px !important;
-`;
 
 const StyledFieldset = styled(Fieldset)`
   margin-bottom: 12px;
@@ -229,17 +149,6 @@ function SettingsModal({
   onShowScanResults,
   unavailableAlbums = [],
 }) {
-  const headerRef = useRef(null);
-
-  const handleMouseDown = (e) => {
-    if (e.target === headerRef.current || headerRef.current.contains(e.target)) {
-      if (e.target.tagName !== 'BUTTON') {
-        onDragStart?.(e);
-      }
-    }
-    onFocus?.();
-  };
-
   // Album count options: 24, 36, 48, 60, 72, 84, 96, 108, 120
   const handleSliderChange = (e) => {
     const value = parseInt(e.target.value);
@@ -269,107 +178,90 @@ function SettingsModal({
   };
 
   return (
-    <StyledWindow
-      data-window
-      $zIndex={zIndex}
-      $isMobile={isMobile}
-      style={isMobile ? {} : {
-        left: position?.x ?? 200,
-        top: position?.y ?? 100,
-      }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleMouseDown}
+    <WindowFrame
+      title="Settings"
+      icon="sliders"
+      isActive={isActive}
+      zIndex={zIndex}
+      position={position}
+      width={300}
+      isMobile={isMobile}
+      showMinimize={true}
+      onClose={onClose}
+      onMinimize={onMinimize}
+      onFocus={onFocus}
+      onDragStart={onDragStart}
     >
-      <StyledWindowHeader ref={headerRef} $active={isActive}>
-        <HeaderTitle>
-          <PixelIcon name="sliders" size={14} />
-          <span>Settings</span>
-        </HeaderTitle>
-        <div style={{ display: 'flex', gap: '2px' }}>
-          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
-          {!isMobile && (
-            <Tooltip text="Minimize">
-              <HeaderButton onClick={onMinimize}>_</HeaderButton>
-            </Tooltip>
-          )}
-          <Tooltip text="Close">
-            <HeaderButton onClick={onClose}>×</HeaderButton>
-          </Tooltip>
-        </div>
-      </StyledWindowHeader>
+      <StyledFieldset label="DISPLAY">
+        <SettingRow>
+          <SettingLabel>CRT Scanlines</SettingLabel>
+          <ToggleButton
+            $active={scanlinesEnabled}
+            onClick={onToggleScanlines}
+          >
+            <PixelIcon name={scanlinesEnabled ? "check" : "close"} size={12} />
+            {scanlinesEnabled ? 'ON' : 'OFF'}
+          </ToggleButton>
+        </SettingRow>
+      </StyledFieldset>
 
-      <StyledWindowContent>
-        <StyledFieldset label="DISPLAY">
+      <StyledFieldset label="ALBUM GRID">
+        <SliderContainer>
           <SettingRow>
-            <SettingLabel>CRT Scanlines</SettingLabel>
-            <ToggleButton
-              $active={scanlinesEnabled}
-              onClick={onToggleScanlines}
-            >
-              <PixelIcon name={scanlinesEnabled ? "check" : "close"} size={12} />
-              {scanlinesEnabled ? 'ON' : 'OFF'}
+            <SettingLabel>Albums to display</SettingLabel>
+            <SliderValue>{albumCount}</SliderValue>
+          </SettingRow>
+          <SliderRow>
+            <SliderInput
+              type="range"
+              min="24"
+              max="120"
+              step="12"
+              value={albumCount}
+              onChange={handleSliderChange}
+            />
+          </SliderRow>
+          <SliderLabels>
+            <span>24</span>
+            <span>72</span>
+            <span>120</span>
+          </SliderLabels>
+        </SliderContainer>
+      </StyledFieldset>
+
+      {/* Library section - only when logged in */}
+      {isLoggedIn && (
+        <StyledFieldset label="LIBRARY">
+          <SettingRow>
+            <SettingLabel>Refresh from Spotify</SettingLabel>
+            <ToggleButton onClick={onRescanLibrary}>
+              <PixelIcon name="sync" size={12} />
+              RESCAN
+            </ToggleButton>
+          </SettingRow>
+          <SettingRow style={{ marginTop: '8px' }}>
+            <SettingLabel>Scan results window</SettingLabel>
+            <ToggleButton onClick={onShowScanResults}>
+              <PixelIcon name="disc" size={12} />
+              SHOW
             </ToggleButton>
           </SettingRow>
         </StyledFieldset>
+      )}
 
-        <StyledFieldset label="ALBUM GRID">
-          <SliderContainer>
-            <SettingRow>
-              <SettingLabel>Albums to display</SettingLabel>
-              <SliderValue>{albumCount}</SliderValue>
-            </SettingRow>
-            <SliderRow>
-              <SliderInput
-                type="range"
-                min="24"
-                max="120"
-                step="12"
-                value={albumCount}
-                onChange={handleSliderChange}
-              />
-            </SliderRow>
-            <SliderLabels>
-              <span>24</span>
-              <span>72</span>
-              <span>120</span>
-            </SliderLabels>
-          </SliderContainer>
+      {/* Hidden albums section - only show when there are errors */}
+      {isLoggedIn && unavailableAlbums.length > 0 && (
+        <StyledFieldset label="HIDDEN ALBUMS">
+          <SettingRow>
+            <SettingLabel>{unavailableAlbums.length} album{unavailableAlbums.length === 1 ? '' : 's'} restricted</SettingLabel>
+            <ToggleButton onClick={handleDownloadErrorLog}>
+              <PixelIcon name="download" size={12} />
+              LOG
+            </ToggleButton>
+          </SettingRow>
         </StyledFieldset>
-
-        {/* Library section - only when logged in */}
-        {isLoggedIn && (
-          <StyledFieldset label="LIBRARY">
-            <SettingRow>
-              <SettingLabel>Refresh from Spotify</SettingLabel>
-              <ToggleButton onClick={onRescanLibrary}>
-                <PixelIcon name="sync" size={12} />
-                RESCAN
-              </ToggleButton>
-            </SettingRow>
-            <SettingRow style={{ marginTop: '8px' }}>
-              <SettingLabel>Scan results window</SettingLabel>
-              <ToggleButton onClick={onShowScanResults}>
-                <PixelIcon name="disc" size={12} />
-                SHOW
-              </ToggleButton>
-            </SettingRow>
-          </StyledFieldset>
-        )}
-
-        {/* Hidden albums section - only show when there are errors */}
-        {isLoggedIn && unavailableAlbums.length > 0 && (
-          <StyledFieldset label="HIDDEN ALBUMS">
-            <SettingRow>
-              <SettingLabel>{unavailableAlbums.length} album{unavailableAlbums.length === 1 ? '' : 's'} restricted</SettingLabel>
-              <ToggleButton onClick={handleDownloadErrorLog}>
-                <PixelIcon name="download" size={12} />
-                LOG
-              </ToggleButton>
-            </SettingRow>
-          </StyledFieldset>
-        )}
-      </StyledWindowContent>
-    </StyledWindow>
+      )}
+    </WindowFrame>
   );
 }
 
