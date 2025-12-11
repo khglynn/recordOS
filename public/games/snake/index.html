@@ -30,7 +30,7 @@
         align-items: center;
         width: 326px;  /* Match game board width including borders */
         margin: 0 auto;
-        padding: 8px 4px;
+        padding: 8px 0;  /* No horizontal padding - buttons at edges */
         box-sizing: border-box;
       }
 
@@ -84,26 +84,26 @@
         }
       }
 
-      /* D-pad: 3x3 grid centered in game */
+      /* D-pad: 3x3 grid centered in game, aligned to 16px grid cells */
       .dpad-grid {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         display: grid;
-        grid-template-columns: repeat(3, 70px);
-        grid-template-rows: repeat(3, 70px);
-        gap: 4px;
+        grid-template-columns: repeat(3, 64px);  /* 4 grid cells each (16px * 4) */
+        grid-template-rows: repeat(3, 64px);
+        gap: 0;  /* No gap for clean grid alignment */
         pointer-events: auto;
       }
 
       .dpad-btn {
-        width: 70px;
-        height: 70px;
-        font-size: 24px;
-        background: rgba(0, 255, 65, 0.15);
-        color: rgba(0, 255, 65, 0.6);
-        border: 1px solid rgba(0, 255, 65, 0.3);
+        width: 64px;
+        height: 64px;
+        font-size: 20px;
+        background: rgba(0, 0, 0, 0.4);  /* Muted: dark with slight transparency */
+        color: rgba(0, 255, 65, 0.25);   /* Very subtle green */
+        border: 1px solid rgba(0, 255, 65, 0.12);  /* Barely visible border */
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -114,8 +114,8 @@
       }
 
       .dpad-btn:active {
-        background: rgba(0, 255, 65, 0.35);
-        color: rgba(0, 255, 65, 1);
+        background: rgba(0, 255, 65, 0.15);
+        color: rgba(0, 255, 65, 0.6);
       }
 
       .dpad-btn.empty {

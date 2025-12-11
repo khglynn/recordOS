@@ -188,7 +188,7 @@ jQuery(function ($) {
         if (!msObj.running) {
           msObj.running = true;
           msObj.flagMode = false;
-          $(this).removeClass('active').text('FLAG');
+          $(this).removeClass('active').text('MARK MINES');
           msObj.setBoardOptions();
           msObj.clearBoard();
           msObj.redrawBoard();
@@ -269,6 +269,9 @@ jQuery(function ($) {
               msObj.MODIFIER_KEY_DOWN = false;
             }, 50);
             msObj.handleRightClick(targ);
+          } else if (msObj.flagMode) {
+            // Flag mode: left click = flag (for mouse users too)
+            msObj.handleRightClick(targ);
           } else {
             msObj.handleLeftClick(targ);
           }
@@ -281,7 +284,7 @@ jQuery(function ($) {
         ev.preventDefault();
         msObj.running = true;
         msObj.flagMode = false;
-        $('.flag-toggle').removeClass('active');
+        $('.flag-toggle').removeClass('active').text('MARK MINES');
         msObj.setBoardOptions();
         msObj.clearBoard();
         msObj.redrawBoard();
@@ -648,7 +651,7 @@ jQuery(function ($) {
       let templates = {
         controls:
           '<div class="game_controls">' +
-          '<button class="flag-toggle">FLAG</button>' +
+          '<button class="flag-toggle">MARK MINES</button>' +
           '<div class="mine-count-wrap">' +
           '<label>MINES</label>' +
           '<input type="number" id="numMines" value="10" min="1" max="80" />' +

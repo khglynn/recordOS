@@ -53,15 +53,16 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: centered, hug content */
+  /* Mobile: centered in available space above taskbar */
   ${props => props.$isMobile && `
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px) !important;
-    max-height: calc(100vh - 44px - 16px) !important;
+    max-height: calc(100vh - 44px - 32px) !important;
     left: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%);
+    /* Position 8% down from top of available space (feels centered) */
+    top: calc((100vh - 44px) * 0.08 + 8px) !important;
     border-radius: 0;
+    overflow: hidden;
   `}
 `;
 

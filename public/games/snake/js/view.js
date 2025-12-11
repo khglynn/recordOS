@@ -8,7 +8,8 @@
     this.paused = false;
     this.endGame = false;
 
-    this.$el.on("click", "button", this.start.bind(this));
+    // Only restart buttons (splash screen + start screen), not D-pad
+    this.$el.on("click", ".snake-splash button, #start-btn", this.start.bind(this));
   }
 
   // Callback for external UI to sync pause state

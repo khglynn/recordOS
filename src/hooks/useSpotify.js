@@ -110,9 +110,11 @@ export function useSpotify() {
     () => localStorage.getItem(STORAGE_KEYS.DECADE) || DECADE_OPTIONS.ALL
   );
 
-  // Refs for cleanup
+  // Refs for cleanup and album tracking
   const playerRef = useRef(null);
   const positionIntervalRef = useRef(null);
+  const originalAlbumUriRef = useRef(null);  // Track album we started playing
+  const albumEndTriggeredRef = useRef(false); // Prevent multiple triggers
 
   // -------------------------------------------------------------------------
   // HANDLE OAUTH CALLBACK
@@ -627,17 +629,25 @@ export function useSpotify() {
           getAudioAnalysis(track.id).then(setAudioAnalysis).catch(() => {});
         }
 
-        // Detect album end: no more tracks AND playback stopped naturally
-        // Position resets to 0 when track ends, OR could be very close to duration
+        // Detect album end: track when we leave the original album context
+        // This handles Spotify autoplay queuing similar tracks after album ends
+        const currentTrackAlbumUri = track?.album?.uri;
+        const originalAlbumUri = originalAlbumUriRef.current;
+        const leftOriginalAlbum = originalAlbumUri && currentTrackAlbumUri &&
+                                  currentTrackAlbumUri !== originalAlbumUri;
+
+        // Also detect natural end: last track + playback stopped
         const nextTracks = state.track_window.next_tracks || [];
         const isLastTrack = nextTracks.length === 0;
         const positionAtEnd = state.position === 0 || (state.duration > 0 && state.position >= state.duration - 500);
-        const trackEnded = state.paused && positionAtEnd && state.duration > 0;
+        const trackEndedNaturally = state.paused && positionAtEnd && state.duration > 0 && isLastTrack;
 
-        console.log(`[Album End Check] paused=${state.paused}, pos=${state.position}, dur=${state.duration}, nextTracks=${nextTracks.length}, isLast=${isLastTrack}, atEnd=${positionAtEnd}`);
+        console.log(`[Album End Check] orig=${originalAlbumUri?.split(':')[2]}, curr=${currentTrackAlbumUri?.split(':')[2]}, left=${leftOriginalAlbum}, naturalEnd=${trackEndedNaturally}`);
 
-        if (isLastTrack && trackEnded) {
-          console.log('[Album End] Album finished playing!');
+        // Trigger album end if we left original album OR natural end occurred
+        if ((leftOriginalAlbum || trackEndedNaturally) && !albumEndTriggeredRef.current) {
+          console.log(`[Album End] Album finished! Reason: ${leftOriginalAlbum ? 'left album context' : 'natural end'}`);
+          albumEndTriggeredRef.current = true;
           setAlbumEnded(true);
 
           // Play turntable end sound effect (licensed via Envato)
@@ -808,6 +818,9 @@ export function useSpotify() {
 
     try {
       setPlaybackError(null); // Clear any previous error
+      setAlbumEnded(false);   // Clear album-ended state for new playback
+      originalAlbumUriRef.current = album.uri;  // Track this album for end detection
+      albumEndTriggeredRef.current = false;     // Reset trigger flag
       await play(deviceId, {
         contextUri: album.uri,
         offset: track.uri,
@@ -835,6 +848,8 @@ export function useSpotify() {
     try {
       setPlaybackError(null); // Clear any previous error
       setAlbumEnded(false);   // Clear album-ended state for new album
+      originalAlbumUriRef.current = album.uri;  // Track this album for end detection
+      albumEndTriggeredRef.current = false;     // Reset trigger flag
       await play(deviceId, {
         contextUri: album.uri,
       });
