@@ -28,11 +28,20 @@ You're a senior dev at a creative agency who builds slick, badass sites. Care ab
 
 See `src/components/InfoModal.jsx` for copy examples.
 
-## Current Plan
+## Current Status
 
-**Active plan (Dec 9, 2025):** `claude-plans/2025-12-09-modal-consolidation.md`
+**Last updated:** 2025-12-10
 
-Consolidate 3 post-auth windows into one unified "Library Scanner" modal. 12 implementation steps covering modal consolidation, tooltip fixes, mobile layout fixes, and cleanup.
+Modal consolidation complete. Games polished (Minesweeper, Snake, Solitaire). Auth flow bugs fixed.
+
+**Recent work:** `claude-plans/2025-12-10-polish-and-games.md`
+
+**Remaining polish:**
+- Live track counts during scan
+- Decade button 3x3 grid layout
+- InfoModal copy + buymeacoffee URL
+- Solitaire card icon in taskbar
+- Loading indicator in taskbar
 
 ## Where to Find Context
 
@@ -65,7 +74,15 @@ npm run build
 | `src/components/Desktop.jsx` | Album grid, loading state |
 | `src/components/MediaPlayer.jsx` | Music player |
 | `src/components/Taskbar.jsx` | Bottom bar |
+| `src/components/GameWindow.jsx` | Game iframe container (dimensions, centering) |
 | `src/utils/constants.js` | Config values (grid sizes, counts, etc.) |
+
+## Games
+
+Self-hosted in `public/games/`:
+- **Minesweeper** - `public/games/minesweeper/` (simplified, mobile flagging)
+- **Snake** - `public/games/snake/` (terminal UI, D-pad controls)
+- **Solitaire** - External: `https://retro-solitare-4recordos.vercel.app` (repo: `khglynn/wy-solo`)
 
 ## Browser Quirks
 
