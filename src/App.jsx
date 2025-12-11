@@ -832,7 +832,14 @@ function App() {
         albums={spotify.albums.slice(0, displayAlbumCount)}
         loadingAlbums={spotify.loadingAlbums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
-        isLoading={spotify.isLoading}
+        isLoading={
+          // Show loading animation UNLESS user has selected a ready decade
+          // This lets users browse ready decades while scan continues
+          spotify.isLoading && (
+            spotify.decade === 'all' ||
+            spotify.decadeStatus[spotify.decade] !== 'ready'
+          )
+        }
         isInitializing={spotify.isInitializing}
         onAlbumClick={handleAlbumClick}
         onOpenGame={handleOpenGame}
