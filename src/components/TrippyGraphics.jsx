@@ -207,7 +207,8 @@ function TrippyGraphics({
           {isMobile && <span style={{ fontSize: '8px', opacity: 0.5, marginLeft: '4px' }}>[EXPERIMENTAL]</span>}
         </HeaderTitle>
         <HeaderButtons>
-          <HeaderButton onClick={onMinimize}>_</HeaderButton>
+          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
+          {!isMobile && <HeaderButton onClick={onMinimize}>_</HeaderButton>}
           <HeaderButton onClick={onClose}>×</HeaderButton>
         </HeaderButtons>
       </StyledWindowHeader>

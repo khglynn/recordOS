@@ -15,10 +15,10 @@ var MineSweeper;
 jQuery(function ($) {
   'use strict';
 
-  // Fixed configuration: 9x9 grid with editable mine count
-  const DEFAULT_BOARD_SIZE = [9, 9];
+  // Fixed configuration: 9x12 grid with editable mine count
+  const DEFAULT_BOARD_SIZE = [9, 12];
   const DEFAULT_MINES = 10;
-  const MAX_MINES = 80; // 81 cells - 1 safe cell
+  const MAX_MINES = 107; // 108 cells - 1 safe cell
 
   // "Static Constants"
   let STATE_UNKNOWN = 'unknown',
@@ -115,15 +115,18 @@ jQuery(function ($) {
     this.initMobileHandlers = function (msUI) {
       let longPressTimer = null;
       let longPressTriggered = false;
+      let touchHandled = false; // Prevent mouseup from double-firing
       const LONG_PRESS_DURATION = 400; // ms
 
       // Touch start - begin long-press timer
       msUI.on('touchstart', '.cell', function (ev) {
         let targ = $(ev.target);
         longPressTriggered = false;
+        touchHandled = false;
 
         longPressTimer = setTimeout(function () {
           longPressTriggered = true;
+          touchHandled = true;
           // Trigger flag action (same as right-click)
           msObj.handleRightClick(targ);
           // Visual feedback
@@ -140,15 +143,20 @@ jQuery(function ($) {
         if (longPressTriggered) {
           // Long-press was triggered, don't do tap action
           ev.preventDefault();
+          touchHandled = true;
           return;
         }
 
         // Regular tap - check flag mode
         if (msObj.flagMode) {
           ev.preventDefault();
+          touchHandled = true;
           msObj.handleRightClick(targ);
         } else {
-          // Default tap = reveal (handled by mouseup)
+          // Tap to reveal - handle here instead of mouseup to avoid double-fire
+          ev.preventDefault();
+          touchHandled = true;
+          msObj.handleLeftClick(targ);
         }
       });
 
@@ -162,9 +170,33 @@ jQuery(function ($) {
         clearTimeout(longPressTimer);
       });
 
-      // Flag mode toggle button handler
+      // Prevent mouseup from firing after touch events
+      msUI.on('mouseup', '.cell', function (ev) {
+        if (touchHandled) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          touchHandled = false;
+          return false;
+        }
+      });
+
+      // Flag mode toggle button handler (also serves as NEW GAME after loss)
       msUI.on('click', '.flag-toggle', function (ev) {
         ev.preventDefault();
+
+        // If game is over, this button becomes NEW GAME
+        if (!msObj.running) {
+          msObj.running = true;
+          msObj.flagMode = false;
+          $(this).removeClass('active').text('FLAG');
+          msObj.setBoardOptions();
+          msObj.clearBoard();
+          msObj.redrawBoard();
+          msObj.resetDisplays();
+          return;
+        }
+
+        // Normal flag toggle during game
         msObj.flagMode = !msObj.flagMode;
         $(this).toggleClass('active', msObj.flagMode);
       });
@@ -601,10 +633,14 @@ jQuery(function ($) {
         }
       }
       msObj.running = false;
+      // Change FLAG button to PLAY AGAIN
+      $('.flag-toggle').removeClass('active').text('PLAY AGAIN');
     };
 
     this.winGame = function () {
       msObj.running = false;
+      // Change FLAG button to PLAY AGAIN
+      $('.flag-toggle').removeClass('active').text('PLAY AGAIN');
       alert('You win!');
     };
 

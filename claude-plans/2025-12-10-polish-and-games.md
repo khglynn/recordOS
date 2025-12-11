@@ -1,8 +1,8 @@
 # recordOS Polish Plan
 
 **Created:** 2025-12-10
-**Status:** Partially Complete
-**Archived:** 2025-12-10
+**Status:** Complete ✅
+**Archived:** 2025-12-11
 
 ---
 
@@ -59,32 +59,32 @@ No longer an issue - self-hosted version has iframe mode that hides title bar.
 
 ---
 
-## Remaining (Future Session)
+## Also Completed (2025-12-11)
 
-### 2. Track/album counts not live-updating
+### 2. Track/album counts live-updating ✅
 
-Shows "0 TRACKS INDEXED" during scan. Need to use `loadingProgress.loaded` during scanning.
+Now shows live track counts during scan.
 
-### 3. Decade button layout → 3x3x1 grid
+### 3. Decade button layout → 3x3x1 grid ✅
 
 Short labels (20s, 10s, OLD) in grid layout with ALL spanning full width.
 
-### 5. Decade buttons disabled until ready
+### 5. Decade buttons disabled until ready ✅
 
-Pass `decadeStatus` to Taskbar, disable buttons where decade not ready.
+Buttons respect ready state.
 
-### 7. InfoModal polish
+### 7. InfoModal polish ✅
 
-- Update buymeacoffee URL to `https://buymeacoffee.com/kevinhg`
-- Tighten copy to `//` syntax
+- Updated buymeacoffee URL
+- Tightened copy to `//` syntax
 
-### 12. Solitaire icon → card-stack
+### 12. Solitaire icon → card-stack ✅
 
-Change from `gamepad` to `cards` icon in Taskbar.
+Changed from `gamepad` to `cards` icon in Taskbar.
 
-### 13. Loading state indicator in taskbar
+### 13. Loading state indicator in taskbar ✅
 
-Show scanning progress in taskbar during library scan.
+Shows scanning progress in taskbar during library scan.
 
 ---
 

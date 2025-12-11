@@ -32,7 +32,7 @@ const GAME_CONFIG = {
     iconName: 'zap',
     url: '/games/minesweeper/index.html',
     width: 260,
-    height: 380,
+    height: 340,  // 9x12 grid (288px) + controls bar (40px) + margins
   },
   solitaire: {
     title: 'Solitaire',
@@ -45,8 +45,8 @@ const GAME_CONFIG = {
     title: 'Snake',
     iconName: 'gamepad',
     url: '/games/snake/index.html',
-    width: 340,
-    height: 420,  // Board (340) + score (30) + padding
+    width: 330,   // Game board (320) + borders
+    height: 358,  // Board (320px) + borders (6px) + controls bar (32px)
   },
 };
 
@@ -239,11 +239,14 @@ function GameWindow({
           <span>{config.title}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <Tooltip text="Minimize">
-            <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>
-              <PixelIcon name="minus" size={10} />
-            </HeaderButton>
-          </Tooltip>
+          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
+          {!isMobile && (
+            <Tooltip text="Minimize">
+              <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>
+                <PixelIcon name="minus" size={10} />
+              </HeaderButton>
+            </Tooltip>
+          )}
           <Tooltip text="Close">
             <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>
               <PixelIcon name="close" size={10} />

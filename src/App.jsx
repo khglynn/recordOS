@@ -145,6 +145,8 @@ function App() {
 
   const scannerWindowId = useRef(null);
   const prevIsLoadingRef = useRef(false);
+  const scannerManuallyClosed = useRef(false); // Track if user closed scanner
+  const oauthHandled = useRef(false); // Prevent OAuth effect from running multiple times
 
   // Derive scan state from spotify hook (no separate state needed)
   const scanState = spotify.isLoading ? 'scanning' :
@@ -197,10 +199,14 @@ function App() {
     // NOTE: Use isOAuthReturn (computed at mount) NOT fresh URL check.
     // The URL gets cleared by useSpotify before isLoggedIn becomes true.
 
-    if (isOAuthReturn && isLoggedIn && !hasCompletedSetup) {
+    if (isOAuthReturn && isLoggedIn && !hasCompletedSetup && !oauthHandled.current) {
       // OAuth just completed - close login modal and start library scan
+      // Use ref to prevent this from running multiple times before state updates
+      oauthHandled.current = true;
       setLoginModalOpen(false);
       setHasCompletedSetup(true);
+      // Reset scanner closed flag so it opens fresh
+      scannerManuallyClosed.current = false;
       // Auto-start library scan (this will open LibraryScanner window)
       spotify.refreshLibrary();
     } else if (isLoggedIn) {
@@ -256,10 +262,10 @@ function App() {
   // Auto-expands if minimized when scan completes.
 
   useEffect(() => {
-    // Open scanner when loading starts
+    // Open scanner when loading starts (but not if user manually closed it)
     if (spotify.isLoading) {
       const existingScanner = windows.find(w => w.type === 'libraryScanner');
-      if (!existingScanner) {
+      if (!existingScanner && !scannerManuallyClosed.current) {
         const id = generateWindowId();
         scannerWindowId.current = id;
         const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 190) : 300;
@@ -290,7 +296,13 @@ function App() {
             ? { ...w, minimized: false, title: 'Scan Complete' }
             : w
         ));
-        setActiveWindowId(scannerWindowId.current);
+        // Only steal focus if no other visible windows exist
+        const otherVisibleWindows = windows.filter(w =>
+          w.id !== scannerWindowId.current && !w.minimized
+        );
+        if (otherVisibleWindows.length === 0) {
+          setActiveWindowId(scannerWindowId.current);
+        }
       } else if (scanner) {
         // Update title even if not minimized
         setWindows(prev => prev.map(w =>
@@ -373,28 +385,15 @@ function App() {
   }, [isLoggedIn, hasOpenedInitialWindows, localAudio, isMobile]);
 
   // -------------------------------------------------------------------------
-  // POST-AUTH: Recover audio state after Spotify OAuth redirect
+  // POST-AUTH: Clean up pre-auth state (no auto-resume of demo audio)
   // -------------------------------------------------------------------------
+  // After OAuth login, user is now on Spotify - don't auto-resume demo audio.
+  // They can start fresh with their Spotify library.
 
   useEffect(() => {
-    // Check if returning from auth with saved state
+    // Just clear any saved pre-auth state - don't try to resume demo audio
     const savedStateStr = sessionStorage.getItem('recordos_pre_auth_state');
-    if (!savedStateStr) return;
-
-    try {
-      const savedState = JSON.parse(savedStateStr);
-      sessionStorage.removeItem('recordos_pre_auth_state'); // Clear after reading
-
-      // Only resume if audio was playing before auth
-      if (savedState.wasPlaying && localAudio.fadeIn) {
-        // 4s delay to let Spotify SDK initialize after OAuth return, then fade back in
-        const timer = setTimeout(() => {
-          localAudio.fadeIn(500);
-        }, 4000);
-        return () => clearTimeout(timer);
-      }
-    } catch (e) {
-      console.error('Failed to restore pre-auth state:', e);
+    if (savedStateStr) {
       sessionStorage.removeItem('recordos_pre_auth_state');
     }
   }, []); // Run once on mount
@@ -410,17 +409,14 @@ function App() {
       // Focus existing window
       setActiveWindowId(existingWindow.id);
       if (isMobile) {
-        // Mobile: keep media player + the focused window
+        // Mobile: keep persistent windows (player, scanner) + focused window
+        const persistentTypes = ['mediaPlayer', 'libraryScanner'];
         setWindows(prev => {
-          const mediaPlayer = prev.find(w => w.type === 'mediaPlayer');
-          if (existingWindow.type === 'mediaPlayer') {
-            // Focusing media player - keep any non-player window too
-            const nonPlayer = prev.find(w => w.type !== 'mediaPlayer');
-            return nonPlayer ? [existingWindow, nonPlayer] : [existingWindow];
-          } else {
-            // Focusing non-player - keep media player if it exists
-            return mediaPlayer ? [mediaPlayer, { ...existingWindow, minimized: false }] : [{ ...existingWindow, minimized: false }];
-          }
+          const persistentWindows = prev.filter(w =>
+            persistentTypes.includes(w.type) && w.id !== existingWindow.id
+          );
+          const focusedWindow = { ...existingWindow, minimized: false };
+          return [...persistentWindows, focusedWindow];
         });
       } else {
         setWindows(prev => prev.map(w => ({
@@ -433,11 +429,11 @@ function App() {
 
     const id = generateWindowId();
 
-    // Game window sizes for proper centering (matches GameWindow.jsx GAME_CONFIG)
+    // Game window sizes for proper centering (matches GameWindow.jsx GAME_CONFIG + borders/header)
     const gameWindowSizes = {
-      minesweeper: { width: 264, height: 410 },  // +4 border, +30 header
+      minesweeper: { width: 264, height: 370 },  // 340 content + 30 header
       solitaire: { width: 704, height: 550 },
-      snake: { width: 344, height: 450 },
+      snake: { width: 334, height: 388 },        // 358 content + 30 header
     };
 
     // Calculate position - center games/modals, cascade others
@@ -491,19 +487,21 @@ function App() {
       minimized: false,
     };
 
-    // Mobile: allow Media Player + one other window
+    // Mobile: allow Media Player + Scanner + one other window
+    // Scanner and Player can coexist and be minimized; other windows replace each other
     if (isMobile) {
-      if (type === 'mediaPlayer') {
-        // Opening media player - keep any existing non-player window on top
+      const persistentTypes = ['mediaPlayer', 'libraryScanner'];
+      if (persistentTypes.includes(type)) {
+        // Opening a persistent window - add it, keep other persistent windows
         setWindows(prev => {
-          const nonPlayerWindow = prev.find(w => w.type !== 'mediaPlayer');
-          return nonPlayerWindow ? [newWindow, nonPlayerWindow] : [newWindow];
+          const toKeep = prev.filter(w => persistentTypes.includes(w.type) && w.type !== type);
+          return [...toKeep, newWindow];
         });
       } else {
-        // Opening non-player window - keep media player if open, replace other windows
+        // Opening a regular window - keep persistent windows, replace other regular windows
         setWindows(prev => {
-          const mediaPlayer = prev.find(w => w.type === 'mediaPlayer');
-          return mediaPlayer ? [mediaPlayer, newWindow] : [newWindow];
+          const persistentWindows = prev.filter(w => persistentTypes.includes(w.type));
+          return [...persistentWindows, newWindow];
         });
       }
     } else {
@@ -520,6 +518,11 @@ function App() {
       if (audio.isPlaying) {
         audio.pause?.();
       }
+    }
+
+    // Track if user manually closes scanner (prevents auto-reopen)
+    if (windowToClose?.type === 'libraryScanner') {
+      scannerManuallyClosed.current = true;
     }
 
     setWindows(prev => prev.filter(w => w.id !== windowId));
@@ -739,6 +742,8 @@ function App() {
   }, []);
 
   const handleRescanLibrary = useCallback(() => {
+    // Reset manual close flag so scanner will auto-open
+    scannerManuallyClosed.current = false;
     // Force refresh library - bypass cache
     spotify.refreshLibrary(true);
   }, [spotify]);

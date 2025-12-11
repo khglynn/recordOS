@@ -16,72 +16,111 @@
         display: none !important;
       }
 
+      /* Hide the old score display */
+      .snake-score {
+        display: none !important;
+      }
+
       /* ============================================
-         MOBILE CONTROLS - D-pad with center pause
+         CONTROLS BAR - Below game (like Minesweeper)
          ============================================ */
-      .mobile-controls {
-        display: none;
-        justify-content: center;
-        margin-top: 10px;
-        user-select: none;
-        -webkit-user-select: none;
+      .controls-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 326px;  /* Match game board width including borders */
+        margin: 0 auto;
+        padding: 8px 4px;
+        box-sizing: border-box;
       }
 
-      /* D-pad: 3x3 grid with pause in center */
-      .arrow-pad {
-        display: grid;
-        grid-template-columns: repeat(3, 40px);
-        grid-template-rows: repeat(3, 40px);
-        gap: 4px;
-      }
-
-      .ctrl-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
-        background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+      /* Settings toggle button style */
+      .pause-btn {
+        background: #0a0a0a;
+        border: 1px solid #2a2a2a;
         color: #00ff41;
-        border: 2px solid #3a3a3a;
-        border-right-color: #0a0a0a;
-        border-bottom-color: #0a0a0a;
+        padding: 4px 10px;
+        font-size: 10px;
+        cursor: pointer;
+        font-family: 'Consolas', monospace;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .pause-btn:hover {
+        background: #0d1a0d;
+      }
+
+      .pause-btn.paused {
+        background: #0a2a0a;
+        border-color: #00ff41;
+      }
+
+      .score-display {
+        font-family: 'Consolas', monospace;
+        font-size: 11px;
+        color: rgba(0, 255, 65, 0.8);
+        letter-spacing: 1px;
+      }
+
+      /* ============================================
+         MOBILE D-PAD - Overlay on game
+         ============================================ */
+      .mobile-dpad {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      /* Show on touch devices OR small screens (iframe may not report pointer: coarse) */
+      @media (pointer: coarse), (max-width: 500px) {
+        .mobile-dpad {
+          display: block;
+        }
+      }
+
+      /* D-pad: 3x3 grid centered in game */
+      .dpad-grid {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: grid;
+        grid-template-columns: repeat(3, 70px);
+        grid-template-rows: repeat(3, 70px);
+        gap: 4px;
+        pointer-events: auto;
+      }
+
+      .dpad-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 24px;
+        background: rgba(0, 255, 65, 0.15);
+        color: rgba(0, 255, 65, 0.6);
+        border: 1px solid rgba(0, 255, 65, 0.3);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         font-family: 'Consolas', monospace;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
 
-      .ctrl-btn:active {
-        background: linear-gradient(180deg, #0d3d0d 0%, #0a2a0a 100%);
-        border-color: #0a0a0a;
-        border-right-color: #3a3a3a;
-        border-bottom-color: #3a3a3a;
+      .dpad-btn:active {
+        background: rgba(0, 255, 65, 0.35);
+        color: rgba(0, 255, 65, 1);
       }
 
-      .ctrl-btn.empty {
+      .dpad-btn.empty {
         visibility: hidden;
-      }
-
-      /* Center pause button - slightly different style */
-      .ctrl-btn.pause {
-        font-size: 12px;
-        background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-        border-color: #2a2a2a;
-        border-right-color: #0a0a0a;
-        border-bottom-color: #0a0a0a;
-      }
-
-      .ctrl-btn.pause.paused {
-        background: linear-gradient(180deg, #0d3d0d 0%, #0a2a0a 100%);
-        color: #00ff41;
-        text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
-      }
-
-      /* Show on touch devices */
-      @media (pointer: coarse) {
-        .mobile-controls {
-          display: flex;
-        }
+        pointer-events: none;
       }
 
       /* ============================================
@@ -170,12 +209,15 @@
         z-index: 10;
       }
 
-      .snake-splash span {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
+      /* Override snake.css conflicting styles */
+      .snake-splash > span {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100% !important;
+        position: static !important;
+        top: auto !important;
       }
     </style>
   </head>
@@ -198,42 +240,52 @@
             <button class="terminal-btn" id="start-btn">INITIALIZE</button>
           </div>
         </div>
+        <!-- Mobile D-pad overlay - transparent, big touch targets -->
+        <div class="mobile-dpad" id="mobile-dpad">
+          <div class="dpad-grid">
+            <div class="dpad-btn empty"></div>
+            <button class="dpad-btn" data-dir="N">▲</button>
+            <div class="dpad-btn empty"></div>
+            <button class="dpad-btn" data-dir="W">◀</button>
+            <div class="dpad-btn empty"></div>
+            <button class="dpad-btn" data-dir="E">▶</button>
+            <div class="dpad-btn empty"></div>
+            <button class="dpad-btn" data-dir="S">▼</button>
+            <div class="dpad-btn empty"></div>
+          </div>
+        </div>
       </div>
       <h2 class="snake-score"></h2>
     </figure>
 
-    <!-- Mobile controls: D-pad with pause in center -->
-    <div class="mobile-controls" id="mobile-controls">
-      <div class="arrow-pad">
-        <div class="ctrl-btn empty"></div>
-        <button class="ctrl-btn" data-dir="N">▲</button>
-        <div class="ctrl-btn empty"></div>
-        <button class="ctrl-btn" data-dir="W">◀</button>
-        <button class="ctrl-btn pause" id="pause-btn">⏸</button>
-        <button class="ctrl-btn" data-dir="E">▶</button>
-        <div class="ctrl-btn empty"></div>
-        <button class="ctrl-btn" data-dir="S">▼</button>
-        <div class="ctrl-btn empty"></div>
-      </div>
+    <!-- Controls bar: SCORE left, PAUSE right -->
+    <div class="controls-bar" id="controls-bar">
+      <div class="score-display" id="score-display">SCORE: 0</div>
+      <button class="pause-btn" id="pause-btn">PAUSE</button>
     </div>
 
     <script>
       var el = $("#snake");
       var view = new SnakeGame.View(el);
 
-      // Don't auto-start - wait for button click
+      // Get UI elements
       var startScreen = document.getElementById('start-screen');
       var startBtn = document.getElementById('start-btn');
+      var pauseBtn = document.getElementById('pause-btn');
+      var scoreDisplay = document.getElementById('score-display');
+      var mobileDpad = document.getElementById('mobile-dpad');
 
+      // Start button
       startBtn.addEventListener('click', function(e) {
         e.preventDefault();
         startScreen.style.display = 'none';
         view.start();
+        pauseBtn.textContent = 'PAUSE';
+        pauseBtn.classList.remove('paused');
       });
 
       // D-pad controls - tap and drag support
-      var mobileControls = document.getElementById('mobile-controls');
-      var dirBtns = mobileControls.querySelectorAll('.ctrl-btn[data-dir]');
+      var dirBtns = mobileDpad.querySelectorAll('.dpad-btn[data-dir]');
 
       function handleDirection(dir) {
         if (view.player) {
@@ -254,7 +306,7 @@
       });
 
       // Drag support - detect which button finger moves over
-      mobileControls.addEventListener('touchmove', function(e) {
+      mobileDpad.addEventListener('touchmove', function(e) {
         e.preventDefault();
         var touch = e.touches[0];
         var element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -268,11 +320,15 @@
       var touchStartX = 0, touchStartY = 0;
 
       gameArea.addEventListener('touchstart', function(e) {
+        // Don't capture touches on d-pad buttons
+        if (e.target.hasAttribute('data-dir')) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
       }, { passive: true });
 
       gameArea.addEventListener('touchend', function(e) {
+        // Don't capture touches on d-pad buttons
+        if (e.target.hasAttribute('data-dir')) return;
         var touchEndX = e.changedTouches[0].clientX;
         var touchEndY = e.changedTouches[0].clientY;
         var dx = touchEndX - touchStartX;
@@ -289,20 +345,41 @@
         }
       }, { passive: true });
 
-      // Pause button - center of d-pad
-      var pauseBtn = document.getElementById('pause-btn');
+      // Pause button
       pauseBtn.addEventListener('click', function(e) {
         e.preventDefault();
+        if (!view.board || view.board.isOver()) return;
+
         if (view.paused) {
-          view.start();
-          this.textContent = '⏸';
+          view.resume();
+          this.textContent = 'PAUSE';
           this.classList.remove('paused');
         } else {
           view.pause();
-          this.textContent = '▶';
+          this.textContent = 'RESUME';
           this.classList.add('paused');
         }
       });
+
+      // Override view's score update to use our display
+      var originalMoveSnakes = view.moveSnakes.bind(view);
+      view.moveSnakes = function() {
+        originalMoveSnakes();
+        if (view.player) {
+          scoreDisplay.textContent = 'SCORE: ' + view.player.score;
+        }
+      };
+
+      // Sync pause button when spacebar is pressed
+      view.onPauseChange = function(isPaused) {
+        if (isPaused) {
+          pauseBtn.textContent = 'RESUME';
+          pauseBtn.classList.add('paused');
+        } else {
+          pauseBtn.textContent = 'PAUSE';
+          pauseBtn.classList.remove('paused');
+        }
+      };
     </script>
   </body>
 </html>

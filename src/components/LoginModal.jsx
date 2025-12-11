@@ -187,6 +187,7 @@ function LoginModal({
   onMinimize,
   onFocus,
   onDragStart,
+  isMobile,
   // Login-specific props
   canClose,
   onBeforeAuth,
@@ -232,9 +233,12 @@ function LoginModal({
           <span>RECORD OS //INITIALIZE</span>
         </HeaderTitle>
         <div style={{ display: 'flex', gap: '2px' }}>
-          <Tooltip text="Minimize">
-            <CloseButton onClick={onMinimize}>_</CloseButton>
-          </Tooltip>
+          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
+          {!isMobile && (
+            <Tooltip text="Minimize">
+              <CloseButton onClick={onMinimize}>_</CloseButton>
+            </Tooltip>
+          )}
           {canClose && (
             <Tooltip text="Close">
               <CloseButton onClick={onClose}>×</CloseButton>

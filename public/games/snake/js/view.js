@@ -11,6 +11,9 @@
     this.$el.on("click", "button", this.start.bind(this));
   }
 
+  // Callback for external UI to sync pause state
+  View.prototype.onPauseChange = null;
+
   View.DIRECTIONS = [
     [38, "N"],
     [39, "E"],
@@ -141,12 +144,45 @@
     if (e.keyCode == 32) {
       if (view.board.isOver()) { return; }
       if (view.paused) {
-        view.paused = false;
-        view.$splash.hide();
+        view.resume();
       } else {
-        view.paused = true;
-        view.$splash.show();
+        view.pause();
       }
+    }
+  }
+
+  View.prototype.pause = function () {
+    if (this.paused || this.endGame) return;
+    this.paused = true;
+
+    // Show pause screen with terminal styling
+    var $splash = this.$splash.show().find("span");
+    $splash.empty();
+
+    var $box = $("<div>").addClass("terminal-box");
+    var $title = $("<div>").addClass("terminal-title").text("// PAUSED //");
+    var $text = $("<div>").addClass("terminal-text").html(
+      '<span class="prompt">&gt;</span> PRESS SPACE TO RESUME'
+    );
+    var $button = $("<button>").addClass("terminal-btn").text("RESUME");
+
+    $box.append($title, $text, $button);
+    $splash.append($box);
+
+    // Notify external UI
+    if (this.onPauseChange) {
+      this.onPauseChange(true);
+    }
+  }
+
+  View.prototype.resume = function () {
+    if (!this.paused) return;
+    this.paused = false;
+    this.$splash.hide().find("span").empty();
+
+    // Notify external UI
+    if (this.onPauseChange) {
+      this.onPauseChange(false);
     }
   }
 

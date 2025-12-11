@@ -370,9 +370,12 @@ function TrackListModal({
           <span>{album.name}</span>
         </HeaderTitle>
         <HeaderButtons>
-          <Tooltip text="Minimize">
-            <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>_</HeaderButton>
-          </Tooltip>
+          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
+          {!isMobile && (
+            <Tooltip text="Minimize">
+              <HeaderButton onClick={(e) => { e.stopPropagation(); onMinimize(); }}>_</HeaderButton>
+            </Tooltip>
+          )}
           <Tooltip text="Close">
             <HeaderButton onClick={(e) => { e.stopPropagation(); onClose(); }}>×</HeaderButton>
           </Tooltip>

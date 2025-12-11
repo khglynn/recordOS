@@ -286,9 +286,12 @@ function SettingsModal({
           <span>Settings</span>
         </HeaderTitle>
         <div style={{ display: 'flex', gap: '2px' }}>
-          <Tooltip text="Minimize">
-            <HeaderButton onClick={onMinimize}>_</HeaderButton>
-          </Tooltip>
+          {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
+          {!isMobile && (
+            <Tooltip text="Minimize">
+              <HeaderButton onClick={onMinimize}>_</HeaderButton>
+            </Tooltip>
+          )}
           <Tooltip text="Close">
             <HeaderButton onClick={onClose}>×</HeaderButton>
           </Tooltip>
