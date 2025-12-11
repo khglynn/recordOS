@@ -150,11 +150,10 @@ const Footer = styled.div`
   margin-top: 20px;
   text-align: center;
   font-family: 'Consolas', 'Courier New', monospace;
-  line-height: 1.8;
+  line-height: 1.4;
 
   .warning-icon {
     color: rgba(0, 255, 65, 0.5);
-    margin-right: 4px;
   }
 `;
 
@@ -255,19 +254,14 @@ function LoginModal({
           SYSTEM STATUS: AWAITING CONNECTION
         </StatusText>
 
-        <SystemMessage>
-          <span className="prompt">//</span>
-          CONNECT SPOTIFY TO ACCESS LIBRARY
-        </SystemMessage>
-
         <SpotifyButton onClick={handleLogin}>
           <PixelIcon name="login" size={14} /> CONNECT TO SPOTIFY
         </SpotifyButton>
 
         <Footer>
-          <span className="warning-icon">//</span> REQUIRES PREMIUM FOR PLAYBACK
+          <span className="warning-icon">//</span>REQUIRES PREMIUM FOR PLAYBACK
           <br />
-          <span className="warning-icon">//</span> OPTIMIZED FOR CHROME DESKTOP
+          <span className="warning-icon">//</span>OPTIMIZED FOR CHROME DESKTOP
         </Footer>
       </StyledWindowContent>
     </StyledWindow>
