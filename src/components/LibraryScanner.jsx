@@ -432,7 +432,7 @@ function LibraryScanner({
         </DecadeButtonGrid>
 
         <SystemNote>
-          //RECORD_OS v3.0 //WEYLAND-YUTANI AUDIO DIVISION//
+          // RECORD_OS v3.0 // WEYLAND-YUTANI AUDIO DIVISION //
         </SystemNote>
       </StyledWindowContent>
     </StyledWindow>

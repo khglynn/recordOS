@@ -259,9 +259,9 @@ function LoginModal({
         </SpotifyButton>
 
         <Footer>
-          <span className="warning-icon">//</span>REQUIRES PREMIUM FOR PLAYBACK
+          // REQUIRES PREMIUM FOR PLAYBACK //
           <br />
-          <span className="warning-icon">//</span>OPTIMIZED FOR CHROME DESKTOP
+          // OPTIMIZED FOR CHROME DESKTOP //
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

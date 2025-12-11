@@ -434,9 +434,9 @@ function InfoModal({
         </StyledFieldset>
 
         <Footer>
-          WEYLAND-YUTANI CORP //BUILDING BETTER WORLDS
+          // WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS //
           <br />
-          © 2025 //ALL RIGHTS RESERVED
+          // © 2025 // ALL RIGHTS RESERVED //
         </Footer>
       </StyledWindowContent>
     </StyledWindow>
