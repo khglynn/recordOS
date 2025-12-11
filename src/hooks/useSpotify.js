@@ -480,15 +480,31 @@ export function useSpotify() {
    * Memoized to prevent recalculation on every render
    */
   const displayAlbums = useMemo(() => {
-    if (albums.length === 0) return [];
+    // During scan: if user selected a ready decade, use albumsByDecade directly
+    // This allows browsing ready decades before full scan completes
+    const useProgressiveData = isLoading &&
+      decade !== DECADE_OPTIONS.ALL &&
+      decadeStatus[decade] === 'ready' &&
+      albumsByDecade[decade]?.length > 0;
 
-    // Step 0: Filter out unavailable albums (403 errors)
-    const unavailableIds = new Set(unavailableAlbums.map(a => a.id));
-    let candidates = albums.filter(a => !unavailableIds.has(a.id));
+    let candidates;
 
-    // Step 1: Filter by decade if not "all"
-    if (decade !== DECADE_OPTIONS.ALL) {
-      candidates = candidates.filter(a => getDecadeFromDate(a.releaseDate) === decade);
+    if (useProgressiveData) {
+      // Use progressive scan data for this specific decade
+      candidates = [...albumsByDecade[decade]];
+      console.log(`[displayAlbums] Using progressive data for ${decade}: ${candidates.length} albums`);
+    } else {
+      // Normal flow: filter from complete albums array
+      if (albums.length === 0) return [];
+
+      // Step 0: Filter out unavailable albums (403 errors)
+      const unavailableIds = new Set(unavailableAlbums.map(a => a.id));
+      candidates = albums.filter(a => !unavailableIds.has(a.id));
+
+      // Step 1: Filter by decade if not "all"
+      if (decade !== DECADE_OPTIONS.ALL) {
+        candidates = candidates.filter(a => getDecadeFromDate(a.releaseDate) === decade);
+      }
     }
 
     // Step 2: Sort all candidates by liked track count (highest first)
@@ -508,15 +524,15 @@ export function useSpotify() {
     }
 
     console.log(`[Safari Debug] displayAlbums filter:`);
-    console.log(`  - Input albums: ${albums.length}`);
-    console.log(`  - Unavailable albums filtered: ${unavailableAlbums.length}`);
+    console.log(`  - Using progressive: ${useProgressiveData}`);
+    console.log(`  - Input albums: ${useProgressiveData ? albumsByDecade[decade]?.length : albums.length}`);
     console.log(`  - Decade filter: "${decade}"`);
     console.log(`  - After decade filter: ${candidates.length}`);
     console.log(`  - Qualifying (${MIN_SAVED_TRACKS}+ tracks): ${qualifyingAlbums.length}`);
     console.log(`  - Final result: ${result.length}`);
 
     return result;
-  }, [albums, decade, unavailableAlbums]);
+  }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
@@ -612,13 +628,16 @@ export function useSpotify() {
         }
 
         // Detect album end: no more tracks AND playback stopped naturally
-        // (paused, position near end of track)
+        // Position resets to 0 when track ends, OR could be very close to duration
         const nextTracks = state.track_window.next_tracks || [];
         const isLastTrack = nextTracks.length === 0;
-        const trackEnded = state.paused && state.position === 0 && state.duration > 0;
+        const positionAtEnd = state.position === 0 || (state.duration > 0 && state.position >= state.duration - 500);
+        const trackEnded = state.paused && positionAtEnd && state.duration > 0;
+
+        console.log(`[Album End Check] paused=${state.paused}, pos=${state.position}, dur=${state.duration}, nextTracks=${nextTracks.length}, isLast=${isLastTrack}, atEnd=${positionAtEnd}`);
 
         if (isLastTrack && trackEnded) {
-          console.log('[Album End] Album finished playing');
+          console.log('[Album End] Album finished playing!');
           setAlbumEnded(true);
 
           // Play turntable end sound effect (licensed via Envato)
