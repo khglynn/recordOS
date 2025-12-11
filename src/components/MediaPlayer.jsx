@@ -515,7 +515,7 @@ function MediaPlayer({
                 <TrackAlbum>{currentTrack.album}</TrackAlbum>
               </>
             ) : (
-              <IdleMessage>IDLE // NO TRACK</IdleMessage>
+              <IdleMessage>IDLE //NO TRACK</IdleMessage>
             )}
           </TrackInfo>
         </NowPlayingArea>

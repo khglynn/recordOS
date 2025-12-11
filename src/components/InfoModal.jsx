@@ -323,7 +323,7 @@ function InfoModal({
           <Logo src="/logo.png" alt="Record OS" />
           <TitleSection>
             <Title>RECORD OS</Title>
-            <Version>BUILD 3.0.48 // STABLE</Version>
+            <Version>BUILD 3.0.48 //STABLE</Version>
           </TitleSection>
         </LogoSection>
 
@@ -421,7 +421,7 @@ function InfoModal({
 
         <StyledFieldset label="SYSTEM MAINTENANCE">
           <Description style={{ margin: '0 0 8px 0', fontSize: '9px', color: 'rgba(0, 255, 65, 0.6)' }}>
-            // OPERATIONAL COSTS SUBSIDIZED BY USERS
+            //OPERATIONAL COSTS SUBSIDIZED BY USERS
           </Description>
           <DonateButton
             as="a"
@@ -434,9 +434,9 @@ function InfoModal({
         </StyledFieldset>
 
         <Footer>
-          WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS
+          WEYLAND-YUTANI CORP //BUILDING BETTER WORLDS
           <br />
-          © 2025 // ALL RIGHTS RESERVED
+          © 2025 //ALL RIGHTS RESERVED
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

@@ -398,7 +398,7 @@ function LibraryScanner({
 
         {/* Instruction text */}
         <InstructionText>
-          // SELECT DECADE TO VIEW ALBUMS
+          //SELECT DECADE TO VIEW ALBUMS
         </InstructionText>
 
         {/* Decade buttons - 3x3 grid + full-width ALL at bottom */}
@@ -432,7 +432,7 @@ function LibraryScanner({
         </DecadeButtonGrid>
 
         <SystemNote>
-          // RECORD_OS v3.0 // WEYLAND-YUTANI AUDIO DIVISION //
+          //RECORD_OS v3.0 //WEYLAND-YUTANI AUDIO DIVISION//
         </SystemNote>
       </StyledWindowContent>
     </StyledWindow>

@@ -229,7 +229,7 @@ function LoginModal({
       >
         <HeaderTitle>
           <PixelIcon name="power" size={14} />
-          <span>RECORD OS // INITIALIZE</span>
+          <span>RECORD OS //INITIALIZE</span>
         </HeaderTitle>
         <div style={{ display: 'flex', gap: '2px' }}>
           <Tooltip text="Minimize">
