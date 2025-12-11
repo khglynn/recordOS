@@ -1,6 +1,6 @@
 # recordOS - Agent Instructions
 
-*Inherits from ~/DevKevin/CLAUDE.md*
+*Inherits from ~/DevKev/CLAUDE.md*
 
 ## What This Is
 
@@ -28,19 +28,20 @@ You're a senior dev at a creative agency who builds slick, badass sites. Care ab
 
 See `src/components/InfoModal.jsx` for copy examples.
 
-## Where to Find Current State
+## Current Plan
 
-**Always check these before starting work:**
+**Active plan (Dec 9, 2025):** `claude-plans/2025-12-09-modal-consolidation.md`
+
+Consolidate 3 post-auth windows into one unified "Library Scanner" modal. 12 implementation steps covering modal consolidation, tooltip fixes, mobile layout fixes, and cleanup.
+
+## Where to Find Context
 
 | Source | What's There |
 |--------|--------------|
-| `CONTEXT.md` | Current TODO list, technical notes, Butterchurn plan |
-| `NEXT-STEPS-FOR-HUMAN.md` | Detailed remaining work, implementation options |
-| `~/MuxDocs/2025/Q4/` | Recent session summaries (search for "Record OS") |
-| `~/MuxDocs/2025/Q4/Record OS/` | Starter prompts, older sessions |
+| `claude-plans/` | Archived plans - history of what was attempted |
+| `~/.claude/plans/` | Active Claude Code plans (sort by date: `ls -lt ~/.claude/plans/*.md`) |
+| `~/MuxDocs/2025/Q4/Record OS/` | Session summaries, starter prompts |
 | Recent git commits | What just changed |
-
-Session docs in MuxDocs have the latest context on what was worked on, what's broken, and what's next.
 
 ## Tech Stack
 - React 19, Vite, styled-components
@@ -95,3 +96,8 @@ git checkout dev  # back to working
 ## Environment Variables
 - `VITE_SPOTIFY_CLIENT_ID` - Spotify app client ID
 - `VITE_SENTRY_DSN` - (optional) Error tracking
+
+## Future: Analytics Integration
+
+In a future session, add PostHog alongside Sentry and link both to Slack notifications.
+See skill: `~/.mux/src/HG-Skills-Private/hg-skills/workflow/` for setup pattern.

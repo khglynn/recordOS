@@ -200,17 +200,17 @@ const InstructionText = styled.div`
   letter-spacing: 0.5px;
 `;
 
-// Decade button grid
+// Decade button grid - 3 columns, ALL button spans full width at bottom
 const DecadeButtonGrid = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  width: 100%;
 `;
 
 const DecadeButton = styled.button`
-  padding: 8px 14px;
-  min-width: 70px;
+  padding: 6px 8px;
+  min-width: 0;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
@@ -246,6 +246,12 @@ const DecadeButton = styled.button`
 const DecadeButtonCount = styled.span`
   font-size: 9px;
   color: rgba(0, 255, 65, 0.4);
+`;
+
+// ALL button spans full width at bottom of grid
+const AllButton = styled(DecadeButton)`
+  grid-column: 1 / -1;
+  padding: 10px 12px;
 `;
 
 // System footer
@@ -357,10 +363,12 @@ function LibraryScanner({
       </StyledWindowHeader>
 
       <StyledWindowContent>
-        {/* Stats boxes */}
+        {/* Stats boxes - use live counts during scanning */}
         <StatsGrid>
           <StatBox>
-            <StatValue>{totalTracks.toLocaleString()}</StatValue>
+            <StatValue>
+              {(isComplete ? totalTracks : loaded).toLocaleString()}
+            </StatValue>
             <StatLabel>Tracks Indexed</StatLabel>
           </StatBox>
           <StatBox>
@@ -388,22 +396,12 @@ function LibraryScanner({
 
         {/* Instruction text */}
         <InstructionText>
-          &gt; Select a decade to view your top albums
+          // SELECT DECADE TO VIEW ALBUMS
         </InstructionText>
 
-        {/* Decade buttons */}
+        {/* Decade buttons - 3x3 grid + full-width ALL at bottom */}
         <DecadeButtonGrid>
-          {/* ALL button - always first, highlighted in complete state */}
-          <DecadeButton
-            $isAll={isComplete}
-            disabled={!isComplete && albumCount === 0}
-            onClick={() => handleDecadeClick('all')}
-          >
-            ALL
-            <DecadeButtonCount>{albumCount} albums</DecadeButtonCount>
-          </DecadeButton>
-
-          {/* Individual decade buttons */}
+          {/* Individual decade buttons (6 buttons = 2 rows of 3) */}
           {availableDecades.map(decade => {
             const count = albumsByDecade[decade]?.length || 0;
             const ready = isComplete || isDecadeReady(decade);
@@ -419,6 +417,16 @@ function LibraryScanner({
               </DecadeButton>
             );
           })}
+
+          {/* ALL button - full width at bottom, highlighted in complete state */}
+          <AllButton
+            $isAll={isComplete}
+            disabled={!isComplete && albumCount === 0}
+            onClick={() => handleDecadeClick('all')}
+          >
+            ALL
+            <DecadeButtonCount>{albumCount} albums</DecadeButtonCount>
+          </AllButton>
         </DecadeButtonGrid>
 
         <SystemNote>

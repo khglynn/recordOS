@@ -29,6 +29,7 @@ const ICON_MAP = {
 
   // Games
   gamepad: 'gamepad',
+  cards: 'card-stack', // For solitaire
   zap: 'zap', // For minesweeper/bomb
 
   // Navigation/UI

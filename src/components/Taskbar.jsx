@@ -212,6 +212,23 @@ const DecadeArrow = styled.button`
   }
 `;
 
+// Scanning indicator with pulse animation
+const ScanningIndicator = styled.span`
+  font-size: 10px;
+  color: #00ff41;
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 1px;
+  animation: pulse 1s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -224,6 +241,8 @@ function Taskbar({
   onStartClick,
   isStartMenuOpen,
   isLoggedIn,
+  isLoading,
+  loadingProgress,
   decade,
   onDecadeChange,
   onLogout,
@@ -233,6 +252,7 @@ function Taskbar({
   onOpenInfo,
   onOpenSettings,
   onOpenLogin,
+  decadeStatus = {},
 }) {
   const startButtonRef = useRef(null);
 
@@ -243,7 +263,7 @@ function Taskbar({
       case 'mediaPlayer': return <PixelIcon name="music" size={14} />;
       case 'trippyGraphics': return <PixelIcon name="sparkles" size={14} />;
       case 'minesweeper': return <PixelIcon name="zap" size={14} />;
-      case 'solitaire': return <PixelIcon name="gamepad" size={14} />;
+      case 'solitaire': return <PixelIcon name="cards" size={14} />;
       case 'snake': return <PixelIcon name="gamepad" size={14} />;
       case 'info': return <PixelIcon name="info" size={14} />;
       case 'settings': return <PixelIcon name="sliders" size={14} />;
@@ -253,6 +273,17 @@ function Taskbar({
 
   // Decade options for cycling
   const DECADES = ['all', 'classic', '1980s', '1990s', '2000s', '2010s', '2020s'];
+
+  // Check if a decade is ready
+  const isDecadeReady = (d) => {
+    if (!isLoggedIn) return false;
+    if (d === 'all') return !isLoading;
+    return decadeStatus[d] === 'ready';
+  };
+
+  // Get ready decades for navigation
+  const readyDecades = DECADES.filter(d => isDecadeReady(d));
+  const hasReadyDecades = readyDecades.length > 0;
 
   // Decade display for tray
   const getDecadeDisplay = () => {
@@ -264,17 +295,29 @@ function Taskbar({
 
   const showInfinityIcon = isLoggedIn && (!decade || decade === 'all');
 
-  // Navigate decades
-  const currentIndex = DECADES.indexOf(decade || 'all');
-
+  // Navigate decades (only through ready ones)
   const handlePrevDecade = () => {
-    const newIndex = currentIndex <= 0 ? DECADES.length - 1 : currentIndex - 1;
-    onDecadeChange?.(DECADES[newIndex]);
+    if (!hasReadyDecades) return;
+    const currentIndex = readyDecades.indexOf(decade);
+    let newIndex;
+    if (currentIndex === -1) {
+      newIndex = 0;
+    } else {
+      newIndex = currentIndex <= 0 ? readyDecades.length - 1 : currentIndex - 1;
+    }
+    onDecadeChange?.(readyDecades[newIndex]);
   };
 
   const handleNextDecade = () => {
-    const newIndex = currentIndex >= DECADES.length - 1 ? 0 : currentIndex + 1;
-    onDecadeChange?.(DECADES[newIndex]);
+    if (!hasReadyDecades) return;
+    const currentIndex = readyDecades.indexOf(decade);
+    let newIndex;
+    if (currentIndex === -1) {
+      newIndex = 0;
+    } else {
+      newIndex = currentIndex >= readyDecades.length - 1 ? 0 : currentIndex + 1;
+    }
+    onDecadeChange?.(readyDecades[newIndex]);
   };
 
   return (
@@ -307,24 +350,45 @@ function Taskbar({
           ))}
         </WindowTabs>
 
-        {/* Tray Area - Decade Display with Navigation */}
+        {/* Tray Area - Decade Display or Scanning Indicator */}
         <TrayArea>
-          {isLoggedIn && (
-            <DecadeArrow onClick={handlePrevDecade} title="Previous era">
-              <PixelIcon name="chevronLeft" size={12} />
-            </DecadeArrow>
-          )}
-          <TrayText>
-            {showInfinityIcon ? (
-              <>circa: <PixelIcon name="repeat" size={12} /></>
-            ) : (
-              <>circa: {getDecadeDisplay()}</>
-            )}
-          </TrayText>
-          {isLoggedIn && (
-            <DecadeArrow onClick={handleNextDecade} title="Next era">
-              <PixelIcon name="chevronRight" size={12} />
-            </DecadeArrow>
+          {isLoading ? (
+            // Show scanning progress during library scan
+            <ScanningIndicator>
+              <PixelIcon name="sync" size={12} />
+              SCAN: {loadingProgress?.total > 0
+                ? Math.round((loadingProgress.loaded / loadingProgress.total) * 100)
+                : 0}%
+            </ScanningIndicator>
+          ) : (
+            // Normal decade navigation
+            <>
+              {isLoggedIn && (
+                <DecadeArrow
+                  onClick={handlePrevDecade}
+                  title="Previous era"
+                  disabled={!hasReadyDecades}
+                >
+                  <PixelIcon name="chevronLeft" size={12} />
+                </DecadeArrow>
+              )}
+              <TrayText>
+                {showInfinityIcon ? (
+                  <>circa: <PixelIcon name="repeat" size={12} /></>
+                ) : (
+                  <>circa: {getDecadeDisplay()}</>
+                )}
+              </TrayText>
+              {isLoggedIn && (
+                <DecadeArrow
+                  onClick={handleNextDecade}
+                  title="Next era"
+                  disabled={!hasReadyDecades}
+                >
+                  <PixelIcon name="chevronRight" size={12} />
+                </DecadeArrow>
+              )}
+            </>
           )}
         </TrayArea>
       </TaskbarContainer>
@@ -343,6 +407,8 @@ function Taskbar({
           onOpenSettings={onOpenSettings}
           onOpenLogin={onOpenLogin}
           onClose={onStartClick}
+          decadeStatus={decadeStatus}
+          isLoading={isLoading}
         />
       )}
     </>

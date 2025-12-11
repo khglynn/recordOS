@@ -107,6 +107,13 @@ const StyledMenuItem = styled(MenuListItem)`
     width: 14px;
     color: #00ff41;
   }
+
+  /* Disabled state */
+  &[data-disabled="true"] {
+    color: rgba(0, 255, 65, 0.3) !important;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 `;
 
 const MenuIcon = styled.span.attrs({ className: 'menu-icon' })`
@@ -209,23 +216,41 @@ function StartMenu({
   onOpenSettings,
   onOpenLogin,
   onClose,
+  decadeStatus = {},
+  isLoading = false,
 }) {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const [expandedSection, setExpandedSection] = useState(null);
   const isMobile = useMobile();
 
+  // Check if a decade is ready (enabled for selection)
+  // 'all' requires loading to be complete; individual decades check decadeStatus
+  const isDecadeReady = (d) => {
+    if (!isLoggedIn) return false;
+    if (d === 'all') return !isLoading;
+    return decadeStatus[d] === 'ready';
+  };
+
   // Decade cycling for mobile arrow navigation
   const DECADES = ['all', '2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
 
+  // Get list of ready decades for cycling
+  const readyDecades = DECADES.filter(d => isDecadeReady(d));
+  const hasReadyDecades = readyDecades.length > 0;
+
   const cycleDecade = (direction) => {
-    const currentIndex = DECADES.indexOf(decade) || 0;
+    if (!hasReadyDecades) return;
+    const currentIndex = readyDecades.indexOf(decade);
     let newIndex;
-    if (direction === 'next') {
-      newIndex = (currentIndex + 1) % DECADES.length;
+    if (currentIndex === -1) {
+      // Current decade not ready, jump to first ready one
+      newIndex = 0;
+    } else if (direction === 'next') {
+      newIndex = (currentIndex + 1) % readyDecades.length;
     } else {
-      newIndex = (currentIndex - 1 + DECADES.length) % DECADES.length;
+      newIndex = (currentIndex - 1 + readyDecades.length) % readyDecades.length;
     }
-    onDecadeChange(DECADES[newIndex]);
+    onDecadeChange(readyDecades[newIndex]);
   };
 
   const handleMenuItemClick = (action) => {
@@ -278,10 +303,20 @@ function StartMenu({
           {/* Decade Filter with arrow navigation - Only when logged in */}
           {isLoggedIn && (
             <>
-              <DecadeRow>
-                <DecadeArrow onClick={() => cycleDecade('prev')}>◀</DecadeArrow>
-                <DecadeLabel>{DECADE_LABELS[decade] || 'All Decades'}</DecadeLabel>
-                <DecadeArrow onClick={() => cycleDecade('next')}>▶</DecadeArrow>
+              <DecadeRow style={{ opacity: hasReadyDecades ? 1 : 0.4 }}>
+                <DecadeArrow
+                  onClick={() => cycleDecade('prev')}
+                  disabled={!hasReadyDecades}
+                  style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
+                >◀</DecadeArrow>
+                <DecadeLabel>
+                  {hasReadyDecades ? (DECADE_LABELS[decade] || 'All Decades') : 'SCANNING...'}
+                </DecadeLabel>
+                <DecadeArrow
+                  onClick={() => cycleDecade('next')}
+                  disabled={!hasReadyDecades}
+                  style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
+                >▶</DecadeArrow>
               </DecadeRow>
               <StyledSeparator />
             </>
@@ -381,16 +416,20 @@ function StartMenu({
               {activeSubmenu === 'decade' && (
                 <Submenu>
                   <StyledMenuList>
-                    {Object.entries(DECADE_OPTIONS).map(([key, value]) => (
-                      <StyledMenuItem
-                        key={key}
-                        data-checked={decade === value}
-                        onClick={() => handleMenuItemClick(() => onDecadeChange(value))}
-                      >
-                        <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
-                        {DECADE_LABELS[value]}
-                      </StyledMenuItem>
-                    ))}
+                    {Object.entries(DECADE_OPTIONS).map(([key, value]) => {
+                      const ready = isDecadeReady(value);
+                      return (
+                        <StyledMenuItem
+                          key={key}
+                          data-checked={decade === value}
+                          data-disabled={!ready}
+                          onClick={ready ? () => handleMenuItemClick(() => onDecadeChange(value)) : undefined}
+                        >
+                          <MenuIcon><PixelIcon name="calendar" size={14} /></MenuIcon>
+                          {DECADE_LABELS[value]}
+                        </StyledMenuItem>
+                      );
+                    })}
                   </StyledMenuList>
                 </Submenu>
               )}

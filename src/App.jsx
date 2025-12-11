@@ -58,11 +58,22 @@ const React95Reset = createGlobalStyle`
 // Generate unique window ID
 const generateWindowId = () => `window-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-// Initial window positions (staggered)
-const getInitialPosition = (index) => ({
-  x: 100 + (index * 30),
-  y: 80 + (index * 30),
-});
+// Initial window positions - centered vertically with cascade offset
+// Most windows are ~400x350, so offset by half that for centering
+const getInitialPosition = (index) => {
+  if (typeof window === 'undefined') return { x: 200, y: 150 };
+
+  const centerX = Math.max(50, window.innerWidth / 2 - 200);
+  const centerY = Math.max(50, window.innerHeight / 2 - 200);
+
+  // Cascade offset (wraps after 5 windows to avoid going off-screen)
+  const cascadeOffset = (index % 5) * 30;
+
+  return {
+    x: centerX + cascadeOffset,
+    y: centerY + cascadeOffset,
+  };
+};
 
 // ============================================================================
 // MAIN APP COMPONENT
@@ -175,9 +186,10 @@ function App() {
   // New flow (Dec 2025): After OAuth, we auto-start library scan instead of
   // showing a config step. The LibraryScanner window opens automatically.
   useEffect(() => {
-    const hasCode = new URLSearchParams(window.location.search).has('code');
+    // NOTE: Use isOAuthReturn (computed at mount) NOT fresh URL check.
+    // The URL gets cleared by useSpotify before isLoggedIn becomes true.
 
-    if (hasCode && isLoggedIn && !hasCompletedSetup) {
+    if (isOAuthReturn && isLoggedIn && !hasCompletedSetup) {
       // OAuth just completed - close login modal and start library scan
       setLoginModalOpen(false);
       setHasCompletedSetup(true);
@@ -192,7 +204,7 @@ function App() {
     }
     // Note: We intentionally don't auto-open modal when !isLoggedIn here
     // because the initial state already handles that. This prevents the race.
-  }, [isLoggedIn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup, spotify]);
+  }, [isLoggedIn, isOAuthReturn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup, spotify]);
 
   // -------------------------------------------------------------------------
   // SYNC LOGIN WINDOW TO WINDOWS ARRAY
@@ -665,6 +677,10 @@ function App() {
     openWindow('trippyGraphics');
   }, [openWindow]);
 
+  const handleShowScanResults = useCallback(() => {
+    openWindow('libraryScanner');
+  }, [openWindow]);
+
   const handleOpenLogin = useCallback(() => {
     setLoginModalOpen(true);
   }, []);
@@ -912,6 +928,7 @@ function App() {
                 onAlbumCountChange={setDisplayAlbumCount}
                 isLoggedIn={isLoggedIn}
                 onRescanLibrary={handleRescanLibrary}
+                onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}
               />
             );
@@ -967,6 +984,8 @@ function App() {
         onStartClick={handleStartClick}
         isStartMenuOpen={isStartMenuOpen}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
+        isLoading={spotify.isLoading}
+        loadingProgress={spotify.loadingProgress}
         decade={spotify.decade}
         onDecadeChange={spotify.setDecade}
         onLogout={handleLogout}
@@ -976,6 +995,7 @@ function App() {
         onOpenInfo={handleOpenInfo}
         onOpenSettings={handleOpenSettings}
         onOpenLogin={handleOpenLogin}
+        decadeStatus={spotify.decadeStatus}
       />
     </ThemeProvider>
   );

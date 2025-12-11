@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PATH=\"/usr/local/opt/node@20/bin:$PATH\" npm run build:*)",
+      "mcp__firecrawl__firecrawl_scrape",
+      "Bash(/usr/local/opt/node@20/bin/node /usr/local/opt/node@20/lib/node_modules/npm/bin/npm-cli.js run build)",
+      "Bash(/usr/local/opt/node@20/bin/npm run build)",
+      "Bash(brew list:*)",
+      "Bash(git add:*)",
+      "Bash(osascript:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_navigate",
+      "Bash(tree:*)",
+      "Bash(git -C /Users/KevinHG/DevKev/personal/recordOS ls-files:*)",
+      "Bash(git -C /Users/KevinHG/DevKevin/personal/recordOS log --oneline -5)",
+      "Bash(xargs ls:*)",
+      "Bash(wc:*)",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_run_code",
+      "Bash(npm run build:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(pkill:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

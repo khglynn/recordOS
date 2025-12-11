@@ -78,13 +78,13 @@ export const DECADE_OPTIONS = {
 };
 
 export const DECADE_LABELS = {
-  [DECADE_OPTIONS.ALL]: 'All Decades',
-  [DECADE_OPTIONS.D2020]: '2020s',
-  [DECADE_OPTIONS.D2010]: '2010s',
-  [DECADE_OPTIONS.D2000]: '2000s',
-  [DECADE_OPTIONS.D1990]: '1990s',
-  [DECADE_OPTIONS.D1980]: '1980s',
-  [DECADE_OPTIONS.CLASSIC]: 'Pre-1980',
+  [DECADE_OPTIONS.ALL]: 'ALL',
+  [DECADE_OPTIONS.D2020]: '20s',
+  [DECADE_OPTIONS.D2010]: '10s',
+  [DECADE_OPTIONS.D2000]: '00s',
+  [DECADE_OPTIONS.D1990]: '90s',
+  [DECADE_OPTIONS.D1980]: '80s',
+  [DECADE_OPTIONS.CLASSIC]: 'OLD',
 };
 
 // Ordered list of decades (newest to oldest) for progressive loading

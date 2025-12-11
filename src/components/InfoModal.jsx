@@ -328,20 +328,17 @@ function InfoModal({
         </LogoSection>
 
         <SystemMessage>
-          <span className="prompt">&gt;</span>
-          Audio visualization terminal
+          <span className="prompt">//</span>
+          AUDIO VISUALIZATION SYSTEM
           <br />
-          <span className="prompt">&gt;</span>
-          Displays your most-loved albums,
+          <span className="prompt">//</span>
+          ALBUMS RANKED BY SAVED TRACKS
           <br />
-          <span className="prompt">&gt;</span>
-          ranked by saved track count.
+          <span className="prompt">//</span>
+          ALL PROCESSING LOCAL
           <br />
-          <span className="prompt">&gt;</span>
-          All data processed locally.
-          <br />
-          <span className="prompt">&gt;</span>
-          Best experienced in Chrome.
+          <span className="prompt">//</span>
+          OPTIMIZED FOR CHROME
         </SystemMessage>
 
         <StyledFieldset label="SYSTEM ADMINISTRATOR">
@@ -423,12 +420,12 @@ function InfoModal({
         </StyledFieldset>
 
         <StyledFieldset label="SYSTEM MAINTENANCE">
-          <Description style={{ margin: '0 0 12px 0' }}>
-            SYSTEM MAINTENANCE REQUIRED.
+          <Description style={{ margin: '0 0 8px 0', fontSize: '9px', color: 'rgba(0, 255, 65, 0.6)' }}>
+            // OPERATIONAL COSTS SUBSIDIZED BY USERS
           </Description>
           <DonateButton
             as="a"
-            href="https://donate.stripe.com/placeholder"
+            href="https://buymeacoffee.com/kevinhg"
             target="_blank"
             rel="noopener noreferrer"
           >

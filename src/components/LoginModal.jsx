@@ -256,11 +256,8 @@ function LoginModal({
         </StatusText>
 
         <SystemMessage>
-          <span className="prompt">&gt;</span>
-          This system displays your most-loved albums ranked by saved track count
-          <br />
-          <span className="prompt">&gt;</span>
-          Establish connection to begin...
+          <span className="prompt">//</span>
+          CONNECT SPOTIFY TO ACCESS LIBRARY
         </SystemMessage>
 
         <SpotifyButton onClick={handleLogin}>
@@ -268,11 +265,9 @@ function LoginModal({
         </SpotifyButton>
 
         <Footer>
-          <span className="warning-icon">&gt;</span>Auth will pause current session
+          <span className="warning-icon">//</span> REQUIRES PREMIUM FOR PLAYBACK
           <br />
-          <span className="warning-icon">&gt;</span>Best experienced on Chrome desktop
-          <br />
-          Requires Spotify Premium for audio playback
+          <span className="warning-icon">//</span> OPTIMIZED FOR CHROME DESKTOP
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

@@ -20,6 +20,7 @@ import {
   Fieldset,
 } from 'react95';
 import PixelIcon from './PixelIcon';
+import Tooltip from './Tooltip';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -214,6 +215,7 @@ function SettingsModal({
   isActive,
   zIndex,
   onClose,
+  onMinimize,
   onFocus,
   position,
   onDragStart,
@@ -224,6 +226,7 @@ function SettingsModal({
   isMobile,
   isLoggedIn,
   onRescanLibrary,
+  onShowScanResults,
   unavailableAlbums = [],
 }) {
   const headerRef = useRef(null);
@@ -282,7 +285,14 @@ function SettingsModal({
           <PixelIcon name="sliders" size={14} />
           <span>Settings</span>
         </HeaderTitle>
-        <HeaderButton onClick={onClose}>×</HeaderButton>
+        <div style={{ display: 'flex', gap: '2px' }}>
+          <Tooltip text="Minimize">
+            <HeaderButton onClick={onMinimize}>_</HeaderButton>
+          </Tooltip>
+          <Tooltip text="Close">
+            <HeaderButton onClick={onClose}>×</HeaderButton>
+          </Tooltip>
+        </div>
       </StyledWindowHeader>
 
       <StyledWindowContent>
@@ -331,6 +341,13 @@ function SettingsModal({
               <ToggleButton onClick={onRescanLibrary}>
                 <PixelIcon name="sync" size={12} />
                 RESCAN
+              </ToggleButton>
+            </SettingRow>
+            <SettingRow style={{ marginTop: '8px' }}>
+              <SettingLabel>Scan results window</SettingLabel>
+              <ToggleButton onClick={onShowScanResults}>
+                <PixelIcon name="disc" size={12} />
+                SHOW
               </ToggleButton>
             </SettingRow>
           </StyledFieldset>
