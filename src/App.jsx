@@ -186,6 +186,14 @@ function App() {
   // New flow (Dec 2025): After OAuth, we auto-start library scan instead of
   // showing a config step. The LibraryScanner window opens automatically.
   useEffect(() => {
+    // BULLETPROOF: If library scan is running, login modal should always close
+    // This catches any edge cases where other conditions don't trigger
+    if (spotify.isLoading && loginModalOpen) {
+      setLoginModalOpen(false);
+      setHasCompletedSetup(true);
+      return;
+    }
+
     // NOTE: Use isOAuthReturn (computed at mount) NOT fresh URL check.
     // The URL gets cleared by useSpotify before isLoggedIn becomes true.
 
@@ -197,14 +205,14 @@ function App() {
       spotify.refreshLibrary();
     } else if (isLoggedIn) {
       // Logged in (returning user or scan in progress) - close modal
-      if (spotify.isLoading || spotify.allAlbumsCount > 0 || hasCompletedSetup) {
+      if (spotify.allAlbumsCount > 0 || hasCompletedSetup) {
         setHasCompletedSetup(true);
         setLoginModalOpen(false);
       }
     }
     // Note: We intentionally don't auto-open modal when !isLoggedIn here
     // because the initial state already handles that. This prevents the race.
-  }, [isLoggedIn, isOAuthReturn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup, spotify]);
+  }, [isLoggedIn, isOAuthReturn, spotify.isLoading, spotify.allAlbumsCount, hasCompletedSetup, spotify, loginModalOpen]);
 
   // -------------------------------------------------------------------------
   // SYNC LOGIN WINDOW TO WINDOWS ARRAY
@@ -381,10 +389,10 @@ function App() {
 
       // Only resume if audio was playing before auth
       if (savedState.wasPlaying && localAudio.fadeIn) {
-        // Small delay to let the page settle, then fade back in
+        // 2s delay to let Spotify SDK initialize after OAuth return, then fade back in
         const timer = setTimeout(() => {
           localAudio.fadeIn(500);
-        }, 500);
+        }, 2000);
         return () => clearTimeout(timer);
       }
     } catch (e) {
