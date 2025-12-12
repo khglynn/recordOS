@@ -32,14 +32,15 @@ See `src/components/InfoModal.jsx` for copy examples.
 
 **Last updated:** 2025-12-11
 
-Modal system refactored (WindowFrame component). Desktop modals positioned near top. Mobile Solitaire fills viewport. Games polished.
+Playback race condition fixed (await transferPlayback, deviceReady state). Sentry breadcrumbs added for debugging. InfoModal has scroll container and privacy notice.
 
-**Recent work:** `claude-plans/2025-12-11-modal-refactor.md`
+**Recent work:** `claude-plans/2025-12-11-playback-fixes.md`
 
-**Remaining polish:**
+**Remaining:**
+- Sentry → Slack integration
+- PostHog session recording
 - Live track counts during scan
 - Solitaire card icon in taskbar
-- Loading indicator in taskbar
 
 ## Where to Find Context
 
