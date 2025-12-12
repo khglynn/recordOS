@@ -43,7 +43,7 @@ import {
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
 } from '../utils/constants';
-import { setUser as setSentryUser } from '../utils/sentry';
+import { setUser as setSentryUser, addBreadcrumb, captureException } from '../utils/sentry';
 
 // ============================================================================
 // HOOK
@@ -89,6 +89,7 @@ export function useSpotify() {
   // Playback state
   const [player, setPlayer] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
+  const [deviceReady, setDeviceReady] = useState(false); // True only after transferPlayback completes
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [position, setPosition] = useState(0);
@@ -586,6 +587,8 @@ export function useSpotify() {
 
       spotifyPlayer.addListener('playback_error', ({ message }) => {
         console.error('Spotify playback error:', message);
+        addBreadcrumb(`Playback error: ${message}`, 'spotify', 'error');
+        captureException(new Error(message), { context: 'sdk_playback_error' });
         setPlaybackError({
           code: 'PLAYBACK_FAILURE',
           message: 'EXTERNAL AUDIO STREAM INTERRUPTED',
@@ -593,12 +596,26 @@ export function useSpotify() {
         });
       });
 
-      // Ready
-      spotifyPlayer.addListener('ready', ({ device_id }) => {
-        console.log('Spotify player ready, device ID:', device_id);
+      // Ready - MUST await transfer before device is actually usable
+      spotifyPlayer.addListener('ready', async ({ device_id }) => {
+        console.log('[SDK] Player ready, device ID:', device_id);
+        addBreadcrumb('SDK ready', 'spotify', 'info');
         setDeviceId(device_id);
-        // Transfer playback to this device
-        transferPlayback(device_id, false);
+
+        // Transfer playback to this device - AWAIT to prevent race condition
+        // Without await, user can click play before device is registered
+        try {
+          addBreadcrumb('Transferring playback', 'spotify', 'info');
+          await transferPlayback(device_id, false);
+          console.log('[SDK] Transfer complete - device ready for playback');
+          addBreadcrumb('Transfer complete', 'spotify', 'info');
+          setDeviceReady(true);
+        } catch (err) {
+          console.error('[SDK] Transfer failed:', err);
+          addBreadcrumb('Transfer failed', 'spotify', 'error');
+          captureException(err, { context: 'sdk_transfer_playback' });
+          // Device ID is set but not ready - user will see appropriate error
+        }
       });
 
       // Not ready
@@ -807,16 +824,18 @@ export function useSpotify() {
   }, [player, isMuted, volume]);
 
   const playTrack = useCallback(async (track, album) => {
-    if (!deviceId) {
+    // Check deviceReady (not just deviceId) to prevent race condition
+    if (!deviceReady) {
       setPlaybackError({
         code: 'DEVICE_UNAVAILABLE',
-        message: 'PLAYBACK SUBSTRATE OFFLINE',
-        detail: 'Spotify Premium required for web playback',
+        message: 'PLAYBACK SUBSTRATE INITIALIZING',
+        detail: deviceId ? 'Device transfer in progress, please wait' : 'Spotify Premium required for web playback',
       });
       return;
     }
 
     try {
+      addBreadcrumb(`Playing track: ${track.name}`, 'spotify', 'info');
       setPlaybackError(null); // Clear any previous error
       setAlbumEnded(false);   // Clear album-ended state for new playback
       originalAlbumUriRef.current = album.uri;  // Track this album for end detection
@@ -827,25 +846,34 @@ export function useSpotify() {
       });
     } catch (err) {
       console.error('Failed to play track:', err);
+      captureException(err, {
+        context: 'playTrack',
+        trackId: track.id,
+        albumId: album.id,
+        deviceId,
+        deviceReady,
+      });
       setPlaybackError({
         code: 'PLAYBACK_FAILURE',
         message: 'TRACK INITIALIZATION FAILED',
         detail: err.message,
       });
     }
-  }, [deviceId]);
+  }, [deviceId, deviceReady]);
 
   const playAlbum = useCallback(async (album) => {
-    if (!deviceId) {
+    // Check deviceReady (not just deviceId) to prevent race condition
+    if (!deviceReady) {
       setPlaybackError({
         code: 'DEVICE_UNAVAILABLE',
-        message: 'PLAYBACK SUBSTRATE OFFLINE',
-        detail: 'Spotify Premium required for web playback',
+        message: 'PLAYBACK SUBSTRATE INITIALIZING',
+        detail: deviceId ? 'Device transfer in progress, please wait' : 'Spotify Premium required for web playback',
       });
       return;
     }
 
     try {
+      addBreadcrumb(`Playing album: ${album.name}`, 'spotify', 'info');
       setPlaybackError(null); // Clear any previous error
       setAlbumEnded(false);   // Clear album-ended state for new album
       originalAlbumUriRef.current = album.uri;  // Track this album for end detection
@@ -867,6 +895,11 @@ export function useSpotify() {
 
       if (is403Error) {
         console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable - REMOVING FROM GRID`);
+        captureException(err, {
+          context: 'playAlbum_403',
+          albumId: album.id,
+          albumName: album.name,
+        });
         setUnavailableAlbums(prev => {
           // Check if already in list
           if (prev.some(a => a.id === album.id)) return prev;
@@ -886,6 +919,13 @@ export function useSpotify() {
           detail: 'This album is not available in your region',
         });
       } else {
+        captureException(err, {
+          context: 'playAlbum',
+          albumId: album.id,
+          albumName: album.name,
+          deviceId,
+          deviceReady,
+        });
         setPlaybackError({
           code: 'PLAYBACK_FAILURE',
           message: 'ALBUM INITIALIZATION FAILED',
@@ -893,7 +933,7 @@ export function useSpotify() {
         });
       }
     }
-  }, [deviceId]);
+  }, [deviceId, deviceReady]);
 
   // -------------------------------------------------------------------------
   // GET FULL ALBUM TRACKS (with liked status)
@@ -983,6 +1023,7 @@ export function useSpotify() {
     setDecade: handleDecadeChange,
 
     // Playback
+    deviceReady, // True only after SDK transfer completes - safe to play
     isPlaying,
     currentTrack,
     position,

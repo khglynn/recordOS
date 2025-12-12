@@ -57,7 +57,8 @@ const ToggleButton = styled.button`
   color: #00ff41;
   padding: 4px 10px;
   font-size: 10px;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.4 : 1};
   font-family: 'Consolas', 'Courier New', monospace;
   display: flex;
   align-items: center;
@@ -145,6 +146,7 @@ function SettingsModal({
   onAlbumCountChange,
   isMobile,
   isLoggedIn,
+  isLoading = false, // True during library scan - disables rescan button
   onRescanLibrary,
   onShowScanResults,
   unavailableAlbums = [],
@@ -234,9 +236,9 @@ function SettingsModal({
         <StyledFieldset label="LIBRARY">
           <SettingRow>
             <SettingLabel>Refresh from Spotify</SettingLabel>
-            <ToggleButton onClick={onRescanLibrary}>
+            <ToggleButton onClick={onRescanLibrary} disabled={isLoading}>
               <PixelIcon name="sync" size={12} />
-              RESCAN
+              {isLoading ? 'SYNCING...' : 'RESCAN'}
             </ToggleButton>
           </SettingRow>
           <SettingRow style={{ marginTop: '8px' }}>

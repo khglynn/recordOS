@@ -966,6 +966,7 @@ function App() {
                 albumCount={displayAlbumCount}
                 onAlbumCountChange={setDisplayAlbumCount}
                 isLoggedIn={isLoggedIn}
+                isLoading={spotify.isLoading}
                 onRescanLibrary={handleRescanLibrary}
                 onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}

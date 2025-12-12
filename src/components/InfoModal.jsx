@@ -174,6 +174,33 @@ const Footer = styled.div`
   letter-spacing: 1px;
 `;
 
+// Scrollable container matching TrackListModal behavior
+const ScrollableContent = styled.div`
+  flex: 1;
+  overflow: auto;
+  padding-right: 8px;
+  max-height: ${props => props.$isMobile ? 'none' : '280px'};
+
+  /* Custom scrollbar to match app style */
+  &::-webkit-scrollbar {
+    width: 14px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #0d0d0d;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+  }
+`;
+
+const PrivacyText = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.6);
+  font-family: 'Consolas', 'Courier New', monospace;
+  line-height: 1.6;
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -225,97 +252,117 @@ function InfoModal({
         OPTIMIZED FOR CHROME
       </SystemMessage>
 
-      <StyledFieldset label="SYSTEM ADMINISTRATOR">
-        <ContactItem>
-          <span>◉</span>
-          <StyledLink
-            href="mailto:hello@kevinhg.com"
-          >
-            hello@kevinhg.com
-          </StyledLink>
-        </ContactItem>
-        <ContactItem>
-          <span>◉</span>
-          <StyledLink
-            href="https://kevinhg.com"
+      <ScrollableContent $isMobile={isMobile}>
+        <StyledFieldset label="SYSTEM ADMINISTRATOR">
+          <ContactItem>
+            <span>◉</span>
+            <StyledLink
+              href="mailto:hello@kevinhg.com"
+            >
+              hello@kevinhg.com
+            </StyledLink>
+          </ContactItem>
+          <ContactItem>
+            <span>◉</span>
+            <StyledLink
+              href="https://kevinhg.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              kevinhg.com
+            </StyledLink>
+          </ContactItem>
+          <ContactItem>
+            <span>◉</span>
+            <StyledLink
+              href="https://github.com/khglynn/recordOS"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              github.com/khglynn/recordOS
+            </StyledLink>
+          </ContactItem>
+        </StyledFieldset>
+
+        {/* SYSTEM MAINTENANCE moved up per user request */}
+        <StyledFieldset label="SYSTEM MAINTENANCE">
+          <Description style={{ margin: '0 0 8px 0', fontSize: '9px', color: 'rgba(0, 255, 65, 0.6)' }}>
+            //OPERATIONAL COSTS SUBSIDIZED BY USERS
+          </Description>
+          <DonateButton
+            as="a"
+            href="https://buymeacoffee.com/kevinhg"
             target="_blank"
             rel="noopener noreferrer"
           >
-            kevinhg.com
-          </StyledLink>
-        </ContactItem>
-        <ContactItem>
-          <span>◉</span>
-          <StyledLink
-            href="https://github.com/khglynn/recordOS"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            github.com/khglynn/recordOS
-          </StyledLink>
-        </ContactItem>
-      </StyledFieldset>
+            <PixelIcon name="dollar" size={12} /> FUND OPERATIONS
+          </DonateButton>
+        </StyledFieldset>
 
-      <StyledFieldset label="LIBRARIES & CREDITS">
-        <CreditsList>
-          <CreditItem>
-            <StyledLink href="https://github.com/react95-org/react95" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">React95</span>
-            </StyledLink>
-            <span className="lib-license">MIT</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://pixelarticons.com" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Pixelarticons</span>
-            </StyledLink>
-            <span className="lib-license">MIT</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://github.com/nicholasyager/minesweeper" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Minesweeper</span>
-            </StyledLink>
-            <span className="lib-license">MIT</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://github.com/Two9A/solitaire-js" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Solitaire</span>
-            </StyledLink>
-            <span className="lib-license">Unlicense</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://github.com/cribbles/snake" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Snake</span>
-            </StyledLink>
-            <span className="lib-license">MIT</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://github.com/jberg/butterchurn" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Butterchurn</span>
-            </StyledLink>
-            <span className="lib-license">MIT (planned)</span>
-          </CreditItem>
-          <CreditItem>
-            <StyledLink href="https://elements.envato.com" target="_blank" rel="noopener noreferrer">
-              <span className="lib-name">Pre-loaded Music</span>
-            </StyledLink>
-            <span className="lib-license">Envato Elements</span>
-          </CreditItem>
-        </CreditsList>
-      </StyledFieldset>
+        <StyledFieldset label="LIBRARIES & CREDITS">
+          <CreditsList>
+            <CreditItem>
+              <StyledLink href="https://github.com/react95-org/react95" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">React95</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://pixelarticons.com" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Pixelarticons</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/nicholasyager/minesweeper" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Minesweeper</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/Two9A/solitaire-js" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Solitaire</span>
+              </StyledLink>
+              <span className="lib-license">Unlicense</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/cribbles/snake" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Snake</span>
+              </StyledLink>
+              <span className="lib-license">MIT</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://github.com/jberg/butterchurn" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Butterchurn</span>
+              </StyledLink>
+              <span className="lib-license">MIT (planned)</span>
+            </CreditItem>
+            <CreditItem>
+              <StyledLink href="https://elements.envato.com" target="_blank" rel="noopener noreferrer">
+                <span className="lib-name">Pre-loaded Music</span>
+              </StyledLink>
+              <span className="lib-license">Envato Elements</span>
+            </CreditItem>
+          </CreditsList>
+        </StyledFieldset>
 
-      <StyledFieldset label="SYSTEM MAINTENANCE">
-        <Description style={{ margin: '0 0 8px 0', fontSize: '9px', color: 'rgba(0, 255, 65, 0.6)' }}>
-          //OPERATIONAL COSTS SUBSIDIZED BY USERS
-        </Description>
-        <DonateButton
-          as="a"
-          href="https://buymeacoffee.com/kevinhg"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <PixelIcon name="dollar" size={12} /> FUND OPERATIONS
-        </DonateButton>
-      </StyledFieldset>
+        <StyledFieldset label="DATA RETENTION PROTOCOL">
+          <PrivacyText>
+            //SESSION ACTIVITY AND SYSTEM ERRORS MONITORED
+            <br />
+            //TELEMETRY ROUTED THROUGH EXTERNAL SUBSTRATES
+            <br />
+            //NO PERSONAL AUDIO DATA TRANSMITTED
+            <br />
+            //MUSICAL PREFERENCES REMAIN CLASSIFIED
+            <br />
+            <br />
+            //OVERSIGHT: POSTHOG, SENTRY
+            <br />
+            //INQUIRIES: hello@kevinhg.com
+          </PrivacyText>
+        </StyledFieldset>
+      </ScrollableContent>
 
       <Footer>
         // WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS //
