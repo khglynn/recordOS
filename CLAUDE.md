@@ -64,6 +64,12 @@ npm run dev   # http://127.0.0.1:5173
 npm run build
 ```
 
+## Playwright for Visual Testing
+
+Use `playwright-recordos` MCP for this project (not generic playwright).
+
+This keeps browser sessions/logins isolated from other projects. Profile stored at `~/.playwright-recordos/`.
+
 ## Key Files
 
 | File | Purpose |

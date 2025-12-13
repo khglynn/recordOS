@@ -1,113 +1,181 @@
-# Record OS
+# RECORD OS
 
-A nostalgic music visualization app styled as a Windows 95 desktop with a grungy Matrix aesthetic.
+![RECORD OS](public/og-image.png)
 
-See your most-loved Spotify albums ranked by saved tracks, play music with retro visualizers, and waste time on classic games.
+```
+//AUDIO VISUALIZATION TERMINAL
+//ALBUM CATALOGING SYSTEM
+//SYSTEM BUILD 3.0.48 //STABLE
+```
 
-## Features
+A sentient cataloging system that monitors your Spotify library and ranks albums by devotion metrics. Windows 95 interface. Matrix terminal aesthetic. Requires Premium clearance.
 
-- **Album Grid**: Your Spotify library displayed as album covers filling the desktop
-- **Track Lists**: Click any album to see tracks, with liked songs highlighted
-- **Media Player**: Windows Media Player-style player with visualizations
-- **Games**: Minesweeper, Solitaire, and Snake embedded via iframe
-- **Threshold Control**: Filter albums by minimum # of liked tracks (3-10 or ALL)
-- **Sorting**: By release date, artist, album name, or # of liked tracks
-- **Local Demo Mode**: Play stock music before logging in
+---
 
-## Tech Stack
+## VISUAL INTERFACE
 
-- **Vite + React 18**
-- **React95** - Windows 95 UI components
-- **styled-components** - CSS-in-JS
-- **Butterchurn** - Milkdrop visualizer (WebGL)
-- **Spotify Web Playback SDK** - Premium playback
-- **Spotify Web API** - Library and audio analysis
+<img src="public/readme/readme-desktop.png" alt="Desktop view with album grid" width="800">
 
-## Getting Started
+*Desktop environment displaying cataloged albums sorted by devotion metrics*
 
-### Prerequisites
+<img src="public/readme/readme-features.png" alt="Feature showcase" width="800">
 
-- Node.js 18+
-- Spotify Premium account (for playback)
-- Spotify Developer App with client ID
+*Multiple subsystems active: Media Player, Visualizer, Track List*
 
-### Setup
+<img src="public/readme/readme-mobile.png" alt="Mobile interface" width="300">
 
-1. Clone and install:
-   ```bash
-   git clone https://github.com/khglynn/recordOS.git
-   cd recordOS
-   npm install
-   ```
+*Mobile terminal access*
 
-2. Update Spotify Client ID in `src/utils/spotify.js`:
-   ```js
-   export const SPOTIFY_CLIENT_ID = 'your-client-id-here';
-   ```
+---
 
-3. Add redirect URIs to your Spotify App:
-   - Development: `http://127.0.0.1:5173/callback`
-   - Production: `https://your-domain.vercel.app/callback`
+## SYSTEM CAPABILITIES
 
-4. Run development server:
-   ```bash
-   npm run dev
-   ```
+- **Album Cataloging** - Your Spotify library rendered as album covers filling the desktop
+- **Devotion Metrics** - Albums ranked by saved track count (threshold: 3-10 or ALL)
+- **Track Analysis** - Click any album to view tracks with liked songs highlighted
+- **Media Playback** - Windows Media Player interface with visualizations
+- **Recreational Subroutines** - Minesweeper, Solitaire, Snake
+- **Temporal Filtering** - Sort by decade (1970s → 2020s)
+- **Demo Mode** - Stock audio playback before authentication
 
-5. Open http://localhost:5173
+---
 
-## Project Structure
+## OPERATIONAL REQUIREMENTS
+
+```
+NODE.JS        v18+
+SPOTIFY        Premium account required for playback
+SPOTIFY APP    Client ID from developer.spotify.com
+```
+
+---
+
+## INITIALIZATION PROTOCOL
+
+Clone and install dependencies:
+```bash
+git clone https://github.com/khglynn/recordOS.git
+cd recordOS
+npm install
+```
+
+Configure Spotify credentials in `src/utils/spotify.js`:
+```js
+export const SPOTIFY_CLIENT_ID = 'your-client-id-here';
+```
+
+Register redirect URIs in your Spotify App:
+```
+DEVELOPMENT    http://127.0.0.1:5173/callback
+PRODUCTION     https://your-domain.vercel.app/callback
+```
+
+Initialize local server:
+```bash
+npm run dev
+```
+
+Access terminal at `http://127.0.0.1:5173`
+
+---
+
+## SYSTEM ARCHITECTURE
 
 ```
 recordOS/
 ├── public/
-│   ├── logo.png              # Record OS logo
-│   ├── music/                # Demo tracks for pre-login
-│   └── callback.html         # OAuth redirect handler
+│   ├── logo.png              # System identifier
+│   ├── og-image.png          # Link preview image
+│   ├── music/                # Demo audio files
+│   ├── games/                # Recreational subroutines
+│   └── readme/               # Documentation assets
 ├── src/
 │   ├── components/
-│   │   ├── Desktop.jsx       # Album grid background
-│   │   ├── Taskbar.jsx       # Win95 taskbar
-│   │   ├── StartMenu.jsx     # Sort, games, info, logout
-│   │   ├── LoginModal.jsx    # Spotify OAuth
-│   │   ├── TrackListModal.jsx # Album track list
-│   │   ├── MediaPlayer.jsx   # WMP-style player
-│   │   ├── GameWindow.jsx    # Embedded games
-│   │   └── InfoModal.jsx     # About/contact
+│   │   ├── Desktop.jsx       # Album grid renderer
+│   │   ├── Taskbar.jsx       # System toolbar
+│   │   ├── StartMenu.jsx     # Command menu
+│   │   ├── MediaPlayer.jsx   # Audio playback interface
+│   │   ├── TrackListModal.jsx # Album track display
+│   │   ├── GameWindow.jsx    # Game container
+│   │   └── InfoModal.jsx     # System information
 │   ├── hooks/
-│   │   ├── useSpotify.js     # Spotify auth, library, playback
-│   │   └── useLocalAudio.js  # Pre-login audio playback
+│   │   ├── useSpotify.js     # Spotify integration
+│   │   └── useLocalAudio.js  # Demo audio handler
 │   ├── utils/
-│   │   ├── spotify.js        # Spotify API helpers
-│   │   └── constants.js      # App configuration
+│   │   ├── spotify.js        # API utilities
+│   │   └── constants.js      # Configuration values
 │   ├── styles/
-│   │   ├── theme.js          # Custom React95 theme
-│   │   └── GlobalStyles.js   # Base CSS
-│   ├── App.jsx               # Main app component
+│   │   ├── theme.js          # Visual theme
+│   │   └── GlobalStyles.js   # Base styling
+│   ├── App.jsx               # Main component
 │   └── main.jsx              # Entry point
-├── vercel.json               # Vercel deployment config
-└── package.json
+└── vercel.json               # Deployment config
 ```
 
-## Deployment
+---
 
-Deploy to Vercel:
+## DEPLOYMENT SEQUENCE
 
+Build for production:
 ```bash
 npm run build
+```
+
+Deploy to Vercel:
+```bash
 vercel --prod
 ```
 
-Remember to:
-1. Set environment variables if needed
-2. Add production redirect URI to Spotify App
+Post-deployment checklist:
+- [ ] Production redirect URI added to Spotify App
+- [ ] Environment variables configured if applicable
 
-## Credits
+---
 
-- **React95**: https://react95.io/
-- **Butterchurn**: https://butterchurnviz.com/
-- **Games**: minesweeper.online, solitr.com, playsnake.org
+## TECH MANIFEST
 
-## License
+| Component | Purpose |
+|-----------|---------|
+| [React95](https://github.com/react95-org/react95) | Windows 95 UI components |
+| [Butterchurn](https://github.com/jberg/butterchurn) | Milkdrop visualizer (WebGL) |
+| Vite + React 19 | Build system |
+| styled-components | CSS-in-JS styling |
+| Spotify Web Playback SDK | Premium audio streaming |
+| Spotify Web API | Library and playback control |
 
-MIT
+---
+
+## LICENSING
+
+MIT License
+
+---
+
+```
+// WEYLAND-YUTANI CORP //
+// BUILDING BETTER WORLDS //
+```
+
+---
+
+## SYSTEM ADMINISTRATOR
+
+```
+//CONTRACTED DEVELOPER: KEVIN
+//ASSIGNMENT: WEYLAND-YUTANI DIGITAL SYSTEMS
+```
+
+[kevinhg.com](https://kevinhg.com) · [hello@kevinhg.com](mailto:hello@kevinhg.com)
+
+**Live System:** [record-os.kevinhg.com](https://record-os.kevinhg.com)
+
+---
+
+## SYSTEM MAINTENANCE
+
+```
+//OPERATIONAL COSTS SUBSIDIZED BY USERS
+//CAFFEINE REQUIREMENTS: CRITICAL
+```
+
+<a href="https://buymeacoffee.com/kevinhg" target="_blank">☕ FUND OPERATIONS</a>
