@@ -30,6 +30,7 @@ import {
   setVolume,
   transferPlayback,
   getCurrentUser,
+  getDevices,
 } from '../utils/spotify';
 import {
   DECADE_OPTIONS,
@@ -49,7 +50,7 @@ import { setUser as setSentryUser, addBreadcrumb, captureException } from '../ut
 // HOOK
 // ============================================================================
 
-export function useSpotify() {
+export function useSpotify(isMobile = false) {
   // -------------------------------------------------------------------------
   // STATE
   // -------------------------------------------------------------------------
@@ -58,6 +59,10 @@ export function useSpotify() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
+
+  // Mobile mode - uses Spotify Connect instead of Web Playback SDK
+  const [mobileMode, setMobileMode] = useState(false);
+  const [mobileDeviceName, setMobileDeviceName] = useState(null);
 
   // Library state
   const [albums, setAlbums] = useState([]);
@@ -553,6 +558,31 @@ export function useSpotify() {
   useEffect(() => {
     if (!loggedIn) return;
 
+    // Wait for user data before initializing SDK
+    // We need to check Premium status first
+    if (!user) return;
+
+    // Check if user has Spotify Premium - required for Web Playback SDK
+    if (user.product !== 'premium') {
+      console.log('[SDK] User does not have Spotify Premium:', user.product);
+      setAuthError({
+        code: 'PREMIUM_REQUIRED',
+        message: 'SPOTIFY PREMIUM REQUIRED',
+        detail: 'The Web Playback SDK requires a Spotify Premium subscription. You can still browse your library, but playback is disabled.',
+      });
+      // Don't load SDK for non-Premium users
+      return;
+    }
+
+    // Mobile: Skip SDK, use Spotify Connect instead
+    // SDK doesn't work on mobile browsers - control external Spotify app
+    if (isMobile) {
+      console.log('[SDK] Mobile detected - using Spotify Connect mode');
+      setMobileMode(true);
+      setDeviceReady(true); // Mark ready - will fetch devices on playback
+      return;
+    }
+
     // Load Spotify SDK script
     const script = document.createElement('script');
     script.src = 'https://sdk.scdn.co/spotify-player.js';
@@ -698,7 +728,7 @@ export function useSpotify() {
       }
       script.remove();
     };
-  }, [loggedIn]);
+  }, [loggedIn, user, isMobile]);
 
   // Update position while playing
   useEffect(() => {
@@ -824,12 +854,55 @@ export function useSpotify() {
   }, [player, isMuted, volume]);
 
   const playTrack = useCallback(async (track, album) => {
+    // Mobile mode: Use Spotify Connect (external device)
+    if (mobileMode) {
+      try {
+        addBreadcrumb(`[Mobile] Playing track: ${track.name}`, 'spotify', 'info');
+        const devices = await getDevices();
+        const activeDevice = devices.find(d => d.is_active) || devices[0];
+
+        if (!activeDevice) {
+          setPlaybackError({
+            code: 'NO_DEVICE',
+            message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
+            detail: '//INITIALIZE SPOTIFY APPLICATION ON MOBILE DEVICE\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+          });
+          return;
+        }
+
+        console.log('[Mobile] Using device:', activeDevice.name);
+        setMobileDeviceName(activeDevice.name);
+        setPlaybackError(null);
+        setAlbumEnded(false);
+        originalAlbumUriRef.current = album.uri;
+        albumEndTriggeredRef.current = false;
+        await play(activeDevice.id, {
+          contextUri: album.uri,
+          offset: track.uri,
+        });
+      } catch (err) {
+        console.error('[Mobile] Failed to play track:', err);
+        captureException(err, { context: 'playTrack_mobile', trackId: track.id });
+        setPlaybackError({
+          code: 'PLAYBACK_FAILURE',
+          message: 'REMOTE PLAYBACK FAILED',
+          detail: err.message,
+        });
+      }
+      return;
+    }
+
+    // Desktop mode: Use Web Playback SDK
     // Check deviceReady (not just deviceId) to prevent race condition
     if (!deviceReady) {
+      // Different error messages for Premium vs device initialization issues
+      const isPremiumIssue = !deviceId && !player;
       setPlaybackError({
-        code: 'DEVICE_UNAVAILABLE',
-        message: 'PLAYBACK SUBSTRATE INITIALIZING',
-        detail: deviceId ? 'Device transfer in progress, please wait' : 'Spotify Premium required for web playback',
+        code: isPremiumIssue ? 'PREMIUM_REQUIRED' : 'DEVICE_UNAVAILABLE',
+        message: isPremiumIssue ? 'SPOTIFY PREMIUM REQUIRED' : 'PLAYBACK SUBSTRATE INITIALIZING',
+        detail: isPremiumIssue
+          ? 'Web playback requires Spotify Premium. Switch to demo mode for local audio.'
+          : 'Device transfer in progress, please wait',
       });
       return;
     }
@@ -859,15 +932,57 @@ export function useSpotify() {
         detail: err.message,
       });
     }
-  }, [deviceId, deviceReady]);
+  }, [deviceId, deviceReady, mobileMode]);
 
   const playAlbum = useCallback(async (album) => {
+    // Mobile mode: Use Spotify Connect (external device)
+    if (mobileMode) {
+      try {
+        addBreadcrumb(`[Mobile] Playing album: ${album.name}`, 'spotify', 'info');
+        const devices = await getDevices();
+        const activeDevice = devices.find(d => d.is_active) || devices[0];
+
+        if (!activeDevice) {
+          setPlaybackError({
+            code: 'NO_DEVICE',
+            message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
+            detail: '//INITIALIZE SPOTIFY APPLICATION ON MOBILE DEVICE\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+          });
+          return;
+        }
+
+        console.log('[Mobile] Using device:', activeDevice.name);
+        setMobileDeviceName(activeDevice.name);
+        setPlaybackError(null);
+        setAlbumEnded(false);
+        originalAlbumUriRef.current = album.uri;
+        albumEndTriggeredRef.current = false;
+        await play(activeDevice.id, {
+          contextUri: album.uri,
+        });
+      } catch (err) {
+        console.error('[Mobile] Failed to play album:', err);
+        captureException(err, { context: 'playAlbum_mobile', albumId: album.id });
+        setPlaybackError({
+          code: 'PLAYBACK_FAILURE',
+          message: 'REMOTE PLAYBACK FAILED',
+          detail: err.message,
+        });
+      }
+      return;
+    }
+
+    // Desktop mode: Use Web Playback SDK
     // Check deviceReady (not just deviceId) to prevent race condition
     if (!deviceReady) {
+      // Different error messages for Premium vs device initialization issues
+      const isPremiumIssue = !deviceId && !player;
       setPlaybackError({
-        code: 'DEVICE_UNAVAILABLE',
-        message: 'PLAYBACK SUBSTRATE INITIALIZING',
-        detail: deviceId ? 'Device transfer in progress, please wait' : 'Spotify Premium required for web playback',
+        code: isPremiumIssue ? 'PREMIUM_REQUIRED' : 'DEVICE_UNAVAILABLE',
+        message: isPremiumIssue ? 'SPOTIFY PREMIUM REQUIRED' : 'PLAYBACK SUBSTRATE INITIALIZING',
+        detail: isPremiumIssue
+          ? 'Web playback requires Spotify Premium. Switch to demo mode for local audio.'
+          : 'Device transfer in progress, please wait',
       });
       return;
     }
@@ -933,7 +1048,7 @@ export function useSpotify() {
         });
       }
     }
-  }, [deviceId, deviceReady]);
+  }, [deviceId, deviceReady, mobileMode]);
 
   // -------------------------------------------------------------------------
   // GET FULL ALBUM TRACKS (with liked status)
@@ -1035,6 +1150,10 @@ export function useSpotify() {
     clearPlaybackError: () => setPlaybackError(null),
     albumEnded,
     clearAlbumEnded: () => setAlbumEnded(false),
+
+    // Mobile mode (Spotify Connect)
+    mobileMode,
+    mobileDeviceName,
 
     // Playback controls
     play: handlePlay,

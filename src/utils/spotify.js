@@ -288,6 +288,29 @@ export async function spotifyFetch(endpoint, options = {}) {
     }
   }
 
+  if (response.status === 403) {
+    // 403 Forbidden - could be:
+    // 1. Premium required for this endpoint (e.g., /me/player)
+    // 2. Token is completely invalid (not just expired)
+    // 3. User revoked access in Spotify settings
+    const error = await response.json().catch(() => ({}));
+    console.error('[Spotify API] 403 Forbidden on', endpoint, error);
+
+    // If this is already a retry, don't loop - just throw
+    if (options._isRetry) {
+      throw new Error(error.error?.message || 'Access denied - please log in again');
+    }
+
+    // Try refreshing the token once - sometimes 403 is a stale token issue
+    try {
+      await refreshAccessToken();
+      return spotifyFetch(endpoint, { ...options, _isRetry: true }); // Retry once with flag
+    } catch {
+      // If refresh fails, the token is truly invalid
+      throw new Error(error.error?.message || 'Access denied - please log in again');
+    }
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error?.message || `API error: ${response.status}`);
@@ -516,4 +539,13 @@ export async function transferPlayback(deviceId, play = false) {
       play,
     }),
   });
+}
+
+/**
+ * Get available playback devices
+ * Used for Spotify Connect mode on mobile
+ */
+export async function getDevices() {
+  const response = await spotifyFetch('/me/player/devices');
+  return response?.devices || [];
 }

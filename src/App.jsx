@@ -84,9 +84,9 @@ function App() {
   // HOOKS
   // -------------------------------------------------------------------------
 
-  const spotify = useSpotify();
-  const localAudio = useLocalAudio();
   const isMobile = useMobile();
+  const spotify = useSpotify(isMobile);
+  const localAudio = useLocalAudio();
 
   // Use Spotify when logged in, local audio otherwise
   const isLoggedIn = spotify.loggedIn;
