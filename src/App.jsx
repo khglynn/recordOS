@@ -1032,6 +1032,14 @@ function App() {
                     await localAudio.fadeOut(500);
                   }
                 }}
+                onAccessNeeded={() => {
+                  // If user hasn't been approved, show access request form
+                  if (!accessApproved) {
+                    setShowAccessRequest(true);
+                    return true; // Blocks the login flow
+                  }
+                  return false; // Allow login to proceed
+                }}
               />
             );
 

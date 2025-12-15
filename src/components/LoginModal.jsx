@@ -191,6 +191,7 @@ function LoginModal({
   // Login-specific props
   canClose,
   onBeforeAuth,
+  onAccessNeeded, // Called when user needs to request access before auth
 }) {
   const headerRef = useRef(null);
 
@@ -204,6 +205,11 @@ function LoginModal({
   };
 
   const handleLogin = async () => {
+    // If access check callback exists and returns true, user needs to request access first
+    if (onAccessNeeded?.()) {
+      return;
+    }
+
     try {
       // Fade out audio and preserve state before redirect
       if (onBeforeAuth) {
