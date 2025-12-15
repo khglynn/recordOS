@@ -32,6 +32,7 @@ import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
 import SettingsModal from './components/SettingsModal';
 import LibraryScanner from './components/LibraryScanner';
+import AccessRequestForm from './components/AccessRequestForm';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -96,6 +97,26 @@ function App() {
 
   // Use Spotify when logged in and demo mode not forced, local audio otherwise
   const audio = (isLoggedIn && !demoModeForced) ? spotify : localAudio;
+
+  // -------------------------------------------------------------------------
+  // ACCESS REQUEST GATE
+  // -------------------------------------------------------------------------
+  // Spotify Development Mode requires manual whitelisting. Before showing
+  // the Spotify login, users must request access and wait for approval.
+  // This prevents 403 errors during library scan.
+
+  const [accessApproved, setAccessApproved] = useState(() => {
+    // Check if user has been approved (stored locally after approval)
+    const savedEmail = localStorage.getItem('access_request_email');
+    const savedStatus = localStorage.getItem('access_request_status');
+    return savedStatus === 'approved' && !!savedEmail;
+  });
+
+  // Handler when access is approved (called by AccessRequestForm)
+  const handleAccessApproved = useCallback(() => {
+    localStorage.setItem('access_request_status', 'approved');
+    setAccessApproved(true);
+  }, []);
 
   // -------------------------------------------------------------------------
   // WINDOW STATE
@@ -850,6 +871,11 @@ function App() {
     <ThemeProvider theme={recordOSTheme}>
       <React95Reset />
       <GlobalStyles />
+
+      {/* Access Request Gate - show before login if not approved */}
+      {!accessApproved && !isLoggedIn && (
+        <AccessRequestForm onApproved={handleAccessApproved} />
+      )}
 
       {/* Desktop Background (Album Grid) */}
       <Desktop
