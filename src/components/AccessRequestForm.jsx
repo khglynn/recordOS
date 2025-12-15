@@ -275,7 +275,7 @@ const CancelLink = styled.button`
 // COMPONENT
 // ============================================================================
 
-function AccessRequestForm({ onApproved }) {
+function AccessRequestForm({ onApproved, onClose }) {
   const [state, setState] = useState('idle'); // idle, submitting, pending, approved, error
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -418,6 +418,12 @@ function AccessRequestForm({ onApproved }) {
               <br />
               //MANUAL VERIFICATION REQUIRED
             </Note>
+
+            {onClose && (
+              <CancelLink onClick={onClose}>
+                //CONTINUE WITHOUT CONNECTING
+              </CancelLink>
+            )}
           </>
         )}
 

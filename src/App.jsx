@@ -112,10 +112,21 @@ function App() {
     return savedStatus === 'approved' && !!savedEmail;
   });
 
+  // Track if we're showing the access request form
+  // Opens by default if not approved (like old login modal behavior)
+  // User can dismiss to explore, then reopen via Start Menu > Connect
+  const [showAccessRequest, setShowAccessRequest] = useState(() => {
+    // Show access request form if user hasn't been approved yet
+    return !accessApproved;
+  });
+
   // Handler when access is approved (called by AccessRequestForm)
   const handleAccessApproved = useCallback(() => {
     localStorage.setItem('access_request_status', 'approved');
     setAccessApproved(true);
+    setShowAccessRequest(false);
+    // Automatically open login modal after approval
+    setLoginModalOpen(true);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -733,8 +744,13 @@ function App() {
   }, [openWindow]);
 
   const handleOpenLogin = useCallback(() => {
-    setLoginModalOpen(true);
-  }, []);
+    // If user hasn't been approved yet, show access request form first
+    if (!accessApproved) {
+      setShowAccessRequest(true);
+    } else {
+      setLoginModalOpen(true);
+    }
+  }, [accessApproved]);
 
   const handleLogout = useCallback(() => {
     spotify.logout();
@@ -872,9 +888,12 @@ function App() {
       <React95Reset />
       <GlobalStyles />
 
-      {/* Access Request Gate - show before login if not approved */}
-      {!accessApproved && !isLoggedIn && (
-        <AccessRequestForm onApproved={handleAccessApproved} />
+      {/* Access Request Form - only shown when user tries to connect Spotify */}
+      {showAccessRequest && (
+        <AccessRequestForm
+          onApproved={handleAccessApproved}
+          onClose={() => setShowAccessRequest(false)}
+        />
       )}
 
       {/* Desktop Background (Album Grid) */}
