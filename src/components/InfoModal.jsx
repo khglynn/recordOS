@@ -367,6 +367,8 @@ function InfoModal({
       <Footer>
         // WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS //
         <br />
+        // VIBE CODED VIA <StyledLink href="https://claude.ai" target="_blank" rel="noopener noreferrer">CLAUDE</StyledLink> NEURAL SUBSTRATE //
+        <br />
         // © 2025 // ALL RIGHTS RESERVED //
       </Footer>
     </WindowFrame>
