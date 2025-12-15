@@ -4,14 +4,20 @@ What's next, in order. When done, move to `COMPLETED.md`.
 
 ---
 
-## 1. PostHog Session Recording
+## 1. PostHog Integration
 
-Set up session replay to watch user interactions for UX debugging.
+Full PostHog setup with session recording, autocapture, Slack alerts.
+
+**Plan:** `claude-plans/2025-12-13-posthog-integration.md`
 
 **What:**
-- Enable session recording in PostHog
-- Configure privacy settings (mask sensitive data)
-- Link to Sentry errors for context
+- Install posthog-js, create utils/posthog.js
+- Cookieless mode (no consent banner needed)
+- Session recording + autocapture
+- Track: login, scan, playback, games, windows, settings
+- Slack notifications (errors + daily digest)
+- Tracking disclosure in InfoModal
+- Create analytics-monitoring skill
 
 ---
 
