@@ -113,12 +113,9 @@ function App() {
   });
 
   // Track if we're showing the access request form
-  // Opens by default if not approved (like old login modal behavior)
-  // User can dismiss to explore, then reopen via Start Menu > Connect
-  const [showAccessRequest, setShowAccessRequest] = useState(() => {
-    // Show access request form if user hasn't been approved yet
-    return !accessApproved;
-  });
+  // Only shows when user clicks Connect (not by default)
+  // Users can explore freely before connecting
+  const [showAccessRequest, setShowAccessRequest] = useState(false);
 
   // Handler when access is approved (called by AccessRequestForm)
   const handleAccessApproved = useCallback(() => {

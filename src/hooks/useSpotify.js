@@ -71,6 +71,7 @@ export function useSpotify(isMobile = false) {
   const [isInitializing, setIsInitializing] = useState(true); // True until first cache check completes
   const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0 });
   const [loadingAlbums, setLoadingAlbums] = useState([]); // Album art discovered during loading
+  const [scanError, setScanError] = useState(null); // Captures 403 whitelist errors or other scan failures
 
   // Progressive decade loading state
   const [scanPhase, setScanPhase] = useState('idle'); // 'idle' | 'scanning' | 'complete'
@@ -184,6 +185,21 @@ export function useSpotify(isMobile = false) {
         setSentryUser(userData);
       } catch (err) {
         console.error('Failed to fetch user:', err);
+
+        // Check for 403 - means user isn't whitelisted in Spotify Dashboard
+        const is403 = err.message?.includes('403') ||
+                      err.message?.includes('Forbidden') ||
+                      err.status === 403;
+
+        if (is403) {
+          console.log('[Auth] 403 detected - user not whitelisted');
+          captureException(err, { context: 'fetchUser_403_whitelist' });
+          setScanError({
+            code: 'NOT_WHITELISTED',
+            message: 'ACCESS PENDING AUTHORIZATION',
+            detail: 'Your Spotify account has not been whitelisted yet. Check back soon!',
+          });
+        }
       }
     };
 
@@ -467,6 +483,29 @@ export function useSpotify(isMobile = false) {
       setLoadingAlbums([]); // Clear loading albums on error too
       setIsLoading(false);
       setScanPhase('idle');
+
+      // Check for 403 - means user isn't whitelisted in Spotify Dashboard
+      const is403 = err.message?.includes('403') ||
+                    err.message?.includes('Forbidden') ||
+                    err.status === 403;
+
+      if (is403) {
+        console.log('[Library] 403 detected - user not whitelisted');
+        captureException(err, { context: 'fetchLibrary_403_whitelist' });
+        setScanError({
+          code: 'NOT_WHITELISTED',
+          message: 'ACCESS PENDING AUTHORIZATION',
+          detail: 'Your Spotify account has not been whitelisted yet. Check back soon!',
+        });
+      } else {
+        // Generic scan error
+        captureException(err, { context: 'fetchLibrary_error' });
+        setScanError({
+          code: 'SCAN_FAILED',
+          message: 'LIBRARY SCAN INTERRUPTED',
+          detail: err.message || 'An unexpected error occurred during library scan',
+        });
+      }
     }
   }, [loggedIn]);
 
@@ -1169,6 +1208,10 @@ export function useSpotify(isMobile = false) {
 
     // SDK status
     playerReady: !!deviceId,
+
+    // Scan errors (403 whitelist issues)
+    scanError,
+    clearScanError: () => setScanError(null),
   };
 }
 
