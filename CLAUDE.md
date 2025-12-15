@@ -30,11 +30,11 @@ See `src/components/InfoModal.jsx` for copy examples.
 
 ## Current Status
 
-**Last updated:** 2025-12-11
+**Last updated:** 2025-12-15
 
-Playback race condition fixed (await transferPlayback, deviceReady state). Sentry breadcrumbs added for debugging. InfoModal has scroll container and privacy notice.
+AccessRequestWindow refactored to use WindowFrame (was full-screen takeover). Added component rules to CLAUDE.md and components README.
 
-**Recent work:** `claude-plans/2025-12-11-playback-fixes.md`
+**Recent work:** `claude-plans/2025-12-15-access-request-refactor.md`
 
 **Remaining:**
 - Sentry → Slack integration
@@ -81,6 +81,24 @@ This keeps browser sessions/logins isolated from other projects. Profile stored 
 | `src/components/Taskbar.jsx` | Bottom bar |
 | `src/components/GameWindow.jsx` | Game iframe container (dimensions, centering) |
 | `src/utils/constants.js` | Config values (grid sizes, counts, etc.) |
+
+## Component Patterns
+
+**Windows/Modals:** All window UI must use `WindowFrame` component. No full-screen takeovers - this is an OS, everything is a draggable window.
+
+| Pattern | Use | Template |
+|---------|-----|----------|
+| `WindowFrame` | Any modal/window/dialog | Copy from `InfoModal.jsx` |
+
+**Exception:** `GameWindow.jsx` has its own styled components (does NOT use WindowFrame) because games need iframe embedding, mobile scaling, and solitaire's full-viewport mode. Don't copy this pattern for non-game windows.
+
+**When creating a new window:**
+1. Copy structure from `InfoModal.jsx` (cleanest example)
+2. Use `WindowFrame` with standard props (isActive, zIndex, position, onClose, onFocus, onDragStart, isMobile)
+3. Add to `App.jsx` window management
+4. Test: drag, minimize, focus, mobile
+
+See `src/components/README.md` for component inventory.
 
 ## Games
 

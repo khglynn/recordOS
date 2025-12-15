@@ -32,7 +32,7 @@ import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
 import SettingsModal from './components/SettingsModal';
 import LibraryScanner from './components/LibraryScanner';
-import AccessRequestForm from './components/AccessRequestForm';
+import AccessRequestWindow from './components/AccessRequestWindow';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -885,9 +885,16 @@ function App() {
       <React95Reset />
       <GlobalStyles />
 
-      {/* Access Request Form - only shown when user tries to connect Spotify */}
+      {/* Access Request Window - only shown when user tries to connect Spotify */}
       {showAccessRequest && (
-        <AccessRequestForm
+        <AccessRequestWindow
+          isActive={true}
+          zIndex={9999}
+          position={{
+            x: typeof window !== 'undefined' ? Math.max(20, (window.innerWidth - 340) / 2) : 200,
+            y: typeof window !== 'undefined' ? Math.max(20, Math.min(100, (window.innerHeight - 400) / 3)) : 80,
+          }}
+          isMobile={isMobile}
           onApproved={handleAccessApproved}
           onClose={() => setShowAccessRequest(false)}
         />

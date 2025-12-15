@@ -1,10 +1,10 @@
 /**
  * ============================================================================
- * ACCESS REQUEST FORM COMPONENT
+ * ACCESS REQUEST WINDOW COMPONENT
  * ============================================================================
  *
  * Shown to new users before Spotify auth.
- * Spotify Development Mode requires manual whitelisting - this form:
+ * Spotify Development Mode requires manual whitelisting - this window:
  * 1. Collects user's Spotify email
  * 2. Sends notification to admin (Kevin) via Slack
  * 3. Polls for approval status
@@ -13,11 +13,14 @@
  * States: idle → submitting → pending → approved
  *
  * Created: 2025-12-15
+ * Updated: 2025-12-15 - Refactored to use WindowFrame (OS metaphor)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Button, TextInput } from 'react95';
+import WindowFrame from './WindowFrame';
+import PixelIcon from './PixelIcon';
 
 // ============================================================================
 // CONSTANTS
@@ -40,99 +43,20 @@ const pulse = keyframes`
   50% { opacity: 1; }
 `;
 
-const scanline = keyframes`
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-`;
-
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
 
-const Container = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #0a0a0a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 10000;
-
-  /* CRT scanline effect */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: rgba(0, 255, 65, 0.03);
-    animation: ${scanline} 8s linear infinite;
-    pointer-events: none;
-  }
-`;
-
-const Terminal = styled.div`
-  max-width: 420px;
-  width: 100%;
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  padding: 30px;
-
-  @media (max-width: 480px) {
-    padding: 20px;
-  }
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #1a1a1a;
-`;
-
-const Logo = styled.img`
-  width: 40px;
-  height: 40px;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 65, 0.3));
-`;
-
-const TitleBlock = styled.div`
-  flex: 1;
-`;
-
-const Title = styled.h1`
-  font-size: 16px;
-  color: #00ff41;
-  margin: 0 0 4px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  letter-spacing: 3px;
-  text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
-`;
-
-const Subtitle = styled.div`
-  font-size: 9px;
-  color: rgba(0, 255, 65, 0.4);
-  font-family: 'Consolas', 'Courier New', monospace;
-  letter-spacing: 1px;
-`;
-
 const StatusBlock = styled.div`
   background: #0a0a0a;
   border: 1px solid #1a1a1a;
-  padding: 16px;
-  margin-bottom: 20px;
+  padding: 12px;
+  margin-bottom: 16px;
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
 const StatusLine = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   color: ${props => props.$highlight ? '#00ff41' : 'rgba(0, 255, 65, 0.7)'};
   line-height: 1.8;
 
@@ -145,7 +69,7 @@ const StatusLine = styled.div`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 `;
 
 const InputLabel = styled.label`
@@ -153,7 +77,7 @@ const InputLabel = styled.label`
   color: rgba(0, 255, 65, 0.6);
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 1px;
-  margin-bottom: -8px;
+  margin-bottom: -4px;
 `;
 
 const StyledInput = styled(TextInput)`
@@ -162,7 +86,7 @@ const StyledInput = styled(TextInput)`
   color: #00ff41 !important;
   border-color: #2a2a2a !important;
   font-family: 'Consolas', 'Courier New', monospace !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
 
   &:focus {
     border-color: #00ff41 !important;
@@ -176,11 +100,11 @@ const StyledInput = styled(TextInput)`
 
 const SubmitButton = styled(Button)`
   width: 100%;
-  padding: 12px;
-  font-size: 12px;
+  padding: 10px;
+  font-size: 11px;
   font-family: 'Consolas', 'Courier New', monospace;
   letter-spacing: 2px;
-  margin-top: 8px;
+  margin-top: 4px;
 
   background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
   color: #00ff41 !important;
@@ -204,24 +128,25 @@ const ProceedButton = styled(SubmitButton)`
 
 const WaitingBlock = styled.div`
   text-align: center;
-  padding: 20px 0;
+  padding: 16px 0;
 `;
 
 const WaitingEmail = styled.div`
-  font-size: 12px;
+  font-size: 11px;
   color: #00ff41;
   font-family: 'Consolas', 'Courier New', monospace;
-  margin-bottom: 16px;
-  padding: 12px;
+  margin-bottom: 12px;
+  padding: 10px;
   background: #0a0a0a;
   border: 1px solid #1a1a1a;
+  word-break: break-all;
 `;
 
 const WaitingStatus = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(0, 255, 65, 0.6);
   font-family: 'Consolas', 'Courier New', monospace;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 
   span {
     color: #ffaa00;
@@ -231,7 +156,7 @@ const WaitingStatus = styled.div`
 const Cursor = styled.span`
   display: inline-block;
   width: 8px;
-  height: 14px;
+  height: 12px;
   background: #00ff41;
   margin-left: 4px;
   animation: ${blink} 1s step-end infinite;
@@ -242,8 +167,8 @@ const Note = styled.div`
   color: rgba(0, 255, 65, 0.4);
   font-family: 'Consolas', 'Courier New', monospace;
   line-height: 1.6;
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #1a1a1a;
 `;
 
@@ -260,10 +185,10 @@ const CancelLink = styled.button`
   background: none;
   border: none;
   color: rgba(0, 255, 65, 0.5);
-  font-size: 10px;
+  font-size: 9px;
   font-family: 'Consolas', 'Courier New', monospace;
   cursor: pointer;
-  margin-top: 16px;
+  margin-top: 12px;
   text-decoration: underline;
 
   &:hover {
@@ -275,7 +200,19 @@ const CancelLink = styled.button`
 // COMPONENT
 // ============================================================================
 
-function AccessRequestForm({ onApproved, onClose }) {
+function AccessRequestWindow({
+  // Standard window props from window management system
+  isActive,
+  zIndex,
+  position,
+  onClose,
+  onMinimize,
+  onFocus,
+  onDragStart,
+  isMobile,
+  // Access-specific props
+  onApproved,
+}) {
   const [state, setState] = useState('idle'); // idle, submitting, pending, approved, error
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -371,122 +308,134 @@ function AccessRequestForm({ onApproved, onClose }) {
   };
 
   return (
-    <Container>
-      <Terminal>
-        <Header>
-          <Logo src="/logo.png" alt="recordOS" />
-          <TitleBlock>
-            <Title>RECORD OS</Title>
-            <Subtitle>AUTHENTICATION SUBSYSTEM</Subtitle>
-          </TitleBlock>
-        </Header>
+    <WindowFrame
+      title="//ACCESS AUTHORIZATION"
+      icon="lock"
+      isActive={isActive}
+      zIndex={zIndex}
+      position={position}
+      width={340}
+      isMobile={isMobile}
+      showMinimize={!isMobile}
+      onClose={onClose}
+      onMinimize={onMinimize}
+      onFocus={onFocus}
+      onDragStart={onDragStart}
+    >
+      {/* IDLE STATE - Show form */}
+      {(state === 'idle' || state === 'submitting' || state === 'error') && (
+        <>
+          <StatusBlock>
+            <StatusLine>
+              <span className="prompt">//</span>EXTERNAL AUTHENTICATION RESTRICTED
+            </StatusLine>
+            <StatusLine>
+              <span className="prompt">//</span>SPOTIFY DEVELOPMENT MODE ACTIVE
+            </StatusLine>
+            <StatusLine>
+              <span className="prompt">//</span>MANUAL CLEARANCE REQUIRED
+            </StatusLine>
+          </StatusBlock>
 
-        {/* IDLE STATE - Show form */}
-        {(state === 'idle' || state === 'submitting' || state === 'error') && (
-          <>
-            <StatusBlock>
-              <StatusLine>
-                <span className="prompt">//</span>ACCESS RESTRICTED
-              </StatusLine>
-              <StatusLine>
-                <span className="prompt">//</span>SYSTEM REQUIRES AUTHORIZATION
-              </StatusLine>
-            </StatusBlock>
+          <Form onSubmit={handleSubmit}>
+            <InputLabel>SPOTIFY ACCOUNT EMAIL</InputLabel>
+            <StyledInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              disabled={state === 'submitting'}
+            />
 
-            <Form onSubmit={handleSubmit}>
-              <InputLabel>SPOTIFY ACCOUNT EMAIL</InputLabel>
-              <StyledInput
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                disabled={state === 'submitting'}
-              />
+            {error && <ErrorText>//ERROR: {error}</ErrorText>}
 
-              {error && <ErrorText>//ERROR: {error}</ErrorText>}
+            <SubmitButton
+              type="submit"
+              disabled={state === 'submitting'}
+            >
+              <PixelIcon name="send" size={12} color="currentColor" />
+              {' '}
+              {state === 'submitting' ? 'TRANSMITTING...' : 'REQUEST ACCESS'}
+            </SubmitButton>
+          </Form>
 
-              <SubmitButton
-                type="submit"
-                disabled={state === 'submitting'}
-              >
-                {state === 'submitting' ? 'TRANSMITTING...' : 'REQUEST ACCESS'}
-              </SubmitButton>
-            </Form>
+          <Note>
+            //SPOTIFY API GATEKEEPING IN EFFECT
+            <br />
+            //CORPORATE POLICY BEYOND OUR CONTROL
+            <br />
+            //ESTIMATED WAIT: {'<'}5 MINUTES
+          </Note>
 
-            <Note>
-              //YOUR EMAIL WILL BE TRANSMITTED TO SYSTEM ADMINISTRATOR
-              <br />
-              //MANUAL VERIFICATION REQUIRED
-            </Note>
-
-            {onClose && (
-              <CancelLink onClick={onClose}>
-                //CONTINUE WITHOUT CONNECTING
-              </CancelLink>
-            )}
-          </>
-        )}
-
-        {/* PENDING STATE - Waiting for approval */}
-        {state === 'pending' && (
-          <>
-            <StatusBlock>
-              <StatusLine $highlight>
-                <span className="prompt">//</span>ACCESS REQUEST TRANSMITTED
-              </StatusLine>
-              <StatusLine>
-                <span className="prompt">//</span>AWAITING ADMINISTRATOR APPROVAL
-              </StatusLine>
-            </StatusBlock>
-
-            <WaitingBlock>
-              <WaitingEmail>{email}</WaitingEmail>
-              <WaitingStatus>
-                STATUS: <span>PENDING</span>
-                <Cursor />
-              </WaitingStatus>
-            </WaitingBlock>
-
-            <Note>
-              //DO NOT CLOSE THIS WINDOW
-              <br />
-              //SYSTEM WILL AUTO-DETECT AUTHORIZATION
-              <br />
-              //POLLING INTERVAL: 5 SECONDS
-            </Note>
-
-            <CancelLink onClick={handleCancel}>
-              //USE DIFFERENT EMAIL
+          {onClose && (
+            <CancelLink onClick={onClose}>
+              //CONTINUE WITHOUT CONNECTING
             </CancelLink>
-          </>
-        )}
+          )}
+        </>
+      )}
 
-        {/* APPROVED STATE - Ready to proceed */}
-        {state === 'approved' && (
-          <>
-            <StatusBlock>
-              <StatusLine $highlight>
-                <span className="prompt">//</span>AUTHORIZATION CONFIRMED
-              </StatusLine>
-              <StatusLine $highlight>
-                <span className="prompt">//</span>USER CREDENTIALS VALIDATED
-              </StatusLine>
-            </StatusBlock>
+      {/* PENDING STATE - Waiting for approval */}
+      {state === 'pending' && (
+        <>
+          <StatusBlock>
+            <StatusLine $highlight>
+              <span className="prompt">//</span>ACCESS REQUEST TRANSMITTED
+            </StatusLine>
+            <StatusLine>
+              <span className="prompt">//</span>AWAITING ADMINISTRATOR APPROVAL
+            </StatusLine>
+          </StatusBlock>
 
-            <ProceedButton onClick={handleProceed}>
-              PROCEED TO SPOTIFY LOGIN
-            </ProceedButton>
+          <WaitingBlock>
+            <WaitingEmail>{email}</WaitingEmail>
+            <WaitingStatus>
+              STATUS: <span>PENDING</span>
+              <Cursor />
+            </WaitingStatus>
+          </WaitingBlock>
 
-            <Note>
-              //WELCOME TO RECORD OS
-              <br />
-              //BUILDING BETTER WORLDS
-            </Note>
-          </>
-        )}
-      </Terminal>
-    </Container>
+          <Note>
+            //WINDOW MAY BE MINIMIZED
+            <br />
+            //SYSTEM WILL AUTO-DETECT AUTHORIZATION
+            <br />
+            //POLLING INTERVAL: 5 SECONDS
+          </Note>
+
+          <CancelLink onClick={handleCancel}>
+            //USE DIFFERENT EMAIL
+          </CancelLink>
+        </>
+      )}
+
+      {/* APPROVED STATE - Ready to proceed */}
+      {state === 'approved' && (
+        <>
+          <StatusBlock>
+            <StatusLine $highlight>
+              <span className="prompt">//</span>AUTHORIZATION CONFIRMED
+            </StatusLine>
+            <StatusLine $highlight>
+              <span className="prompt">//</span>USER CREDENTIALS VALIDATED
+            </StatusLine>
+          </StatusBlock>
+
+          <ProceedButton onClick={handleProceed}>
+            <PixelIcon name="login" size={12} color="currentColor" />
+            {' '}
+            PROCEED TO SPOTIFY LOGIN
+          </ProceedButton>
+
+          <Note>
+            //WELCOME TO RECORD OS
+            <br />
+            //BUILDING BETTER WORLDS
+          </Note>
+        </>
+      )}
+    </WindowFrame>
   );
 }
 
-export default AccessRequestForm;
+export default AccessRequestWindow;
