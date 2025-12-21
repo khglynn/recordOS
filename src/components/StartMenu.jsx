@@ -291,6 +291,12 @@ function StartMenu({
             Media Player
           </StyledMenuItem>
 
+          {/* Visualizer */}
+          <StyledMenuItem onClick={() => handleMenuItemClick(onOpenTrippyGraphics)}>
+            <MenuIcon><PixelIcon name="sparkles" size={14} /></MenuIcon>
+            WMP[ish] Visualizations
+          </StyledMenuItem>
+
           {/* Games - Expandable */}
           <StyledMenuItem
             data-expandable

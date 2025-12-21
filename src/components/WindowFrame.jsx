@@ -68,6 +68,8 @@ const StyledWindow = styled(Window)`
   position: fixed;
   z-index: ${props => props.$zIndex || Z_INDEX.window};
   overflow: hidden; /* Clip content to window frame */
+  display: flex;
+  flex-direction: column;
   ${darkThemeStyles}
   ${windowAppearAnimation}
   animation: windowAppear 0.15s ease-out;
@@ -131,6 +133,8 @@ const StyledWindowContent = styled(WindowContent)`
   overflow: ${props => props.$overflow || 'hidden'};
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0; /* Allow flexbox to shrink below intrinsic size */
 
   /* Custom scrollbar when overflow is auto/scroll */
   &::-webkit-scrollbar {

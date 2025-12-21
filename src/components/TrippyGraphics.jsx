@@ -47,15 +47,10 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: full screen */
+  /* Mobile: constrain to viewport but keep window behavior */
   ${props => props.$isMobile && `
-    min-width: unset;
-    min-height: unset;
-    width: 100vw !important;
-    height: calc(100vh - 44px) !important;
-    left: 0 !important;
-    top: 0 !important;
-    border-radius: 0;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 60px);
   `}
 `;
 

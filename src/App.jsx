@@ -44,6 +44,9 @@ import { useMobile } from './hooks/useMobile';
 import { recordOSTheme } from './styles/theme';
 import GlobalStyles from './styles/GlobalStyles';
 
+// Utils
+import { loginWithSpotify } from './utils/spotify';
+
 // ============================================================================
 // REACT95 STYLE RESET
 // ============================================================================
@@ -218,12 +221,24 @@ function App() {
     setAccessError('');
   }, []);
 
-  // Proceed to Spotify auth after approved
+  // Proceed to Spotify auth after approved (bypass or approved state)
+  // Goes directly to Spotify OAuth instead of back to the main connect screen
   const handleAccessProceed = useCallback(async () => {
     setAccessApproved(true);
     setShowAccessOverlay(false);
-    // The login button is now unblocked and will work
-  }, []);
+    // Preserve audio state before redirect (like normal login flow)
+    const wasPlaying = localAudio.isPlaying;
+    sessionStorage.setItem('recordos_pre_auth_state', JSON.stringify({
+      wasPlaying,
+      trackPosition: localAudio.position,
+    }));
+    // Go directly to Spotify auth
+    try {
+      await loginWithSpotify();
+    } catch (error) {
+      console.error('Login error:', error);
+    }
+  }, [localAudio.isPlaying, localAudio.position]);
 
   // Dismiss overlay without connecting (explore mode)
   const handleAccessDismiss = useCallback(() => {

@@ -179,7 +179,8 @@ const ScrollableContent = styled.div`
   flex: 1;
   overflow: auto;
   padding-right: 8px;
-  max-height: ${props => props.$isMobile ? 'none' : '280px'};
+  min-height: 0; /* Allow flexbox shrinking */
+  max-height: ${props => props.$isMobile ? 'unset' : '280px'};
 
   /* Custom scrollbar to match app style */
   &::-webkit-scrollbar {

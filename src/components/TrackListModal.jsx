@@ -106,7 +106,8 @@ const TrackListContainer = styled.div`
   flex: 1;
   overflow: auto;
   padding: 4px;
-  max-height: ${props => props.$isMobile ? 'none' : '280px'}; /* ~10 tracks visible */
+  min-height: 0; /* Allow flexbox shrinking */
+  max-height: ${props => props.$isMobile ? 'unset' : '280px'}; /* ~10 tracks visible */
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
