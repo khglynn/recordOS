@@ -45,7 +45,33 @@ Profile and optimize rendering performance. Address any jank in album grid scrol
 
 ---
 
-## 4. Storybook Component Library
+## 4. Window Component Refactoring
+
+Migrate all window components to use WindowFrame for consistency.
+
+**Context:** 5 of 10 window components duplicate ~100 lines of styled-components each instead of using WindowFrame. See `TECHNICAL-DEBT.md` for details.
+
+**What:**
+- Extend WindowFrame to support all variants (game fullscreen, player dock, etc.)
+- Migrate MediaPlayer.jsx, GameWindow.jsx, TrippyGraphics.jsx, LibraryScanner.jsx, LoginModal.jsx
+- Test each on mobile + desktop
+- Estimated: 3-4 hours, removes ~600 lines of duplicate code
+
+---
+
+## 5. Minesweeper Win UI
+
+Custom victory celebration for minesweeper wins.
+
+**What:**
+- Custom "you win!" modal matching recordOS aesthetic
+- Win animation/effects
+- Time and stats display
+- Share result option (maybe)
+
+---
+
+## 6. Storybook Component Library
 
 Document and test UI components in isolation.
 

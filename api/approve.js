@@ -50,7 +50,12 @@ export default async function handler(req, res) {
     }
 
     if (existing[0].status === 'approved') {
-      return res.status(200).send(htmlResponse('ALREADY APPROVED', `${normalizedEmail} was already approved`, true));
+      return res.status(200).send(htmlResponse(
+        'ALREADY IN SYSTEM',
+        `${normalizedEmail} was already approved`,
+        true,
+        true // isAdmin
+      ));
     }
 
     // Update to approved
@@ -60,7 +65,12 @@ export default async function handler(req, res) {
       WHERE email = ${normalizedEmail}
     `;
 
-    return res.status(200).send(htmlResponse('ACCESS GRANTED', `${normalizedEmail} has been approved`, true));
+    return res.status(200).send(htmlResponse(
+      'USER ADDED',
+      `${normalizedEmail} added to whitelist`,
+      true,
+      true // isAdmin
+    ));
 
   } catch (error) {
     console.error('Approve error:', error);
@@ -68,11 +78,28 @@ export default async function handler(req, res) {
   }
 }
 
+// Spotify Dashboard URL for user management
+const SPOTIFY_DASHBOARD_USERS = 'https://developer.spotify.com/dashboard/4b8e17e088014d58868966b640d26734/users';
+
 /**
  * Generate HTML response page (matches recordOS aesthetic)
+ * @param {string} title - Page title
+ * @param {string} message - Status message
+ * @param {boolean} success - Success or error state
+ * @param {boolean} isAdmin - Show admin links (Spotify Dashboard)
  */
-function htmlResponse(title, message, success) {
+function htmlResponse(title, message, success, isAdmin = false) {
   const color = success ? '#00ff41' : '#ff4141';
+
+  // Admin-specific content: reminder to add user in Spotify Dashboard
+  const adminSection = isAdmin ? `
+    <div class="admin-note">
+      <span class="prompt">&gt;</span>NEXT STEP: Add user email in Spotify Dashboard
+    </div>
+    <a href="${SPOTIFY_DASHBOARD_USERS}" target="_blank" class="dashboard-link">
+      Open Spotify Dashboard →
+    </a>
+  ` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -108,8 +135,31 @@ function htmlResponse(title, message, success) {
     .status {
       font-size: 14px;
       color: rgba(0, 255, 65, 0.7);
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       line-height: 1.6;
+    }
+    .admin-note {
+      font-size: 12px;
+      color: rgba(255, 200, 0, 0.9);
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid rgba(255, 200, 0, 0.3);
+      background: rgba(255, 200, 0, 0.05);
+    }
+    .dashboard-link {
+      display: inline-block;
+      padding: 12px 24px;
+      background: linear-gradient(180deg, #1a3a1a 0%, #0d2d0d 100%);
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-size: 14px;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+    .dashboard-link:hover {
+      background: linear-gradient(180deg, #2a4a2a 0%, #1a3a1a 100%);
+      text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+      text-decoration: none;
     }
     .prompt {
       color: ${color};
@@ -136,8 +186,9 @@ function htmlResponse(title, message, success) {
     <div class="status">
       <span class="prompt">&gt;</span>${message}
     </div>
+    ${adminSection}
     <div class="footer">
-      // WEYLAND-YUTANI CORP //
+      // WEYLAND-YUTANI CORP // ADMIN PORTAL //
       <br><br>
       <a href="https://record-os.kevinhg.com">Return to recordOS</a>
     </div>

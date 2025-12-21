@@ -21,7 +21,6 @@ import {
   logout as spotifyLogout,
   getAllSavedTracks,
   getAlbumTracks,
-  getAudioAnalysis,
   play,
   pause,
   skipToNext,
@@ -109,8 +108,8 @@ export function useSpotify(isMobile = false) {
   const [playbackError, setPlaybackError] = useState(null);
   const [albumEnded, setAlbumEnded] = useState(false); // True when album finishes playing
 
-  // Audio analysis for visualizer
-  const [audioAnalysis, setAudioAnalysis] = useState(null);
+  // Auth circuit breaker - stops cascade of errors when auth fails
+  const authInvalidRef = useRef(false);
 
   // Settings
   const [decade, setDecade] = useState(
@@ -156,6 +155,7 @@ export function useSpotify(isMobile = false) {
           await exchangeCodeForTokens(code);
           console.log('Token exchange successful!');
           setAuthError(null); // Clear any previous error
+          authInvalidRef.current = false; // Reset circuit breaker on successful login
           setLoggedIn(true);
         } catch (err) {
           console.error('Failed to exchange code:', err);
@@ -278,7 +278,6 @@ export function useSpotify(isMobile = false) {
       const localCompletedDecades = new Set();
       let lowestSavedYear = 9999; // Track oldest save year seen
 
-      console.log('[Safari Debug] Starting getAllSavedTracks...');
 
       // Fetch all saved tracks with progress updates
       const savedTracks = await getAllSavedTracks(
@@ -367,8 +366,6 @@ export function useSpotify(isMobile = false) {
         }
       );
 
-      console.log(`[Safari Debug] getAllSavedTracks returned ${savedTracks.length} tracks`);
-
       // Process all tracks to build album data with accurate liked counts
       for (const item of savedTracks) {
         const track = item.track;
@@ -417,11 +414,6 @@ export function useSpotify(isMobile = false) {
         }))
         .sort((a, b) => b.likedTracks - a.likedTracks);
 
-      console.log(`[Safari Debug] Processing complete:`);
-      console.log(`  - albumDataMap size: ${albumDataMap.size}`);
-      console.log(`  - albumsArray length: ${albumsArray.length}`);
-      console.log(`  - First 3 albums:`, albumsArray.slice(0, 3).map(a => `${a.name} (${a.likedTracks} liked)`));
-
       // Cache the results (with Safari-safe error handling)
       // Only cache essential fields to stay within localStorage quota (~5MB)
       // Full tracks data is kept in memory, but not cached
@@ -449,9 +441,7 @@ export function useSpotify(isMobile = false) {
       }
 
       // IMPORTANT: Set albums state regardless of cache success
-      console.log(`[Safari Debug] Calling setAlbums with ${albumsArray.length} albums...`);
       setAlbums(albumsArray);
-      console.log(`[Safari Debug] setAlbums called, clearing loading state...`);
       setLoadingAlbums([]); // Clear loading albums
       setIsLoading(false);
       setScanPhase('complete');
@@ -476,8 +466,6 @@ export function useSpotify(isMobile = false) {
           .sort((a, b) => b.likedTracks - a.likedTracks);
       }
       setAlbumsByDecade(finalAlbumsByDecade);
-
-      console.log(`[Safari Debug] fetchLibrary complete! Decades:`, Object.keys(finalDecadeStatus));
     } catch (err) {
       console.error('Failed to fetch library:', err);
       setLoadingAlbums([]); // Clear loading albums on error too
@@ -569,14 +557,6 @@ export function useSpotify(isMobile = false) {
       const remaining = sorted.filter(a => a.likedTracks < MIN_SAVED_TRACKS);
       result = [...qualifyingAlbums, ...remaining].slice(0, TARGET_ALBUM_COUNT);
     }
-
-    console.log(`[Safari Debug] displayAlbums filter:`);
-    console.log(`  - Using progressive: ${useProgressiveData}`);
-    console.log(`  - Input albums: ${useProgressiveData ? albumsByDecade[decade]?.length : albums.length}`);
-    console.log(`  - Decade filter: "${decade}"`);
-    console.log(`  - After decade filter: ${candidates.length}`);
-    console.log(`  - Qualifying (${MIN_SAVED_TRACKS}+ tracks): ${qualifyingAlbums.length}`);
-    console.log(`  - Final result: ${result.length}`);
 
     return result;
   }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade]);
@@ -735,8 +715,8 @@ export function useSpotify(isMobile = false) {
             uri: track.uri,
           });
 
-          // Fetch audio analysis for visualizer
-          getAudioAnalysis(track.id).then(setAudioAnalysis).catch(() => {});
+          // NOTE: Audio analysis API removed - always returned 403 and result was never used
+          // Visualizer uses microphone input instead (see TrippyGraphics.jsx)
         }
 
         // Detect album end: track when we leave the original album context
@@ -928,6 +908,11 @@ export function useSpotify(isMobile = false) {
   }, [player, isMuted, volume]);
 
   const playTrack = useCallback(async (track, album) => {
+    // Circuit breaker - stop cascading errors when auth is known to be invalid
+    if (authInvalidRef.current) {
+      return;
+    }
+
     // Mobile mode: Use Spotify Connect (external device)
     if (mobileMode) {
       try {
@@ -956,11 +941,20 @@ export function useSpotify(isMobile = false) {
         });
       } catch (err) {
         console.error('[Mobile] Failed to play track:', err);
+
+        // Trip circuit breaker on auth errors to stop cascade
+        const isAuthError = err.message?.includes('Not authenticated') ||
+                            err.message?.includes('Session expired') ||
+                            err.message?.includes('Access denied');
+        if (isAuthError) {
+          authInvalidRef.current = true;
+        }
+
         captureException(err, { context: 'playTrack_mobile', trackId: track.id });
         setPlaybackError({
-          code: 'PLAYBACK_FAILURE',
-          message: 'REMOTE PLAYBACK FAILED',
-          detail: err.message,
+          code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
+          message: isAuthError ? 'SESSION EXPIRED' : 'REMOTE PLAYBACK FAILED',
+          detail: isAuthError ? 'Please log in again' : err.message,
         });
       }
       return;
@@ -993,6 +987,15 @@ export function useSpotify(isMobile = false) {
       });
     } catch (err) {
       console.error('Failed to play track:', err);
+
+      // Trip circuit breaker on auth errors to stop cascade
+      const isAuthError = err.message?.includes('Not authenticated') ||
+                          err.message?.includes('Session expired') ||
+                          err.message?.includes('Access denied');
+      if (isAuthError) {
+        authInvalidRef.current = true;
+      }
+
       captureException(err, {
         context: 'playTrack',
         trackId: track.id,
@@ -1001,14 +1004,19 @@ export function useSpotify(isMobile = false) {
         deviceReady,
       });
       setPlaybackError({
-        code: 'PLAYBACK_FAILURE',
-        message: 'TRACK INITIALIZATION FAILED',
-        detail: err.message,
+        code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
+        message: isAuthError ? 'SESSION EXPIRED' : 'TRACK INITIALIZATION FAILED',
+        detail: isAuthError ? 'Please log in again' : err.message,
       });
     }
   }, [deviceId, deviceReady, mobileMode]);
 
   const playAlbum = useCallback(async (album) => {
+    // Circuit breaker - stop cascading errors when auth is known to be invalid
+    if (authInvalidRef.current) {
+      return;
+    }
+
     // Mobile mode: Use Spotify Connect (external device)
     if (mobileMode) {
       try {
@@ -1036,11 +1044,20 @@ export function useSpotify(isMobile = false) {
         });
       } catch (err) {
         console.error('[Mobile] Failed to play album:', err);
+
+        // Trip circuit breaker on auth errors to stop cascade
+        const isAuthError = err.message?.includes('Not authenticated') ||
+                            err.message?.includes('Session expired') ||
+                            err.message?.includes('Access denied');
+        if (isAuthError) {
+          authInvalidRef.current = true;
+        }
+
         captureException(err, { context: 'playAlbum_mobile', albumId: album.id });
         setPlaybackError({
-          code: 'PLAYBACK_FAILURE',
-          message: 'REMOTE PLAYBACK FAILED',
-          detail: err.message,
+          code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
+          message: isAuthError ? 'SESSION EXPIRED' : 'REMOTE PLAYBACK FAILED',
+          detail: isAuthError ? 'Please log in again' : err.message,
         });
       }
       return;
@@ -1072,8 +1089,21 @@ export function useSpotify(isMobile = false) {
       });
     } catch (err) {
       console.error('Failed to play album:', err);
-      console.log('[Play Error Debug] Error message:', err.message);
-      console.log('[Play Error Debug] Error status:', err.status);
+
+      // Check for auth errors first - trip circuit breaker to stop cascade
+      const isAuthError = err.message?.includes('Not authenticated') ||
+                          err.message?.includes('Session expired') ||
+                          err.message?.includes('Access denied');
+      if (isAuthError) {
+        authInvalidRef.current = true;
+        captureException(err, { context: 'playAlbum_auth', albumId: album.id });
+        setPlaybackError({
+          code: 'AUTH_EXPIRED',
+          message: 'SESSION EXPIRED',
+          detail: 'Please log in again',
+        });
+        return;
+      }
 
       // Check if this is a 403 error (album unavailable/restricted)
       // Spotify returns 403 for region-restricted, unavailable albums
@@ -1219,7 +1249,6 @@ export function useSpotify(isMobile = false) {
     duration,
     volume,
     isMuted,
-    audioAnalysis,
     playbackError,
     clearPlaybackError: () => setPlaybackError(null),
     albumEnded,
