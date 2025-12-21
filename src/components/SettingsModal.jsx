@@ -18,7 +18,7 @@ import { Fieldset } from 'react95';
 import html2canvas from 'html2canvas';
 import PixelIcon from './PixelIcon';
 import WindowFrame from './WindowFrame';
-import { DECADE_LABELS, DECADE_ORDER } from '../utils/constants';
+import { DECADE_LABELS, DECADE_ORDER, MIN_SAVED_TRACKS } from '../utils/constants';
 
 // ============================================================================
 // STYLED COMPONENTS (Content-specific only)
@@ -190,6 +190,8 @@ function SettingsModal({
   onShowScanResults,
   unavailableAlbums = [],
   albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... }
+  userName = '', // For export filename
+  decade = 'all', // Current decade filter for export filename
 }) {
   // Calculate total albums across all decades
   const totalAlbums = Object.values(albumsByDecade).reduce(
@@ -265,9 +267,14 @@ function SettingsModal({
         logging: false,
       });
 
-      // Download
+      // Download with descriptive filename
+      // Format: [username]_albums_[x]+likes_circa[xx]s.png
+      const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      const decadeLabel = decade === 'all' ? '_all' : `circa${DECADE_LABELS[decade] || decade}`;
+      const threshold = `${MIN_SAVED_TRACKS}+likes`;
+
       const link = document.createElement('a');
-      link.download = `recordos-grid-${new Date().toISOString().split('T')[0]}.png`;
+      link.download = `${safeUserName}_albums_${threshold}_${decadeLabel}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 

@@ -30,6 +30,7 @@ import {
   transferPlayback,
   getCurrentUser,
   getDevices,
+  getPlaybackState,
 } from '../utils/spotify';
 import {
   DECADE_OPTIONS,
@@ -119,6 +120,7 @@ export function useSpotify(isMobile = false) {
   // Refs for cleanup and album tracking
   const playerRef = useRef(null);
   const positionIntervalRef = useRef(null);
+  const connectPollIntervalRef = useRef(null); // Polling for Connect mode (Safari/Mobile)
   const originalAlbumUriRef = useRef(null);  // Track album we started playing
   const albumEndTriggeredRef = useRef(false); // Prevent multiple triggers
 
@@ -812,6 +814,82 @@ export function useSpotify(isMobile = false) {
   }, [isPlaying, player]);
 
   // -------------------------------------------------------------------------
+  // CONNECT MODE POLLING - Safari/Mobile playback state sync
+  // -------------------------------------------------------------------------
+  // In Connect mode (Safari/Mobile), we don't have the Web Playback SDK's
+  // player_state_changed listener. Instead, poll the Spotify API for state.
+
+  useEffect(() => {
+    // Only poll in Connect mode when logged in
+    if (!mobileMode || !loggedIn || !deviceReady) {
+      clearInterval(connectPollIntervalRef.current);
+      return;
+    }
+
+    console.log('[Connect] Starting playback state polling');
+
+    const pollPlaybackState = async () => {
+      try {
+        const state = await getPlaybackState();
+
+        // No active playback
+        if (!state || !state.item) {
+          // Don't clear state - might just be between tracks
+          return;
+        }
+
+        // Update device ID for controls (play/pause/next/prev)
+        if (state.device?.id && state.device.id !== deviceId) {
+          console.log('[Connect] Active device:', state.device.name);
+          setDeviceId(state.device.id);
+          setMobileDeviceName(state.device.name);
+        }
+
+        // Update playback state
+        setIsPlaying(state.is_playing);
+        setPosition(state.progress_ms || 0);
+        setDuration(state.item.duration_ms || 0);
+
+        // Update current track
+        const track = state.item;
+        setCurrentTrack({
+          id: track.id,
+          name: track.name,
+          artist: track.artists?.map(a => a.name).join(', ') || '',
+          album: track.album?.name || '',
+          albumArt: track.album?.images?.[0]?.url || '',
+          uri: track.uri,
+        });
+
+        // Check for album end (track changed to different album context)
+        const currentTrackAlbumUri = track.album?.uri;
+        const originalAlbumUri = originalAlbumUriRef.current;
+
+        if (originalAlbumUri && currentTrackAlbumUri &&
+            currentTrackAlbumUri !== originalAlbumUri &&
+            !albumEndTriggeredRef.current) {
+          console.log('[Connect] Album ended - context changed');
+          albumEndTriggeredRef.current = true;
+          setAlbumEnded(true);
+        }
+      } catch (err) {
+        // Silently ignore polling errors (network hiccups, etc.)
+        // The UI will just show stale data until next successful poll
+        console.log('[Connect] Poll error:', err.message);
+      }
+    };
+
+    // Poll immediately, then every 1.5 seconds
+    pollPlaybackState();
+    connectPollIntervalRef.current = setInterval(pollPlaybackState, 1500);
+
+    return () => {
+      console.log('[Connect] Stopping playback state polling');
+      clearInterval(connectPollIntervalRef.current);
+    };
+  }, [mobileMode, loggedIn, deviceReady, deviceId]);
+
+  // -------------------------------------------------------------------------
   // MEDIA SESSION API - System media keys (play/pause/next/prev)
   // -------------------------------------------------------------------------
 
@@ -941,6 +1019,7 @@ export function useSpotify(isMobile = false) {
         }
 
         console.log('[Mobile] Using device:', activeDevice.name);
+        setDeviceId(activeDevice.id);  // Store for controls (play/pause/next/prev)
         setMobileDeviceName(activeDevice.name);
         setPlaybackError(null);
         setAlbumEnded(false);
@@ -1045,6 +1124,7 @@ export function useSpotify(isMobile = false) {
         }
 
         console.log('[Mobile] Using device:', activeDevice.name);
+        setDeviceId(activeDevice.id);  // Store for controls (play/pause/next/prev)
         setMobileDeviceName(activeDevice.name);
         setPlaybackError(null);
         setAlbumEnded(false);

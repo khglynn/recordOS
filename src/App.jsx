@@ -1060,6 +1060,8 @@ function App() {
                 onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}
                 albumsByDecade={spotify.albumsByDecade}
+                userName={spotify.user?.display_name || spotify.user?.id}
+                decade={spotify.decade}
               />
             );
 
