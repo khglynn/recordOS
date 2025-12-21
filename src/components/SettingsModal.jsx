@@ -256,6 +256,11 @@ function SettingsModal({
       position: grid.style.position,
     };
 
+    // Detect Safari - needs lower scale to avoid hanging on large grids
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    // Use scale 1 for Safari or large grids (>60 albums), scale 2 otherwise
+    const exportScale = (isSafari || totalAlbums > 60) ? 1 : 2;
+
     try {
       // Hide UI elements during capture
       document.body.classList.add('export-mode');
@@ -272,12 +277,19 @@ function SettingsModal({
       await new Promise(r => requestAnimationFrame(r));
       await new Promise(r => setTimeout(r, 300)); // Extra time for images
 
-      const canvas = await html2canvas(grid, {
-        backgroundColor: '#0a0a0a',
-        scale: 2, // Good quality for sharing
-        useCORS: true, // Allow cross-origin images (Spotify CDN)
-        logging: false,
-      });
+      // Race html2canvas against a timeout (Safari can hang on large grids)
+      const timeoutMs = 30000;
+      const canvas = await Promise.race([
+        html2canvas(grid, {
+          backgroundColor: '#0a0a0a',
+          scale: exportScale,
+          useCORS: true, // Allow cross-origin images (Spotify CDN)
+          logging: false,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Export timed out')), timeoutMs)
+        ),
+      ]);
 
       setExportState('compress');
       await new Promise(r => setTimeout(r, 300));

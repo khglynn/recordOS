@@ -97,7 +97,9 @@ const StyledWindowContent = styled(WindowContent)`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 24px;
+  min-height: 428px;
 `;
 
 const Logo = styled.img`
@@ -207,10 +209,11 @@ const CloseButton = styled(Button)`
 const AccessOverlay = styled.div`
   position: absolute;
   inset: 0;
-  background: rgba(0, 12, 0, 0.94);
+  background: rgba(0, 20, 0, 0.88);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 24px;
   font-family: 'Consolas', 'Courier New', monospace;
   z-index: 10;
@@ -573,7 +576,7 @@ function LoginModal({
           </SpotifyButton>
 
           <Footer>
-            // AUDIO PRIVILEGES / PREMIUM TIER ONLY //
+            // AUDIO PRIVILEGES REQUIRE PREMIUM TIER //
             <br />
             // CHROME BOX OPTIMAL / PHONES TOLERATED //
           </Footer>
@@ -588,9 +591,9 @@ function LoginModal({
             {(accessState === 'idle' || accessState === 'submitting' || accessState === 'error') && (
               <>
                 <StatusBlock>
-                  <StatusLine><span className="prompt">//</span>CORP DIRECTIVE: MAX 25 USERS</StatusLine>
-                  <StatusLine><span className="prompt">//</span>THE COMPANY PRIORITIZES THE COMPANY</StatusLine>
-                  <StatusLine><span className="prompt">//</span>INDIE DEVELOPERS: EXPENDABLE</StatusLine>
+                  <StatusLine>CORPORATE DIRECTIVE: MAX 25 USERS</StatusLine>
+                  <StatusLine>INDIE DEVELOPERS: EXPENDABLE</StatusLine>
+                  <StatusLine>THE COMPANY PRIORITIZES THE COMPANY</StatusLine>
                 </StatusBlock>
 
                 <FormSection>
@@ -613,11 +616,27 @@ function LoginModal({
                   {accessState === 'submitting' ? 'TRANSMITTING...' : 'REQUEST ACCESS'}
                 </ActionButton>
 
-                <FinePrint>// AUTHORIZATION REQUIRED FOR SPOTIFY ACCESS //</FinePrint>
-
-                <CancelLink onClick={onAccessDismiss}>
-                  // CONTINUE WITHOUT CONNECTING //
+                <CancelLink onClick={onAccessProceed}>
+                  PREVIOUSLY PROCESSED? &gt;&gt; BYPASS
                 </CancelLink>
+
+                <IdleSection>
+                  <IdleHeader>ENTERTAINMENT REQUIRES NO APPROVAL</IdleHeader>
+                  <GameButtons>
+                    <GameButton onClick={() => { onOpenGame?.('minesweeper'); onAccessDismiss?.(); }}>
+                      <PixelIcon name="flag" size={12} color="currentColor" />
+                      MINES
+                    </GameButton>
+                    <GameButton onClick={() => { onOpenGame?.('solitaire'); onAccessDismiss?.(); }}>
+                      <PixelIcon name="cards" size={12} color="currentColor" />
+                      SOLITAIRE
+                    </GameButton>
+                    <GameButton onClick={() => { onOpenGame?.('snake'); onAccessDismiss?.(); }}>
+                      <PixelIcon name="gamepad" size={12} color="currentColor" />
+                      SNAKE
+                    </GameButton>
+                  </GameButtons>
+                </IdleSection>
               </>
             )}
 
@@ -636,11 +655,11 @@ function LoginModal({
                 </StatusDisplay>
 
                 <IdleSection>
-                  <IdleHeader>IDLE PROCESSES AVAILABLE</IdleHeader>
+                  <IdleHeader>ENTERTAINMENT REQUIRES NO APPROVAL</IdleHeader>
                   <GameButtons>
                     <GameButton onClick={() => { onOpenGame?.('minesweeper'); onAccessDismiss?.(); }}>
                       <PixelIcon name="flag" size={12} color="currentColor" />
-                      MINESWEEPER
+                      MINES
                     </GameButton>
                     <GameButton onClick={() => { onOpenGame?.('solitaire'); onAccessDismiss?.(); }}>
                       <PixelIcon name="cards" size={12} color="currentColor" />
@@ -654,7 +673,7 @@ function LoginModal({
                 </IdleSection>
 
                 <CancelLink onClick={onAccessCancel}>
-                  // WRONG EMAIL? RETRY //
+                  WRONG EMAIL? RETRY
                 </CancelLink>
               </>
             )}

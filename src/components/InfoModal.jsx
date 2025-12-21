@@ -368,8 +368,6 @@ function InfoModal({
       </ScrollableContent>
 
       <Footer>
-        // WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS //
-        <br />
         // VIBE CODED VIA CLAUDE NEURAL SUBSTRATE //
         <br />
         // © 2025 // ALL RIGHTS RESERVED //

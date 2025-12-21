@@ -174,6 +174,14 @@ function App() {
 
     setAccessState('submitting');
 
+    // Dev mode: skip API call on localhost (Vercel functions don't work locally)
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isDev) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, accessEmail.trim().toLowerCase());
+      setAccessState('pending');
+      return;
+    }
+
     try {
       const response = await fetch('/api/request-access', {
         method: 'POST',
