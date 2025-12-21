@@ -305,37 +305,37 @@ function InfoModal({
               <StyledLink href="https://github.com/react95-org/react95" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">React95</span>
               </StyledLink>
-              <span className="lib-license">MIT</span>
+              <span className="lib-license">Artevelde University</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://pixelarticons.com" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">Pixelarticons</span>
               </StyledLink>
-              <span className="lib-license">MIT</span>
+              <span className="lib-license">Half Tone Design</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://github.com/nicholasyager/minesweeper" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">Minesweeper</span>
               </StyledLink>
-              <span className="lib-license">MIT</span>
+              <span className="lib-license">Nicholas Yager</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://github.com/Two9A/solitaire-js" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">Solitaire</span>
               </StyledLink>
-              <span className="lib-license">Unlicense</span>
+              <span className="lib-license">Two9A</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://github.com/cribbles/snake" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">Snake</span>
               </StyledLink>
-              <span className="lib-license">MIT</span>
+              <span className="lib-license">Chris Ball</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://github.com/jberg/butterchurn" target="_blank" rel="noopener noreferrer">
                 <span className="lib-name">Butterchurn</span>
               </StyledLink>
-              <span className="lib-license">MIT (planned)</span>
+              <span className="lib-license">Jordan Berg</span>
             </CreditItem>
             <CreditItem>
               <StyledLink href="https://elements.envato.com" target="_blank" rel="noopener noreferrer">
@@ -344,6 +344,9 @@ function InfoModal({
               <span className="lib-license">Envato Elements</span>
             </CreditItem>
           </CreditsList>
+          <Description style={{ margin: '8px 0 0 0', fontSize: '8px', color: 'rgba(0, 255, 65, 0.4)' }}>
+            //ALL LIBRARIES MIT LICENSED EXCEPT SOLITAIRE (UNLICENSE)
+          </Description>
         </StyledFieldset>
 
         <StyledFieldset label="DATA RETENTION PROTOCOL">
@@ -367,7 +370,7 @@ function InfoModal({
       <Footer>
         // WEYLAND-YUTANI CORP // BUILDING BETTER WORLDS //
         <br />
-        // VIBE CODED VIA <StyledLink href="https://claude.ai" target="_blank" rel="noopener noreferrer">CLAUDE</StyledLink> NEURAL SUBSTRATE //
+        // VIBE CODED VIA CLAUDE NEURAL SUBSTRATE //
         <br />
         // © 2025 // ALL RIGHTS RESERVED //
       </Footer>

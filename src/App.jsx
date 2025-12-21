@@ -1059,6 +1059,7 @@ function App() {
                 onRescanLibrary={handleRescanLibrary}
                 onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}
+                albumsByDecade={spotify.albumsByDecade}
               />
             );
 

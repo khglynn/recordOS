@@ -27,6 +27,14 @@
     <!-- Preconnect to Spotify for faster auth -->
     <link rel="preconnect" href="https://accounts.spotify.com" />
     <link rel="preconnect" href="https://api.spotify.com" />
+
+    <!-- Export mode: hide UI during album grid capture -->
+    <style>
+      body.export-mode [data-taskbar],
+      body.export-mode [data-window] {
+        display: none !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -12,10 +12,13 @@
  * Updated: 2025-12-11 - Refactored to use WindowFrame
  */
 
+import { useState } from 'react';
 import styled from 'styled-components';
 import { Fieldset } from 'react95';
+import html2canvas from 'html2canvas';
 import PixelIcon from './PixelIcon';
 import WindowFrame from './WindowFrame';
+import { DECADE_LABELS, DECADE_ORDER } from '../utils/constants';
 
 // ============================================================================
 // STYLED COMPONENTS (Content-specific only)
@@ -128,6 +131,42 @@ const SliderLabels = styled.div`
   font-family: 'Consolas', 'Courier New', monospace;
 `;
 
+const DecadeCountsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #1a1a1a;
+`;
+
+const DecadeCountRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+`;
+
+const DecadeCountLabel = styled.span`
+  color: rgba(0, 255, 65, 0.6);
+`;
+
+const DecadeCountValue = styled.span`
+  color: #00ff41;
+`;
+
+const TotalRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed #1a1a1a;
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -150,7 +189,12 @@ function SettingsModal({
   onRescanLibrary,
   onShowScanResults,
   unavailableAlbums = [],
+  albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... }
 }) {
+  // Calculate total albums across all decades
+  const totalAlbums = Object.values(albumsByDecade).reduce(
+    (sum, albums) => sum + (albums?.length || 0), 0
+  );
   // Album count options: 24, 36, 48, 60, 72, 84, 96, 108, 120
   const handleSliderChange = (e) => {
     const value = parseInt(e.target.value);
@@ -177,6 +221,41 @@ function SettingsModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Export album grid as PNG
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportGrid = async () => {
+    const gridElement = document.querySelector('[data-album-grid]');
+    if (!gridElement) return;
+
+    setIsExporting(true);
+
+    try {
+      // Hide UI elements during capture
+      document.body.classList.add('export-mode');
+
+      // Wait a frame for CSS to apply
+      await new Promise(r => requestAnimationFrame(r));
+
+      const canvas = await html2canvas(gridElement, {
+        backgroundColor: '#0a0a0a',
+        scale: 2, // Good quality for sharing
+        useCORS: true, // Allow cross-origin images (Spotify CDN)
+        logging: false,
+      });
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `recordos-grid-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      document.body.classList.remove('export-mode');
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -228,6 +307,26 @@ function SettingsModal({
             <span>72</span>
             <span>120</span>
           </SliderLabels>
+
+          {/* Live decade counts */}
+          {isLoggedIn && totalAlbums > 0 && (
+            <DecadeCountsList>
+              {DECADE_ORDER.map(dec => {
+                const count = albumsByDecade[dec]?.length || 0;
+                if (count === 0) return null;
+                return (
+                  <DecadeCountRow key={dec}>
+                    <DecadeCountLabel>{DECADE_LABELS[dec]} ▸</DecadeCountLabel>
+                    <DecadeCountValue>{count}</DecadeCountValue>
+                  </DecadeCountRow>
+                );
+              })}
+              <TotalRow>
+                <DecadeCountLabel>TOTAL</DecadeCountLabel>
+                <DecadeCountValue>{totalAlbums}</DecadeCountValue>
+              </TotalRow>
+            </DecadeCountsList>
+          )}
         </SliderContainer>
       </StyledFieldset>
 
@@ -259,6 +358,19 @@ function SettingsModal({
             <ToggleButton onClick={handleDownloadErrorLog}>
               <PixelIcon name="download" size={12} />
               LOG
+            </ToggleButton>
+          </SettingRow>
+        </StyledFieldset>
+      )}
+
+      {/* Export grid section - only when logged in with albums */}
+      {isLoggedIn && totalAlbums > 0 && (
+        <StyledFieldset label="EXPORT">
+          <SettingRow>
+            <SettingLabel>Save grid as image</SettingLabel>
+            <ToggleButton onClick={handleExportGrid} disabled={isExporting}>
+              <PixelIcon name="download" size={12} />
+              {isExporting ? 'SAVING...' : 'PNG'}
             </ToggleButton>
           </SettingRow>
         </StyledFieldset>

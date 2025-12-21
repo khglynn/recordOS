@@ -38,8 +38,13 @@ export function initSentry() {
     // Environment tag
     environment: import.meta.env.MODE,
 
+    // Performance monitoring: page loads, Web Vitals (LCP, FID, CLS)
+    integrations: [
+      Sentry.browserTracingIntegration(),
+    ],
+
     // Sample rate for performance monitoring (0-1)
-    // Set to 0.1 = 10% of transactions for free tier
+    // Set to 0.1 = 10% of transactions for free tier (10K/month)
     tracesSampleRate: 0.1,
 
     // Ignore common non-actionable errors

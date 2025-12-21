@@ -26,11 +26,12 @@
          ============================================ */
       .controls-bar {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
+        gap: 16px;
         width: 326px;  /* Match game board width including borders */
         margin: 0 auto;
-        padding: 8px 0;  /* No horizontal padding - buttons at edges */
+        padding: 8px 0;
         box-sizing: border-box;
       }
 
@@ -61,27 +62,6 @@
         font-size: 11px;
         color: rgba(0, 255, 65, 0.8);
         letter-spacing: 1px;
-      }
-
-      /* Arrow buttons at edges */
-      .arrow-btn {
-        background: transparent;
-        border: none;
-        color: rgba(0, 255, 65, 0.5);
-        font-size: 16px;
-        cursor: pointer;
-        padding: 4px 8px;
-        font-family: 'Consolas', monospace;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      .arrow-btn:hover {
-        color: #00ff41;
-      }
-
-      .arrow-btn:active {
-        color: #00ff41;
-        text-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
       }
 
       /* ============================================
@@ -279,12 +259,10 @@
       <h2 class="snake-score"></h2>
     </figure>
 
-    <!-- Controls bar: Arrow | SCORE | PAUSE | Arrow -->
+    <!-- Controls bar: SCORE | PAUSE -->
     <div class="controls-bar" id="controls-bar">
-      <button class="arrow-btn" id="arrow-left" data-dir="W">←</button>
       <div class="score-display" id="score-display">SCORE: 0</div>
       <button class="pause-btn" id="pause-btn">RESUME</button>
-      <button class="arrow-btn" id="arrow-right" data-dir="E">→</button>
     </div>
 
     <script>
@@ -326,19 +304,6 @@
           e.preventDefault();
           handleDirection(this.getAttribute('data-dir'));
         });
-      });
-
-      // Arrow buttons in controls bar
-      var arrowLeft = document.getElementById('arrow-left');
-      var arrowRight = document.getElementById('arrow-right');
-
-      arrowLeft.addEventListener('click', function(e) {
-        e.preventDefault();
-        handleDirection('W');
-      });
-      arrowRight.addEventListener('click', function(e) {
-        e.preventDefault();
-        handleDirection('E');
       });
 
       // Drag support - detect which button finger moves over

@@ -8,7 +8,7 @@
  * - Mobile: click-to-expand inline submenus (touch-friendly)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { MenuList, MenuListItem, Separator } from 'react95';
 import { DECADE_LABELS } from '../utils/constants';
@@ -228,26 +228,45 @@ function StartMenu({
     return decadeStatus[d] === 'ready';
   };
 
-  // Decade cycling for mobile arrow navigation
-  const DECADES = ['all', '2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
+  // Decade cycling for arrow navigation
+  // Skip 'all' in rotation - it requires full scan complete
+  const DECADES = ['2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
 
-  // Get list of ready decades for cycling
-  const readyDecades = DECADES.filter(d => isDecadeReady(d));
-  const hasReadyDecades = readyDecades.length > 0;
+  // Track visual position (can be on any decade, ready or not)
+  const [visualDecade, setVisualDecade] = useState(decade);
+
+  // Sync visual decade when prop changes (e.g., from another component)
+  useEffect(() => {
+    if (DECADES.includes(decade)) {
+      setVisualDecade(decade);
+    }
+  }, [decade]);
+
+  // Get display label for current visual position
+  const getDecadeDisplay = () => {
+    const label = DECADE_LABELS[visualDecade] || 'ALL';
+    const ready = isDecadeReady(visualDecade);
+    return ready ? label : `SCANNING ${label}`;
+  };
 
   const cycleDecade = (direction) => {
-    if (!hasReadyDecades) return;
-    const currentIndex = readyDecades.indexOf(decade);
+    const currentIndex = DECADES.indexOf(visualDecade);
     let newIndex;
     if (currentIndex === -1) {
-      // Current decade not ready, jump to first ready one
       newIndex = 0;
     } else if (direction === 'next') {
-      newIndex = (currentIndex + 1) % readyDecades.length;
+      newIndex = (currentIndex + 1) % DECADES.length;
     } else {
-      newIndex = (currentIndex - 1 + readyDecades.length) % readyDecades.length;
+      newIndex = (currentIndex - 1 + DECADES.length) % DECADES.length;
     }
-    onDecadeChange(readyDecades[newIndex]);
+
+    const newDecade = DECADES[newIndex];
+    setVisualDecade(newDecade);
+
+    // Only update the grid if the decade is ready
+    if (isDecadeReady(newDecade)) {
+      onDecadeChange(newDecade);
+    }
   };
 
   const handleMenuItemClick = (action) => {
@@ -300,20 +319,12 @@ function StartMenu({
           {/* Decade Filter with arrow navigation - Only when logged in */}
           {isLoggedIn && (
             <>
-              <DecadeRow style={{ opacity: hasReadyDecades ? 1 : 0.4 }}>
-                <DecadeArrow
-                  onClick={() => cycleDecade('prev')}
-                  disabled={!hasReadyDecades}
-                  style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
-                >◀</DecadeArrow>
+              <DecadeRow>
+                <DecadeArrow onClick={() => cycleDecade('prev')}>◀</DecadeArrow>
                 <DecadeLabel>
-                  {hasReadyDecades ? (DECADE_LABELS[decade] || 'All Decades') : 'SCANNING...'}
+                  {getDecadeDisplay()}
                 </DecadeLabel>
-                <DecadeArrow
-                  onClick={() => cycleDecade('next')}
-                  disabled={!hasReadyDecades}
-                  style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
-                >▶</DecadeArrow>
+                <DecadeArrow onClick={() => cycleDecade('next')}>▶</DecadeArrow>
               </DecadeRow>
               <StyledSeparator />
             </>
@@ -402,20 +413,12 @@ function StartMenu({
         {/* Decade Filter - Only when logged in */}
         {isLoggedIn && (
           <>
-            <DecadeRow style={{ opacity: hasReadyDecades ? 1 : 0.4 }}>
-              <DecadeArrow
-                onClick={() => cycleDecade('prev')}
-                disabled={!hasReadyDecades}
-                style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
-              >◀</DecadeArrow>
+            <DecadeRow>
+              <DecadeArrow onClick={() => cycleDecade('prev')}>◀</DecadeArrow>
               <DecadeLabel>
-                {hasReadyDecades ? (DECADE_LABELS[decade] || 'All Decades') : 'SCANNING...'}
+                {getDecadeDisplay()}
               </DecadeLabel>
-              <DecadeArrow
-                onClick={() => cycleDecade('next')}
-                disabled={!hasReadyDecades}
-                style={{ opacity: hasReadyDecades ? 1 : 0.4 }}
-              >▶</DecadeArrow>
+              <DecadeArrow onClick={() => cycleDecade('next')}>▶</DecadeArrow>
             </DecadeRow>
             <StyledSeparator />
           </>

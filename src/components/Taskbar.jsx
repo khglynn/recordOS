@@ -323,7 +323,7 @@ function Taskbar({
 
   return (
     <>
-      <TaskbarContainer>
+      <TaskbarContainer data-taskbar>
         {/* Start Button */}
         <StartButton
           ref={startButtonRef}

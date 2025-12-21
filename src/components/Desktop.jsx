@@ -850,7 +850,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const { tileWidth } = gridGeometry;
 
   return (
-    <DesktopContainer>
+    <DesktopContainer data-album-grid>
       <AlbumGrid style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
         {albums.map((album, index) => (
           <AlbumCover
