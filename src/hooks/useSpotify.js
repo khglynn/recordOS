@@ -3,14 +3,13 @@
  * useSpotify HOOK
  * ============================================================================
  *
- * Manages Spotify authentication, library fetching, and Web Playback SDK.
+ * Manages Spotify authentication, library fetching, and playback control.
  *
  * Responsibilities:
  * - Handle OAuth callback
  * - Fetch user's saved tracks
  * - Process albums (filter by threshold, sort)
- * - Initialize and manage Web Playback SDK
- * - Playback controls
+ * - Playback controls via Spotify Connect (controls external Spotify device)
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -27,7 +26,6 @@ import {
   skipToPrevious,
   seek,
   setVolume,
-  transferPlayback,
   getCurrentUser,
   getDevices,
   getPlaybackState,
@@ -60,9 +58,9 @@ export function useSpotify(isMobile = false) {
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
 
-  // Mobile mode - uses Spotify Connect instead of Web Playback SDK
-  const [mobileMode, setMobileMode] = useState(false);
-  const [mobileDeviceName, setMobileDeviceName] = useState(null);
+  // Connect mode - controls Spotify on user's device (phone, desktop app, etc.)
+  // Web Playback SDK removed - Connect is simpler and works everywhere
+  const [activeDeviceName, setActiveDeviceName] = useState(null);
 
   // Library state
   const [albums, setAlbums] = useState([]);
@@ -92,10 +90,9 @@ export function useSpotify(isMobile = false) {
     return dominant ? DECADE_LABELS[dominant] : null;
   }, [albumsByDecade]);
 
-  // Playback state
-  const [player, setPlayer] = useState(null);
+  // Playback state (Connect mode - controls external Spotify device)
   const [deviceId, setDeviceId] = useState(null);
-  const [deviceReady, setDeviceReady] = useState(false); // True only after transferPlayback completes
+  const [deviceReady, setDeviceReady] = useState(false); // True once we detect an active device
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [position, setPosition] = useState(0);
@@ -107,7 +104,6 @@ export function useSpotify(isMobile = false) {
     localStorage.getItem(STORAGE_KEYS.MUTED) === 'true'
   );
   const [playbackError, setPlaybackError] = useState(null);
-  const [albumEnded, setAlbumEnded] = useState(false); // True when album finishes playing
 
   // Auth circuit breaker - stops cascade of errors when auth fails
   const authInvalidRef = useRef(false);
@@ -122,9 +118,7 @@ export function useSpotify(isMobile = false) {
   });
 
   // Refs for cleanup and album tracking
-  const playerRef = useRef(null);
-  const positionIntervalRef = useRef(null);
-  const connectPollIntervalRef = useRef(null); // Polling for Connect mode (Safari/Mobile)
+  const connectPollIntervalRef = useRef(null); // Polling for playback state
   const originalAlbumUriRef = useRef(null);  // Track album we started playing
   const albumEndTriggeredRef = useRef(false); // Prevent multiple triggers
 
@@ -574,20 +568,9 @@ export function useSpotify(isMobile = false) {
     // Step 2: Sort all candidates by liked track count (highest first)
     const sorted = [...candidates].sort((a, b) => b.likedTracks - a.likedTracks);
 
-    // Step 3: Get albums meeting the threshold first
+    // Step 3: Filter to albums meeting threshold, cap at TARGET_ALBUM_COUNT
     const qualifyingAlbums = sorted.filter(a => a.likedTracks >= threshold);
-
-    // Step 4: If we don't have enough qualifying albums, fill with remaining candidates
-    let result;
-    if (qualifyingAlbums.length >= TARGET_ALBUM_COUNT) {
-      result = qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
-    } else {
-      // Take all qualifying albums, then fill with next best candidates
-      const remaining = sorted.filter(a => a.likedTracks < threshold);
-      result = [...qualifyingAlbums, ...remaining].slice(0, TARGET_ALBUM_COUNT);
-    }
-
-    return result;
+    return qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
   }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade, threshold]);
 
   // Compute decade counts filtered by threshold (for Settings slider preview)
@@ -617,238 +600,39 @@ export function useSpotify(isMobile = false) {
   }, []);
 
   // -------------------------------------------------------------------------
-  // SPOTIFY WEB PLAYBACK SDK
+  // CONNECT MODE INITIALIZATION
   // -------------------------------------------------------------------------
+  // All playback uses Spotify Connect - controls user's Spotify app/device.
+  // No Web Playback SDK needed - simpler and works on all browsers.
 
   useEffect(() => {
     if (!loggedIn) return;
-
-    // Wait for user data before initializing SDK
-    // We need to check Premium status first
     if (!user) return;
 
-    // Check if user has Spotify Premium - required for Web Playback SDK
+    // Check Premium status
     if (user.product !== 'premium') {
-      console.log('[SDK] User does not have Spotify Premium:', user.product);
+      console.log('[Connect] User does not have Spotify Premium:', user.product);
       setAuthError({
         code: 'PREMIUM_REQUIRED',
         message: 'SPOTIFY PREMIUM REQUIRED',
-        detail: 'The Web Playback SDK requires a Spotify Premium subscription. You can still browse your library, but playback is disabled.',
+        detail: 'Playback control requires a Spotify Premium subscription. You can still browse your library.',
       });
-      // Don't load SDK for non-Premium users
       return;
     }
 
-    // Mobile: Skip SDK, use Spotify Connect instead
-    // SDK doesn't work on mobile browsers - control external Spotify app
-    if (isMobile) {
-      console.log('[SDK] Mobile detected - using Spotify Connect mode');
-      setMobileMode(true);
-      setDeviceReady(true); // Mark ready - will fetch devices on playback
-      return;
-    }
-
-    // Safari: Skip SDK, use Spotify Connect instead
-    // Safari's EME (DRM) implementation doesn't fully support Web Playback SDK
-    // Connect mode routes playback to Spotify app - more reliable
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if (isSafari) {
-      console.log('[SDK] Safari detected - using Spotify Connect mode for better compatibility');
-      setMobileMode(true);  // Reuse Connect logic
-      setDeviceReady(true);
-      return;
-    }
-
-    // Load Spotify SDK script
-    const script = document.createElement('script');
-    script.src = 'https://sdk.scdn.co/spotify-player.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    window.onSpotifyWebPlaybackSDKReady = async () => {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const spotifyPlayer = new window.Spotify.Player({
-        name: 'Record OS',
-        getOAuthToken: async (cb) => {
-          const t = await getAccessToken();
-          cb(t);
-        },
-        volume: isMuted ? 0 : volume / 100,
-      });
-
-      // Error handling - log details to help debug Safari issues
-      spotifyPlayer.addListener('initialization_error', ({ message }) => {
-        console.error('[SDK] Initialization error:', message);
-        addBreadcrumb(`SDK init error: ${message}`, 'spotify', 'error');
-        captureException(new Error(message), { context: 'sdk_initialization_error' });
-        // Show to user - this is likely a browser compatibility issue (Safari EME)
-        setPlaybackError({
-          code: 'SDK_INIT_FAILED',
-          message: 'PLAYBACK ENGINE INITIALIZATION FAILED',
-          detail: `${message}. This may be a browser compatibility issue. Try Chrome or Firefox.`,
-        });
-      });
-
-      spotifyPlayer.addListener('authentication_error', ({ message }) => {
-        console.error('[SDK] Authentication error:', message);
-        addBreadcrumb(`SDK auth error: ${message}`, 'spotify', 'error');
-        captureException(new Error(message), { context: 'sdk_authentication_error' });
-        // Show to user - token may have expired or been revoked
-        setAuthError({
-          code: 'SDK_AUTH_FAILED',
-          message: 'PLAYBACK AUTHENTICATION FAILED',
-          detail: `${message}. Try logging out and back in.`,
-        });
-      });
-
-      spotifyPlayer.addListener('account_error', ({ message }) => {
-        console.error('[SDK] Account error:', message);
-        addBreadcrumb(`SDK account error: ${message}`, 'spotify', 'error');
-        captureException(new Error(message), { context: 'sdk_account_error' });
-        // Show to user - typically Premium requirement
-        setAuthError({
-          code: 'ACCOUNT_ERROR',
-          message: 'SPOTIFY ACCOUNT ERROR',
-          detail: `${message}. Web playback requires Spotify Premium.`,
-        });
-      });
-
-      spotifyPlayer.addListener('playback_error', ({ message }) => {
-        console.error('Spotify playback error:', message);
-        addBreadcrumb(`Playback error: ${message}`, 'spotify', 'error');
-        captureException(new Error(message), { context: 'sdk_playback_error' });
-        setPlaybackError({
-          code: 'PLAYBACK_FAILURE',
-          message: 'EXTERNAL AUDIO STREAM INTERRUPTED',
-          detail: message,
-        });
-      });
-
-      // Ready - MUST await transfer before device is actually usable
-      spotifyPlayer.addListener('ready', async ({ device_id }) => {
-        console.log('[SDK] Player ready, device ID:', device_id);
-        addBreadcrumb('SDK ready', 'spotify', 'info');
-        setDeviceId(device_id);
-
-        // Transfer playback to this device - AWAIT to prevent race condition
-        // Without await, user can click play before device is registered
-        try {
-          addBreadcrumb('Transferring playback', 'spotify', 'info');
-          await transferPlayback(device_id, false);
-          console.log('[SDK] Transfer complete - device ready for playback');
-          addBreadcrumb('Transfer complete', 'spotify', 'info');
-          setDeviceReady(true);
-        } catch (err) {
-          console.error('[SDK] Transfer failed:', err);
-          addBreadcrumb('Transfer failed', 'spotify', 'error');
-          captureException(err, { context: 'sdk_transfer_playback' });
-          // Device ID is set but not ready - user will see appropriate error
-        }
-      });
-
-      // Not ready
-      spotifyPlayer.addListener('not_ready', ({ device_id }) => {
-        console.log('Spotify player not ready:', device_id);
-      });
-
-      // State changes
-      spotifyPlayer.addListener('player_state_changed', (state) => {
-        if (!state) return;
-
-        setIsPlaying(!state.paused);
-        setPosition(state.position);
-        setDuration(state.duration);
-
-        const track = state.track_window.current_track;
-        if (track) {
-          setCurrentTrack({
-            id: track.id,
-            name: track.name,
-            artist: track.artists.map(a => a.name).join(', '),
-            album: track.album.name,
-            albumArt: track.album.images[0]?.url,
-            uri: track.uri,
-          });
-
-          // NOTE: Audio analysis API removed - always returned 403 and result was never used
-          // Visualizer uses microphone input instead (see TrippyGraphics.jsx)
-        }
-
-        // Detect album end: track when we leave the original album context
-        // This handles Spotify autoplay queuing similar tracks after album ends
-        const currentTrackAlbumUri = track?.album?.uri;
-        const originalAlbumUri = originalAlbumUriRef.current;
-        const leftOriginalAlbum = originalAlbumUri && currentTrackAlbumUri &&
-                                  currentTrackAlbumUri !== originalAlbumUri;
-
-        // Also detect natural end: last track + playback stopped
-        const nextTracks = state.track_window.next_tracks || [];
-        const isLastTrack = nextTracks.length === 0;
-        const positionAtEnd = state.position === 0 || (state.duration > 0 && state.position >= state.duration - 500);
-        const trackEndedNaturally = state.paused && positionAtEnd && state.duration > 0 && isLastTrack;
-
-        console.log(`[Album End Check] orig=${originalAlbumUri?.split(':')[2]}, curr=${currentTrackAlbumUri?.split(':')[2]}, left=${leftOriginalAlbum}, naturalEnd=${trackEndedNaturally}`);
-
-        // Trigger album end if we left original album OR natural end occurred
-        // Album end detection - simplified, just log (no overlay/sound)
-        if ((leftOriginalAlbum || trackEndedNaturally) && !albumEndTriggeredRef.current) {
-          console.log(`[Album End] Album finished - ${leftOriginalAlbum ? 'left album context' : 'natural end'}`);
-          albumEndTriggeredRef.current = true;
-          // Note: Overlay/sound removed for simpler UX - let Spotify handle naturally
-        }
-      });
-
-      const connected = await spotifyPlayer.connect();
-      if (!connected) {
-        console.error('[SDK] Failed to connect to Spotify');
-        addBreadcrumb('SDK connect failed', 'spotify', 'error');
-        setPlaybackError({
-          code: 'SDK_CONNECT_FAILED',
-          message: 'PLAYBACK ENGINE CONNECTION FAILED',
-          detail: 'Could not connect to Spotify. Check your network connection and try refreshing.',
-        });
-        return;
-      }
-      console.log('[SDK] Connected successfully');
-      playerRef.current = spotifyPlayer;
-      setPlayer(spotifyPlayer);
-    };
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.disconnect();
-      }
-      script.remove();
-    };
-  }, [loggedIn, user, isMobile]);
-
-  // Update position while playing
-  useEffect(() => {
-    if (isPlaying && player) {
-      positionIntervalRef.current = setInterval(async () => {
-        const state = await player.getCurrentState();
-        if (state) {
-          setPosition(state.position);
-        }
-      }, 1000);
-    } else {
-      clearInterval(positionIntervalRef.current);
-    }
-
-    return () => clearInterval(positionIntervalRef.current);
-  }, [isPlaying, player]);
+    // Mark ready for Connect mode - device ID will be detected on first poll
+    console.log('[Connect] Premium user detected - enabling playback control');
+    setDeviceReady(true);
+  }, [loggedIn, user]);
 
   // -------------------------------------------------------------------------
-  // CONNECT MODE POLLING - Safari/Mobile playback state sync
+  // CONNECT MODE POLLING - Playback state sync
   // -------------------------------------------------------------------------
-  // In Connect mode (Safari/Mobile), we don't have the Web Playback SDK's
-  // player_state_changed listener. Instead, poll the Spotify API for state.
+  // Poll Spotify API for current playback state. Updates UI to reflect
+  // what's playing on user's active Spotify device.
 
   useEffect(() => {
-    // Only poll in Connect mode when logged in
-    if (!mobileMode || !loggedIn || !deviceReady) {
+    if (!loggedIn || !deviceReady) {
       clearInterval(connectPollIntervalRef.current);
       return;
     }
@@ -869,7 +653,7 @@ export function useSpotify(isMobile = false) {
         if (state.device?.id && state.device.id !== deviceId) {
           console.log('[Connect] Active device:', state.device.name);
           setDeviceId(state.device.id);
-          setMobileDeviceName(state.device.name);
+          setActiveDeviceName(state.device.name);
         }
 
         // Update playback state
@@ -888,7 +672,7 @@ export function useSpotify(isMobile = false) {
           uri: track.uri,
         });
 
-        // Album end detection (Connect mode) - simplified, just log
+        // Album end detection - simplified, just log
         const currentTrackAlbumUri = track.album?.uri;
         const originalAlbumUri = originalAlbumUriRef.current;
 
@@ -897,24 +681,22 @@ export function useSpotify(isMobile = false) {
             !albumEndTriggeredRef.current) {
           console.log('[Connect] Album ended - context changed');
           albumEndTriggeredRef.current = true;
-          // Note: Overlay/sound removed for simpler UX - let Spotify handle naturally
         }
       } catch (err) {
         // Silently ignore polling errors (network hiccups, etc.)
-        // The UI will just show stale data until next successful poll
         console.log('[Connect] Poll error:', err.message);
       }
     };
 
-    // Poll immediately, then every 1.5 seconds
+    // Poll immediately, then every 1 second
     pollPlaybackState();
-    connectPollIntervalRef.current = setInterval(pollPlaybackState, 1500);
+    connectPollIntervalRef.current = setInterval(pollPlaybackState, 1000);
 
     return () => {
       console.log('[Connect] Stopping playback state polling');
       clearInterval(connectPollIntervalRef.current);
     };
-  }, [mobileMode, loggedIn, deviceReady, deviceId]);
+  }, [loggedIn, deviceReady, deviceId]);
 
   // -------------------------------------------------------------------------
   // MEDIA SESSION API - System media keys (play/pause/next/prev)
@@ -1003,25 +785,35 @@ export function useSpotify(isMobile = false) {
     setVolumeState(newVolume);
     localStorage.setItem(STORAGE_KEYS.VOLUME, newVolume.toString());
 
-    if (player) {
-      await player.setVolume(newVolume / 100);
+    // Set volume via Spotify API (works with Connect mode)
+    if (deviceId) {
+      try {
+        await setVolume(deviceId, newVolume);
+      } catch (err) {
+        console.log('[Volume] API error:', err.message);
+      }
     }
 
     if (newVolume > 0 && isMuted) {
       setIsMuted(false);
       localStorage.setItem(STORAGE_KEYS.MUTED, 'false');
     }
-  }, [player, isMuted]);
+  }, [deviceId, isMuted]);
 
   const handleMuteToggle = useCallback(async () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     localStorage.setItem(STORAGE_KEYS.MUTED, newMuted.toString());
 
-    if (player) {
-      await player.setVolume(newMuted ? 0 : volume / 100);
+    // Set volume via Spotify API (works with Connect mode)
+    if (deviceId) {
+      try {
+        await setVolume(deviceId, newMuted ? 0 : volume);
+      } catch (err) {
+        console.log('[Volume] API error:', err.message);
+      }
     }
-  }, [player, isMuted, volume]);
+  }, [deviceId, isMuted, volume]);
 
   const playTrack = useCallback(async (track, album) => {
     // Circuit breaker - stop cascading errors when auth is known to be invalid
@@ -1029,10 +821,12 @@ export function useSpotify(isMobile = false) {
       return;
     }
 
-    // Mobile mode: Use Spotify Connect (external device)
-    if (mobileMode) {
-      try {
-        addBreadcrumb(`[Mobile] Playing track: ${track.name}`, 'spotify', 'info');
+    try {
+      addBreadcrumb(`Playing track: ${track.name}`, 'spotify', 'info');
+
+      // Find a device to play on
+      let targetDeviceId = deviceId;
+      if (!targetDeviceId) {
         const devices = await getDevices();
         const activeDevice = devices.find(d => d.is_active) || devices[0];
 
@@ -1040,70 +834,27 @@ export function useSpotify(isMobile = false) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '//INITIALIZE SPOTIFY APPLICATION ON MOBILE DEVICE\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            detail: '//INITIALIZE SPOTIFY APPLICATION\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
           });
           return;
         }
 
-        console.log('[Mobile] Using device:', activeDevice.name);
-        setDeviceId(activeDevice.id);  // Store for controls (play/pause/next/prev)
-        setMobileDeviceName(activeDevice.name);
-        setPlaybackError(null);
-        setAlbumEnded(false);
-        originalAlbumUriRef.current = album.uri;
-        albumEndTriggeredRef.current = false;
-        await play(activeDevice.id, {
-          contextUri: album.uri,
-          offset: track.uri,
-        });
-      } catch (err) {
-        console.error('[Mobile] Failed to play track:', err);
-
-        // Trip circuit breaker on auth errors to stop cascade
-        const isAuthError = err.message?.includes('Not authenticated') ||
-                            err.message?.includes('Session expired') ||
-                            err.message?.includes('Access denied');
-        if (isAuthError) {
-          authInvalidRef.current = true;
-        }
-
-        captureException(err, { context: 'playTrack_mobile', trackId: track.id });
-        setPlaybackError({
-          code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
-          message: isAuthError ? 'SESSION EXPIRED' : 'REMOTE PLAYBACK FAILED',
-          detail: isAuthError ? 'Please log in again' : err.message,
-        });
+        console.log('[Connect] Using device:', activeDevice.name);
+        targetDeviceId = activeDevice.id;
+        setDeviceId(activeDevice.id);
+        setActiveDeviceName(activeDevice.name);
       }
-      return;
-    }
 
-    // Desktop mode: Use Web Playback SDK
-    // Check deviceReady (not just deviceId) to prevent race condition
-    if (!deviceReady) {
-      // Different error messages for Premium vs device initialization issues
-      const isPremiumIssue = !deviceId && !player;
-      setPlaybackError({
-        code: isPremiumIssue ? 'PREMIUM_REQUIRED' : 'DEVICE_UNAVAILABLE',
-        message: isPremiumIssue ? 'SPOTIFY PREMIUM REQUIRED' : 'PLAYBACK SUBSTRATE INITIALIZING',
-        detail: isPremiumIssue
-          ? 'Web playback requires Spotify Premium. Switch to demo mode for local audio.'
-          : 'Device transfer in progress, please wait',
-      });
-      return;
-    }
+      setPlaybackError(null);
+      originalAlbumUriRef.current = album.uri;
+      albumEndTriggeredRef.current = false;
 
-    try {
-      addBreadcrumb(`Playing track: ${track.name}`, 'spotify', 'info');
-      setPlaybackError(null); // Clear any previous error
-      setAlbumEnded(false);   // Clear album-ended state for new playback
-      originalAlbumUriRef.current = album.uri;  // Track this album for end detection
-      albumEndTriggeredRef.current = false;     // Reset trigger flag
-      await play(deviceId, {
+      await play(targetDeviceId, {
         contextUri: album.uri,
         offset: track.uri,
       });
     } catch (err) {
-      console.error('Failed to play track:', err);
+      console.error('[Connect] Failed to play track:', err);
 
       // Trip circuit breaker on auth errors to stop cascade
       const isAuthError = err.message?.includes('Not authenticated') ||
@@ -1113,20 +864,14 @@ export function useSpotify(isMobile = false) {
         authInvalidRef.current = true;
       }
 
-      captureException(err, {
-        context: 'playTrack',
-        trackId: track.id,
-        albumId: album.id,
-        deviceId,
-        deviceReady,
-      });
+      captureException(err, { context: 'playTrack', trackId: track.id });
       setPlaybackError({
         code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
         message: isAuthError ? 'SESSION EXPIRED' : 'TRACK INITIALIZATION FAILED',
         detail: isAuthError ? 'Please log in again' : err.message,
       });
     }
-  }, [deviceId, deviceReady, mobileMode]);
+  }, [deviceId]);
 
   const playAlbum = useCallback(async (album) => {
     // Circuit breaker - stop cascading errors when auth is known to be invalid
@@ -1134,10 +879,12 @@ export function useSpotify(isMobile = false) {
       return;
     }
 
-    // Mobile mode: Use Spotify Connect (external device)
-    if (mobileMode) {
-      try {
-        addBreadcrumb(`[Mobile] Playing album: ${album.name}`, 'spotify', 'info');
+    try {
+      addBreadcrumb(`Playing album: ${album.name}`, 'spotify', 'info');
+
+      // Find a device to play on
+      let targetDeviceId = deviceId;
+      if (!targetDeviceId) {
         const devices = await getDevices();
         const activeDevice = devices.find(d => d.is_active) || devices[0];
 
@@ -1145,68 +892,26 @@ export function useSpotify(isMobile = false) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '//INITIALIZE SPOTIFY APPLICATION ON MOBILE DEVICE\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            detail: '//INITIALIZE SPOTIFY APPLICATION\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
           });
           return;
         }
 
-        console.log('[Mobile] Using device:', activeDevice.name);
-        setDeviceId(activeDevice.id);  // Store for controls (play/pause/next/prev)
-        setMobileDeviceName(activeDevice.name);
-        setPlaybackError(null);
-        setAlbumEnded(false);
-        originalAlbumUriRef.current = album.uri;
-        albumEndTriggeredRef.current = false;
-        await play(activeDevice.id, {
-          contextUri: album.uri,
-        });
-      } catch (err) {
-        console.error('[Mobile] Failed to play album:', err);
-
-        // Trip circuit breaker on auth errors to stop cascade
-        const isAuthError = err.message?.includes('Not authenticated') ||
-                            err.message?.includes('Session expired') ||
-                            err.message?.includes('Access denied');
-        if (isAuthError) {
-          authInvalidRef.current = true;
-        }
-
-        captureException(err, { context: 'playAlbum_mobile', albumId: album.id });
-        setPlaybackError({
-          code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
-          message: isAuthError ? 'SESSION EXPIRED' : 'REMOTE PLAYBACK FAILED',
-          detail: isAuthError ? 'Please log in again' : err.message,
-        });
+        console.log('[Connect] Using device:', activeDevice.name);
+        targetDeviceId = activeDevice.id;
+        setDeviceId(activeDevice.id);
+        setActiveDeviceName(activeDevice.name);
       }
-      return;
-    }
 
-    // Desktop mode: Use Web Playback SDK
-    // Check deviceReady (not just deviceId) to prevent race condition
-    if (!deviceReady) {
-      // Different error messages for Premium vs device initialization issues
-      const isPremiumIssue = !deviceId && !player;
-      setPlaybackError({
-        code: isPremiumIssue ? 'PREMIUM_REQUIRED' : 'DEVICE_UNAVAILABLE',
-        message: isPremiumIssue ? 'SPOTIFY PREMIUM REQUIRED' : 'PLAYBACK SUBSTRATE INITIALIZING',
-        detail: isPremiumIssue
-          ? 'Web playback requires Spotify Premium. Switch to demo mode for local audio.'
-          : 'Device transfer in progress, please wait',
-      });
-      return;
-    }
+      setPlaybackError(null);
+      originalAlbumUriRef.current = album.uri;
+      albumEndTriggeredRef.current = false;
 
-    try {
-      addBreadcrumb(`Playing album: ${album.name}`, 'spotify', 'info');
-      setPlaybackError(null); // Clear any previous error
-      setAlbumEnded(false);   // Clear album-ended state for new album
-      originalAlbumUriRef.current = album.uri;  // Track this album for end detection
-      albumEndTriggeredRef.current = false;     // Reset trigger flag
-      await play(deviceId, {
+      await play(targetDeviceId, {
         contextUri: album.uri,
       });
     } catch (err) {
-      console.error('Failed to play album:', err);
+      console.error('[Connect] Failed to play album:', err);
 
       // Check for auth errors first - trip circuit breaker to stop cascade
       const isAuthError = err.message?.includes('Not authenticated') ||
@@ -1224,31 +929,23 @@ export function useSpotify(isMobile = false) {
       }
 
       // Check if this is a 403 error (album unavailable/restricted)
-      // Spotify returns 403 for region-restricted, unavailable albums
       const is403Error = err.message?.includes('403') ||
                          err.message?.includes('Forbidden') ||
                          err.message?.includes('restricted') ||
                          err.status === 403;
 
       if (is403Error) {
-        console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable - REMOVING FROM GRID`);
-        captureException(err, {
-          context: 'playAlbum_403',
-          albumId: album.id,
-          albumName: album.name,
-        });
+        console.log(`[Album Unavailable] Marking album "${album.name}" (${album.id}) as unavailable`);
+        captureException(err, { context: 'playAlbum_403', albumId: album.id });
         setUnavailableAlbums(prev => {
-          // Check if already in list
           if (prev.some(a => a.id === album.id)) return prev;
-          const newList = [...prev, {
+          return [...prev, {
             id: album.id,
             name: album.name,
             artist: album.artist,
             reason: 'Region restricted (403 Forbidden)',
             timestamp: new Date().toISOString(),
           }];
-          console.log(`[Album Unavailable] Unavailable albums count: ${newList.length}`);
-          return newList;
         });
         setPlaybackError({
           code: 'ALBUM_UNAVAILABLE',
@@ -1256,13 +953,7 @@ export function useSpotify(isMobile = false) {
           detail: 'This album is not available in your region',
         });
       } else {
-        captureException(err, {
-          context: 'playAlbum',
-          albumId: album.id,
-          albumName: album.name,
-          deviceId,
-          deviceReady,
-        });
+        captureException(err, { context: 'playAlbum', albumId: album.id });
         setPlaybackError({
           code: 'PLAYBACK_FAILURE',
           message: 'ALBUM INITIALIZATION FAILED',
@@ -1270,7 +961,7 @@ export function useSpotify(isMobile = false) {
         });
       }
     }
-  }, [deviceId, deviceReady, mobileMode]);
+  }, [deviceId]);
 
   // -------------------------------------------------------------------------
   // GET FULL ALBUM TRACKS (with liked status)
@@ -1372,11 +1063,9 @@ export function useSpotify(isMobile = false) {
     isMuted,
     playbackError,
     clearPlaybackError: () => setPlaybackError(null),
-    // albumEnded removed - simplified UX, let Spotify handle naturally
 
-    // Mobile mode (Spotify Connect)
-    mobileMode,
-    mobileDeviceName,
+    // Connect mode (controls external Spotify device)
+    activeDeviceName,
 
     // Playback controls
     play: handlePlay,
