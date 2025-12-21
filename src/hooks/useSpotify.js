@@ -29,6 +29,7 @@ import {
   getCurrentUser,
   getDevices,
   getPlaybackState,
+  transferPlayback,
 } from '../utils/spotify';
 import {
   DECADE_OPTIONS,
@@ -846,11 +847,26 @@ export function useSpotify(isMobile = false) {
 
       // Find a device to play on
       let targetDeviceId = deviceId;
+      let needsTransfer = false;
+
       if (!targetDeviceId) {
         const devices = await getDevices();
-        const activeDevice = devices.find(d => d.is_active) || devices[0];
 
-        if (!activeDevice) {
+        // On mobile, prefer smartphone devices (play on user's phone)
+        // On desktop, prefer active device or first available
+        let targetDevice;
+        if (isMobile) {
+          // Try: smartphone → active device → first device
+          targetDevice = devices.find(d => d.type === 'Smartphone') ||
+                         devices.find(d => d.is_active) ||
+                         devices[0];
+          console.log('[Connect] Mobile mode - looking for smartphone device');
+        } else {
+          // Desktop: active device → first device
+          targetDevice = devices.find(d => d.is_active) || devices[0];
+        }
+
+        if (!targetDevice) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
@@ -859,15 +875,26 @@ export function useSpotify(isMobile = false) {
           return;
         }
 
-        console.log('[Connect] Using device:', activeDevice.name);
-        targetDeviceId = activeDevice.id;
-        setDeviceId(activeDevice.id);
-        setActiveDeviceName(activeDevice.name);
+        console.log('[Connect] Using device:', targetDevice.name, `(${targetDevice.type})`);
+        targetDeviceId = targetDevice.id;
+        setDeviceId(targetDevice.id);
+        setActiveDeviceName(targetDevice.name);
+
+        // If device isn't active, we need to transfer playback first
+        needsTransfer = !targetDevice.is_active;
       }
 
       setPlaybackError(null);
       originalAlbumUriRef.current = album.uri;
       albumEndTriggeredRef.current = false;
+
+      // Transfer playback to wake up device if needed
+      if (needsTransfer) {
+        console.log('[Connect] Transferring playback to device...');
+        await transferPlayback(targetDeviceId, false);
+        // Small delay to let device wake up
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
       await play(targetDeviceId, {
         contextUri: album.uri,
@@ -891,7 +918,7 @@ export function useSpotify(isMobile = false) {
         detail: isAuthError ? 'Please log in again' : err.message,
       });
     }
-  }, [deviceId]);
+  }, [deviceId, isMobile]);
 
   const playAlbum = useCallback(async (album) => {
     // Circuit breaker - stop cascading errors when auth is known to be invalid
@@ -904,11 +931,26 @@ export function useSpotify(isMobile = false) {
 
       // Find a device to play on
       let targetDeviceId = deviceId;
+      let needsTransfer = false;
+
       if (!targetDeviceId) {
         const devices = await getDevices();
-        const activeDevice = devices.find(d => d.is_active) || devices[0];
 
-        if (!activeDevice) {
+        // On mobile, prefer smartphone devices (play on user's phone)
+        // On desktop, prefer active device or first available
+        let targetDevice;
+        if (isMobile) {
+          // Try: smartphone → active device → first device
+          targetDevice = devices.find(d => d.type === 'Smartphone') ||
+                         devices.find(d => d.is_active) ||
+                         devices[0];
+          console.log('[Connect] Mobile mode - looking for smartphone device');
+        } else {
+          // Desktop: active device → first device
+          targetDevice = devices.find(d => d.is_active) || devices[0];
+        }
+
+        if (!targetDevice) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
@@ -917,15 +959,26 @@ export function useSpotify(isMobile = false) {
           return;
         }
 
-        console.log('[Connect] Using device:', activeDevice.name);
-        targetDeviceId = activeDevice.id;
-        setDeviceId(activeDevice.id);
-        setActiveDeviceName(activeDevice.name);
+        console.log('[Connect] Using device:', targetDevice.name, `(${targetDevice.type})`);
+        targetDeviceId = targetDevice.id;
+        setDeviceId(targetDevice.id);
+        setActiveDeviceName(targetDevice.name);
+
+        // If device isn't active, we need to transfer playback first
+        needsTransfer = !targetDevice.is_active;
       }
 
       setPlaybackError(null);
       originalAlbumUriRef.current = album.uri;
       albumEndTriggeredRef.current = false;
+
+      // Transfer playback to wake up device if needed
+      if (needsTransfer) {
+        console.log('[Connect] Transferring playback to device...');
+        await transferPlayback(targetDeviceId, false);
+        // Small delay to let device wake up
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
       await play(targetDeviceId, {
         contextUri: album.uri,
@@ -981,7 +1034,7 @@ export function useSpotify(isMobile = false) {
         });
       }
     }
-  }, [deviceId]);
+  }, [deviceId, isMobile]);
 
   // -------------------------------------------------------------------------
   // GET FULL ALBUM TRACKS (with liked status)
