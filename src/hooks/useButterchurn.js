@@ -27,9 +27,9 @@ import butterchurnPresets from 'butterchurn-presets';
 // ============================================================================
 
 // Performance settings
-const RENDER_WIDTH = 800;  // Lower res for performance
-const RENDER_HEIGHT = 600;
-const TARGET_FPS = 30;
+const RENDER_WIDTH = 480;  // Low res for retro CRT aesthetic + performance
+const RENDER_HEIGHT = 360;
+const TARGET_FPS = 24;
 const FRAME_TIME = 1000 / TARGET_FPS;
 
 // Curated presets that look good and perform well

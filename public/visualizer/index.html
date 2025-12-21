@@ -192,10 +192,10 @@
 
     // Performance settings - prevents 300% CPU usage
     // Low resolution for retro CRT aesthetic + performance
-    const TARGET_FPS = 30;
+    const TARGET_FPS = 24;
     const FRAME_TIME = 1000 / TARGET_FPS;
-    const MAX_RENDER_WIDTH = 400;
-    const MAX_RENDER_HEIGHT = 300;
+    const RENDER_WIDTH = 480;  // Fixed render resolution (20% larger than original 400x300)
+    const RENDER_HEIGHT = 360;
 
     const canvas = document.getElementById('canvas');
     const startOverlay = document.getElementById('start-overlay');
@@ -204,17 +204,14 @@
     const retryBtn = document.getElementById('retry-btn');
     const presetNameEl = document.getElementById('preset-name');
 
-    // Resize canvas to fill window
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      if (visualizer) {
-        visualizer.setRendererSize(canvas.width, canvas.height);
-      }
+    // Set canvas to fixed render size - CSS will scale to fill container
+    // Don't resize dynamically to prevent CPU spikes on large windows
+    function initCanvas() {
+      canvas.width = RENDER_WIDTH;
+      canvas.height = RENDER_HEIGHT;
     }
 
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    initCanvas();
 
     // Initialize visualizer
     async function init() {
@@ -234,13 +231,11 @@
         const source = audioContext.createMediaStreamSource(stream);
 
         // Create visualizer (handle both default export and direct export)
-        // Use capped resolution to prevent CPU spike (was causing 300% kernel_task)
+        // Use fixed resolution to prevent CPU spike (was causing 300% kernel_task)
         const createVis = butterchurn.default?.createVisualizer || butterchurn.createVisualizer;
-        const renderWidth = Math.min(canvas.width, MAX_RENDER_WIDTH);
-        const renderHeight = Math.min(canvas.height, MAX_RENDER_HEIGHT);
         visualizer = createVis(audioContext, canvas, {
-          width: renderWidth,
-          height: renderHeight,
+          width: RENDER_WIDTH,
+          height: RENDER_HEIGHT,
           pixelRatio: 1,  // Force 1x, not Retina 2x (4x fewer pixels)
         });
 

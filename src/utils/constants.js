@@ -56,6 +56,9 @@ export const LOCAL_TRACKS = [
 // 120 divides cleanly by 2,3,4,5,6,8,10,12,15,20,24,30,40,60 - good for responsive grids
 export const TARGET_ALBUM_COUNT = 120;
 
+// Minimum albums to show per decade grid (fills with below-threshold albums if needed)
+export const MINIMUM_GRID_ALBUMS = 24;
+
 // Minimum saved tracks required to include album in Top N
 export const MIN_SAVED_TRACKS = 8;
 

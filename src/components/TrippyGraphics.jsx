@@ -28,8 +28,8 @@ import PixelIcon from './PixelIcon';
 
 const StyledWindow = styled(Window)`
   position: fixed;
-  min-width: 400px;
-  min-height: 300px;
+  min-width: 480px;
+  min-height: 360px;
   z-index: ${props => props.$zIndex || 1000};
 
   /* Dark theme */
@@ -194,8 +194,8 @@ function TrippyGraphics({
       style={isMobile ? {} : {
         left: position?.x ?? 100,
         top: position?.y ?? 100,
-        width: size?.width ?? 500,
-        height: size?.height ?? 400,
+        width: size?.width ?? 640,
+        height: size?.height ?? 520,
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleMouseDown}

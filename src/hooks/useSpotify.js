@@ -38,6 +38,7 @@ import {
   getDecadeCompletionThreshold,
   DEFAULT_THRESHOLD,
   TARGET_ALBUM_COUNT,
+  MINIMUM_GRID_ALBUMS,
   MIN_SAVED_TRACKS,
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
@@ -568,9 +569,28 @@ export function useSpotify(isMobile = false) {
     // Step 2: Sort all candidates by liked track count (highest first)
     const sorted = [...candidates].sort((a, b) => b.likedTracks - a.likedTracks);
 
-    // Step 3: Filter to albums meeting threshold, cap at TARGET_ALBUM_COUNT
+    // Step 3: Filter to albums meeting threshold
     const qualifyingAlbums = sorted.filter(a => a.likedTracks >= threshold);
-    return qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
+
+    // Step 4: Mark albums and fill to minimum if needed
+    // When viewing a specific decade, ensure at least MINIMUM_GRID_ALBUMS (24) are shown
+    const isDecadeView = decade !== DECADE_OPTIONS.ALL;
+    const needsFilling = isDecadeView && qualifyingAlbums.length < MINIMUM_GRID_ALBUMS && sorted.length > qualifyingAlbums.length;
+
+    if (needsFilling) {
+      // Mark qualifying albums as meeting threshold
+      const result = qualifyingAlbums.map(a => ({ ...a, belowThreshold: false }));
+
+      // Add below-threshold albums to fill up to MINIMUM_GRID_ALBUMS
+      const belowThreshold = sorted.filter(a => a.likedTracks < threshold);
+      const needed = MINIMUM_GRID_ALBUMS - result.length;
+      const fillers = belowThreshold.slice(0, needed).map(a => ({ ...a, belowThreshold: true }));
+
+      return [...result, ...fillers].slice(0, TARGET_ALBUM_COUNT);
+    }
+
+    // Normal case: just return qualifying albums with belowThreshold: false
+    return qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT).map(a => ({ ...a, belowThreshold: false }));
   }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade, threshold]);
 
   // Compute decade counts filtered by threshold (for Settings slider preview)

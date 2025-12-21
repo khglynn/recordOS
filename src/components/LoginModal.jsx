@@ -236,7 +236,7 @@ function LoginModal({
       >
         <HeaderTitle>
           <PixelIcon name="power" size={14} />
-          <span>RECORD OS //INITIALIZE</span>
+          <span>RECORD OS // INITIALIZE</span>
         </HeaderTitle>
         <div style={{ display: 'flex', gap: '2px' }}>
           {/* Hide minimize on mobile - only Scanner/MediaPlayer get minimize on mobile */}
@@ -261,7 +261,7 @@ function LoginModal({
         <StatusText>
           AUDIO VISUALIZATION TERMINAL
           <br />
-          SYSTEM STATUS: AWAITING CONNECTION
+          IDENTITY VERIFICATION: PENDING
         </StatusText>
 
         <SpotifyButton onClick={handleLogin}>
@@ -269,9 +269,9 @@ function LoginModal({
         </SpotifyButton>
 
         <Footer>
-          // REQUIRES PREMIUM FOR PLAYBACK //
+          // AUDIO PRIVILEGES / PREMIUM TIER ONLY //
           <br />
-          // OPTIMIZED FOR CHROME DESKTOP //
+          // CHROME DESKTOP OPTIMAL / PHONES TOLERATED //
         </Footer>
       </StyledWindowContent>
     </StyledWindow>

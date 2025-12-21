@@ -180,7 +180,7 @@ jQuery(function ($) {
         }
       });
 
-      // Flag mode toggle button handler (also serves as NEW GAME after loss)
+      // Flag mode toggle button handler (also serves as NEW GAME after loss/win)
       msUI.on('click', '.flag-toggle', function (ev) {
         ev.preventDefault();
 
@@ -193,6 +193,9 @@ jQuery(function ($) {
           msObj.clearBoard();
           msObj.redrawBoard();
           msObj.resetDisplays();
+          msObj.setMineInputState(true);
+          // Hide win overlay if visible
+          document.getElementById('win-overlay')?.classList.remove('visible');
           return;
         }
 
@@ -289,6 +292,9 @@ jQuery(function ($) {
         msObj.clearBoard();
         msObj.redrawBoard();
         msObj.resetDisplays();
+        msObj.setMineInputState(true);
+        // Hide win overlay if visible
+        document.getElementById('win-overlay')?.classList.remove('visible');
       });
     };
 
@@ -475,10 +481,21 @@ jQuery(function ($) {
       $('#mine_flag_display').val(numMines);
     };
 
+    // Enable/disable mine count input based on game state
+    this.setMineInputState = function (enabled) {
+      $('#numMines').prop('disabled', !enabled);
+    };
+
     this.assignMines = function (safeX, safeY) {
       if (msObj.minesDealt) {
         return;
       }
+
+      // Read mine count from input before placing mines
+      msObj.setBoardOptions();
+      // Update the "LEFT" counter to match
+      $('#mine_flag_display').val(msObj.options.numMines);
+
       let width = msObj.options.boardSize[0],
         height = msObj.options.boardSize[1],
         mineHat = msObj.getRandomMineArray(safeX, safeY),
@@ -493,6 +510,8 @@ jQuery(function ($) {
       }
 
       msObj.minesDealt = true;
+      // Disable mine count input once game has started
+      msObj.setMineInputState(false);
     };
 
     this.clearBoard = function () {
@@ -644,7 +663,8 @@ jQuery(function ($) {
       msObj.running = false;
       // Change FLAG button to PLAY AGAIN
       $('.flag-toggle').removeClass('active').text('PLAY AGAIN');
-      alert('You win!');
+      // Show styled win overlay instead of alert
+      document.getElementById('win-overlay').classList.add('visible');
     };
 
     this.getTemplate = function (template) {

@@ -45,9 +45,11 @@ const GlobalStyles = createGlobalStyle`
     transition: opacity 0.2s ease;
   }
 
-  /* Hide scanlines when toggle is off */
-  body.scanlines-disabled #root::after {
-    opacity: 0;
+  /* Hide ALL scanlines when toggle is off */
+  body.scanlines-disabled #root::after,
+  body.scanlines-disabled [data-album-grid]::after,
+  body.scanlines-disabled [data-album-grid-inner] > *::before {
+    opacity: 0 !important;
   }
 
   body {
@@ -183,6 +185,43 @@ const GlobalStyles = createGlobalStyle`
   }
 
   /* Taskbar overrides handled in component */
+
+  /* -------------------------------------------------------------------------
+   * EXPORT MODE - Hide UI during PNG capture
+   * ------------------------------------------------------------------------- */
+  body.export-mode {
+    /* Hide everything except the album grid */
+    .scanlines,
+    [data-window],
+    .taskbar,
+    nav,
+    header,
+    footer {
+      display: none !important;
+    }
+
+    /* Remove any dimming/overlays */
+    &::before,
+    &::after {
+      display: none !important;
+    }
+
+    /* Ensure album grid is fully visible and bright */
+    [data-album-grid] {
+      position: relative !important;
+      z-index: 1 !important;
+    }
+
+    [data-album-grid-inner] img {
+      opacity: 1 !important;
+      filter: none !important;
+    }
+
+    /* Override below-threshold dimming for export */
+    [data-album-grid-inner] > * {
+      opacity: 1 !important;
+    }
+  }
 `;
 
 export default GlobalStyles;

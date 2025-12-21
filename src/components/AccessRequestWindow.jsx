@@ -132,13 +132,13 @@ const WaitingBlock = styled.div`
 `;
 
 const WaitingEmail = styled.div`
-  font-size: 11px;
+  font-size: 13px;
   color: #00ff41;
   font-family: 'Consolas', 'Courier New', monospace;
   margin-bottom: 12px;
   padding: 10px;
   background: #0a0a0a;
-  border: 1px solid #1a1a1a;
+  border: 1px solid #2a2a2a;
   word-break: break-all;
 `;
 
@@ -401,9 +401,7 @@ function AccessRequestWindow({
           </Form>
 
           <Note>
-            //THE COMPANY PRIORITIZES THE COMPANY
-            <br />
-            //CHEAP HUMAN LABOR PINGED. EST WAIT: {'<'}3 MIN
+            //AUTHORIZATION REQUIRED FOR SPOTIFY ACCESS
           </Note>
 
           {onClose && (
@@ -419,10 +417,10 @@ function AccessRequestWindow({
         <>
           <StatusBlock>
             <StatusLine $highlight>
-              <span className="prompt">//</span>ACCESS REQUEST TRANSMITTED
+              <span className="prompt">//</span>CHEAP HUMAN LABOR PINGED
             </StatusLine>
             <StatusLine>
-              <span className="prompt">//</span>AWAITING ADMINISTRATOR APPROVAL
+              <span className="prompt">//</span>EST TIME TO COMPLETE: {'<'}3 MIN
             </StatusLine>
           </StatusBlock>
 
@@ -443,7 +441,7 @@ function AccessRequestWindow({
                 MINESWEEPER
               </GameLink>
               <GameLink onClick={() => { onOpenGame?.('solitaire'); onClose?.(); }}>
-                <PixelIcon name="card" size={12} color="currentColor" />
+                <PixelIcon name="cards" size={12} color="currentColor" />
                 SOLITAIRE
               </GameLink>
               <GameLink onClick={() => { onOpenGame?.('snake'); onClose?.(); }}>
@@ -453,14 +451,8 @@ function AccessRequestWindow({
             </GameLinks>
           </IdleProcesses>
 
-          <Note>
-            //WINDOW MAY BE MINIMIZED
-            <br />
-            //SYSTEM WILL AUTO-DETECT AUTHORIZATION
-          </Note>
-
           <CancelLink onClick={handleCancel}>
-            //USE DIFFERENT EMAIL
+            //WRONG HUMAN? RETRY
           </CancelLink>
         </>
       )}
@@ -486,7 +478,7 @@ function AccessRequestWindow({
           <Note>
             //WELCOME TO RECORD OS
             <br />
-            //BUILDING BETTER WORLDS
+            //BUILDING BASSIER WORLDS
           </Note>
         </>
       )}

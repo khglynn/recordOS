@@ -787,12 +787,12 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
         <DesktopContainer>
           <EmptyGrid />
           <EmptyLibraryMessage>
-            <h2>SCAN FAILURE</h2>
+            <h2>ERR_NO_TRACKS</h2>
             <p>
-              <span className="prompt">&gt;</span> ERR_NO_TRACKS: Audio library returned null.
+              <span className="prompt">&gt;</span> Audio library returned null.
             </p>
             <p>
-              <span className="prompt">&gt;</span> This is probably our fault.
+              <span className="prompt">&gt;</span> Probably Kevin's fault.
             </p>
             <p>
               <span className="prompt">&gt;</span> Enjoy the games, or contact:
@@ -842,10 +842,12 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
             key={album.id}
             onClick={() => onAlbumClick(album)}
             className={!loadedImages.has(album.id) ? 'loading' : ''}
-            style={seenAlbums.has(album.id)
-              ? { animation: 'none' }
-              : { '--reveal-delay': `${getAnimationDelay(album)}ms` }
-            }
+            style={{
+              ...(seenAlbums.has(album.id)
+                ? { animation: 'none' }
+                : { '--reveal-delay': `${getAnimationDelay(album)}ms` }),
+              ...(album.belowThreshold && { opacity: 0.85 }),
+            }}
           >
             <img
               src={album.image}

@@ -1,8 +1,9 @@
 # Connect Mode Everywhere + UX Polish
 
 **Created:** 2025-12-21
-**Status:** In progress
+**Status:** Complete
 **Last updated:** 2025-12-21
+**Deployed:** 2025-12-21 (main branch)
 
 ---
 
@@ -21,6 +22,8 @@
 | Lower visualizer resolution for performance | Done |
 | Increase max albums to 120 + add cap note | Done |
 | Fix threshold export filename bug | Done |
+| Salty Weyland-Yutani copy for AccessRequestWindow | Done |
+| Remove infinite gridPulse animation | Done |
 
 ### Changes Made
 
@@ -49,6 +52,8 @@
 - LibraryScanner: Added game links during scan (minimizes scanner when game opens)
 - SettingsModal: Added cap note "//GRID CAPPED AT 120 ALBUMS" when total >= 120
 - Album grid now shows up to 120 albums (was 48)
+- AccessRequestWindow: Salty Weyland-Yutani copy about Spotify's 25-user dev limit
+- Desktop: Removed infinite gridPulse animation (static 0.5 opacity now)
 
 ---
 
