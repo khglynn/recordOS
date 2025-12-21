@@ -191,10 +191,11 @@
     let lastFrameTime = 0;
 
     // Performance settings - prevents 300% CPU usage
+    // Low resolution for retro CRT aesthetic + performance
     const TARGET_FPS = 30;
     const FRAME_TIME = 1000 / TARGET_FPS;
-    const MAX_RENDER_WIDTH = 800;
-    const MAX_RENDER_HEIGHT = 600;
+    const MAX_RENDER_WIDTH = 400;
+    const MAX_RENDER_HEIGHT = 300;
 
     const canvas = document.getElementById('canvas');
     const startOverlay = document.getElementById('start-overlay');

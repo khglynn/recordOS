@@ -53,8 +53,8 @@ export const LOCAL_TRACKS = [
 // ============================================================================
 
 // Target number of albums to show (Top N algorithm)
-// 48 divides cleanly by 2,3,4,6,8,12,16,24 - good for responsive grids
-export const TARGET_ALBUM_COUNT = 48;
+// 120 divides cleanly by 2,3,4,5,6,8,10,12,15,20,24,30,40,60 - good for responsive grids
+export const TARGET_ALBUM_COUNT = 120;
 
 // Minimum saved tracks required to include album in Top N
 export const MIN_SAVED_TRACKS = 8;

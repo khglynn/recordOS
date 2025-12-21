@@ -79,23 +79,8 @@ const EmptyGrid = styled.div`
   /* Center the grid */
   background-position: center center;
 
-  /* Subtle pulse animation - gentle breathing effect */
-  animation: gridPulse 6s ease-in-out infinite;
-
-  @keyframes gridPulse {
-    0%, 100% {
-      opacity: 0.4;
-    }
-    25% {
-      opacity: 0.55;
-    }
-    50% {
-      opacity: 0.65;
-    }
-    75% {
-      opacity: 0.5;
-    }
-  }
+  /* Static opacity - removed pulse animation */
+  opacity: 0.5;
 
   /* Scanline overlay for CRT feel - subtle static effect */
   &::after {

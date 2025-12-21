@@ -196,6 +196,46 @@ const CancelLink = styled.button`
   }
 `;
 
+// Games section for pending state
+const IdleProcesses = styled.div`
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #1a1a1a;
+`;
+
+const IdleHeader = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.5);
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+`;
+
+const GameLinks = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const GameLink = styled.button`
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  color: rgba(0, 255, 65, 0.7);
+  padding: 6px 10px;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    border-color: #00ff41;
+    color: #00ff41;
+    background: #0d1a0d;
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -212,6 +252,7 @@ function AccessRequestWindow({
   isMobile,
   // Access-specific props
   onApproved,
+  onOpenGame, // For playing games while waiting
 }) {
   const [state, setState] = useState('idle'); // idle, submitting, pending, approved, error
   const [email, setEmail] = useState('');
@@ -327,18 +368,18 @@ function AccessRequestWindow({
         <>
           <StatusBlock>
             <StatusLine>
-              <span className="prompt">//</span>EXTERNAL AUTHENTICATION RESTRICTED
+              <span className="prompt">//</span>CORP DIRECTIVE: MAX 25 USERS
             </StatusLine>
             <StatusLine>
-              <span className="prompt">//</span>SPOTIFY DEVELOPMENT MODE ACTIVE
+              <span className="prompt">//</span>INDIE DEVELOPERS: EXPENDABLE
             </StatusLine>
             <StatusLine>
-              <span className="prompt">//</span>MANUAL CLEARANCE REQUIRED
+              <span className="prompt">//</span>API ACCESS: SHAREHOLDERS ONLY
             </StatusLine>
           </StatusBlock>
 
           <Form onSubmit={handleSubmit}>
-            <InputLabel>SPOTIFY ACCOUNT EMAIL</InputLabel>
+            <InputLabel>SPOTIFY EMAIL FOR FLESH REVIEW</InputLabel>
             <StyledInput
               type="email"
               value={email}
@@ -360,11 +401,9 @@ function AccessRequestWindow({
           </Form>
 
           <Note>
-            //SPOTIFY API GATEKEEPING IN EFFECT
+            //THE COMPANY PRIORITIZES THE COMPANY
             <br />
-            //CORPORATE POLICY BEYOND OUR CONTROL
-            <br />
-            //ESTIMATED WAIT: {'<'}5 MINUTES
+            //CHEAP HUMAN LABOR PINGED. EST WAIT: {'<'}3 MIN
           </Note>
 
           {onClose && (
@@ -395,12 +434,29 @@ function AccessRequestWindow({
             </WaitingStatus>
           </WaitingBlock>
 
+          {/* Games while waiting */}
+          <IdleProcesses>
+            <IdleHeader>//IDLE PROCESSES AVAILABLE</IdleHeader>
+            <GameLinks>
+              <GameLink onClick={() => { onOpenGame?.('minesweeper'); onClose?.(); }}>
+                <PixelIcon name="flag" size={12} color="currentColor" />
+                MINESWEEPER
+              </GameLink>
+              <GameLink onClick={() => { onOpenGame?.('solitaire'); onClose?.(); }}>
+                <PixelIcon name="card" size={12} color="currentColor" />
+                SOLITAIRE
+              </GameLink>
+              <GameLink onClick={() => { onOpenGame?.('snake'); onClose?.(); }}>
+                <PixelIcon name="gamepad" size={12} color="currentColor" />
+                SNAKE
+              </GameLink>
+            </GameLinks>
+          </IdleProcesses>
+
           <Note>
             //WINDOW MAY BE MINIMIZED
             <br />
             //SYSTEM WILL AUTO-DETECT AUTHORIZATION
-            <br />
-            //POLLING INTERVAL: 5 SECONDS
           </Note>
 
           <CancelLink onClick={handleCancel}>

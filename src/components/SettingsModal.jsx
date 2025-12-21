@@ -18,7 +18,7 @@ import { Fieldset } from 'react95';
 import html2canvas from 'html2canvas';
 import PixelIcon from './PixelIcon';
 import WindowFrame from './WindowFrame';
-import { DECADE_LABELS, DECADE_ORDER, MIN_SAVED_TRACKS } from '../utils/constants';
+import { DECADE_LABELS, DECADE_ORDER, TARGET_ALBUM_COUNT } from '../utils/constants';
 
 // ============================================================================
 // STYLED COMPONENTS (Content-specific only)
@@ -167,6 +167,14 @@ const TotalRow = styled.div`
   border-top: 1px dashed #1a1a1a;
 `;
 
+const CapNote = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.35);
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin-top: 8px;
+  text-align: center;
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -225,14 +233,17 @@ function SettingsModal({
     URL.revokeObjectURL(url);
   };
 
-  // Export album grid as PNG
-  const [exportState, setExportState] = useState('idle'); // 'idle' | 'exporting' | 'success' | 'error'
+  // Export album grid as PNG with terminal flair
+  // States: idle → init → render → compress → success | error
+  const [exportState, setExportState] = useState('idle');
   const handleExportGrid = async () => {
     const container = document.querySelector('[data-album-grid]');
     const grid = document.querySelector('[data-album-grid-inner]');
     if (!container || !grid) return;
 
-    setExportState('exporting');
+    // Terminal-style staged export
+    setExportState('init');
+    await new Promise(r => setTimeout(r, 400));
 
     // Store original styles to restore later
     const originalContainerStyle = {
@@ -256,9 +267,10 @@ function SettingsModal({
       grid.style.height = 'auto';
       grid.style.position = 'relative'; // Remove absolute positioning
 
+      setExportState('render');
       // Wait for layout to settle
       await new Promise(r => requestAnimationFrame(r));
-      await new Promise(r => setTimeout(r, 100)); // Extra time for images
+      await new Promise(r => setTimeout(r, 300)); // Extra time for images
 
       const canvas = await html2canvas(grid, {
         backgroundColor: '#0a0a0a',
@@ -267,14 +279,17 @@ function SettingsModal({
         logging: false,
       });
 
+      setExportState('compress');
+      await new Promise(r => setTimeout(r, 300));
+
       // Download with descriptive filename
       // Format: [username]_albums_[x]+likes_circa[xx]s.png
       const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
       const decadeLabel = decade === 'all' ? '_all' : `circa${DECADE_LABELS[decade] || decade}`;
-      const threshold = `${MIN_SAVED_TRACKS}+likes`;
+      const thresholdLabel = `${threshold}+likes`;
 
       const link = document.createElement('a');
-      link.download = `${safeUserName}_albums_${threshold}_${decadeLabel}.png`;
+      link.download = `${safeUserName}_albums_${thresholdLabel}_${decadeLabel}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
@@ -295,13 +310,15 @@ function SettingsModal({
     }
   };
 
-  // Get export button label based on state
+  // Get export button label based on state (terminal flair)
   const getExportLabel = () => {
     switch (exportState) {
-      case 'exporting': return 'SAVING...';
-      case 'success': return 'SAVED!';
+      case 'init': return 'INIT...';
+      case 'render': return 'RENDER...';
+      case 'compress': return 'COMPRESS...';
+      case 'success': return 'COMPLETE';
       case 'error': return 'FAILED';
-      default: return 'PNG';
+      default: return 'EXPORT';
     }
   };
 
@@ -372,6 +389,9 @@ function SettingsModal({
                 <DecadeCountLabel>TOTAL</DecadeCountLabel>
                 <DecadeCountValue>{totalAlbums}</DecadeCountValue>
               </TotalRow>
+              {totalAlbums >= TARGET_ALBUM_COUNT && (
+                <CapNote>//GRID CAPPED AT {TARGET_ALBUM_COUNT} ALBUMS</CapNote>
+              )}
             </DecadeCountsList>
           )}
         </SliderContainer>
@@ -417,10 +437,10 @@ function SettingsModal({
             <SettingLabel>Save grid as image</SettingLabel>
             <ToggleButton
               onClick={handleExportGrid}
-              disabled={exportState === 'exporting'}
+              disabled={['init', 'render', 'compress'].includes(exportState)}
               $active={exportState === 'success'}
             >
-              <PixelIcon name={exportState === 'success' ? 'check' : 'download'} size={12} />
+              <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'download'} size={12} />
               {getExportLabel()}
             </ToggleButton>
           </SettingRow>

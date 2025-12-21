@@ -889,6 +889,7 @@ function App() {
           isMobile={isMobile}
           onApproved={handleAccessApproved}
           onClose={() => setShowAccessRequest(false)}
+          onOpenGame={handleOpenGame}
         />
       )}
 
@@ -1096,6 +1097,7 @@ function App() {
                 decadeLabels={spotify.decadeLabels}
                 topDecade={getTopDecade()}
                 onSelectDecade={handleSelectDecade}
+                onOpenGame={handleOpenGame}
               />
             );
 

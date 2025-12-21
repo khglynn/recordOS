@@ -264,6 +264,46 @@ const SystemNote = styled.div`
   letter-spacing: 0.5px;
 `;
 
+// Games section (while scanning)
+const IdleProcesses = styled.div`
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #1a1a1a;
+`;
+
+const IdleHeader = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.5);
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+`;
+
+const GameLinks = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const GameLink = styled.button`
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  color: rgba(0, 255, 65, 0.7);
+  padding: 6px 10px;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    border-color: #00ff41;
+    color: #00ff41;
+    background: #0d1a0d;
+  }
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -294,6 +334,7 @@ function LibraryScanner({
 
   // Actions
   onSelectDecade,
+  onOpenGame, // For playing games while waiting
 }) {
   const headerRef = useRef(null);
   const [displayedPercent, setDisplayedPercent] = useState(0);
@@ -430,6 +471,27 @@ function LibraryScanner({
             <DecadeButtonCount>{albumCount} albums</DecadeButtonCount>
           </AllButton>
         </DecadeButtonGrid>
+
+        {/* Games while scanning */}
+        {!isComplete && onOpenGame && (
+          <IdleProcesses>
+            <IdleHeader>//IDLE PROCESSES AVAILABLE</IdleHeader>
+            <GameLinks>
+              <GameLink onClick={() => { onOpenGame('minesweeper'); onMinimize?.(); }}>
+                <PixelIcon name="flag" size={12} color="currentColor" />
+                MINESWEEPER
+              </GameLink>
+              <GameLink onClick={() => { onOpenGame('solitaire'); onMinimize?.(); }}>
+                <PixelIcon name="card" size={12} color="currentColor" />
+                SOLITAIRE
+              </GameLink>
+              <GameLink onClick={() => { onOpenGame('snake'); onMinimize?.(); }}>
+                <PixelIcon name="gamepad" size={12} color="currentColor" />
+                SNAKE
+              </GameLink>
+            </GameLinks>
+          </IdleProcesses>
+        )}
 
         <SystemNote>
           // RECORD_OS v3.0 // WEYLAND-YUTANI AUDIO DIVISION //
