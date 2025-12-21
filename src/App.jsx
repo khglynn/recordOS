@@ -32,7 +32,6 @@ import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
 import SettingsModal from './components/SettingsModal';
 import LibraryScanner from './components/LibraryScanner';
-import AccessRequestWindow from './components/AccessRequestWindow';
 import ErrorModal from './components/ErrorModal';
 
 // Hooks
@@ -100,31 +99,127 @@ function App() {
   const audio = (isLoggedIn && !demoModeForced) ? spotify : localAudio;
 
   // -------------------------------------------------------------------------
-  // ACCESS REQUEST GATE
+  // ACCESS REQUEST OVERLAY STATE
   // -------------------------------------------------------------------------
-  // Spotify Development Mode requires manual whitelisting. Before showing
-  // the Spotify login, users must request access and wait for approval.
-  // This prevents 403 errors during library scan.
+  // Spotify Development Mode requires manual whitelisting. The access request
+  // is now shown as a GREEN CRT OVERLAY on top of the LoginModal window,
+  // not as a separate window. This keeps the beautiful dripping logo visible.
+  //
+  // States: idle → submitting → pending → approved (or error)
 
+  const LOCAL_STORAGE_KEY = 'access_request_email';
+  const POLL_INTERVAL = 5000;
+
+  // Check if user is already approved
   const [accessApproved, setAccessApproved] = useState(() => {
-    // Check if user has been approved (stored locally after approval)
-    const savedEmail = localStorage.getItem('access_request_email');
+    const savedEmail = localStorage.getItem(LOCAL_STORAGE_KEY);
     const savedStatus = localStorage.getItem('access_request_status');
     return savedStatus === 'approved' && !!savedEmail;
   });
 
-  // Track if we're showing the access request form
-  // Only shows when user clicks Connect (not by default)
-  // Users can explore freely before connecting
-  const [showAccessRequest, setShowAccessRequest] = useState(false);
+  // Overlay state
+  const [showAccessOverlay, setShowAccessOverlay] = useState(false);
+  const [accessState, setAccessState] = useState('idle'); // idle, submitting, pending, approved, error
+  const [accessEmail, setAccessEmail] = useState('');
+  const [accessError, setAccessError] = useState('');
 
-  // Handler when access is approved (called by AccessRequestForm)
-  const handleAccessApproved = useCallback(() => {
-    localStorage.setItem('access_request_status', 'approved');
+  // Check for existing pending request on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedEmail && !accessApproved) {
+      setAccessEmail(savedEmail);
+      checkAccessStatus(savedEmail);
+    }
+  }, [accessApproved]);
+
+  // Poll for approval when pending
+  useEffect(() => {
+    if (accessState !== 'pending') return;
+    const interval = setInterval(() => {
+      checkAccessStatus(accessEmail);
+    }, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [accessState, accessEmail]);
+
+  // Check status from API
+  const checkAccessStatus = useCallback(async (emailToCheck) => {
+    try {
+      const response = await fetch(`/api/check-status?email=${encodeURIComponent(emailToCheck)}`);
+      const data = await response.json();
+
+      if (data.status === 'approved') {
+        setAccessState('approved');
+        localStorage.setItem('access_request_status', 'approved');
+      } else if (data.status === 'pending') {
+        setAccessState('pending');
+        // Show overlay if we have a pending request
+        if (!showAccessOverlay) {
+          setShowAccessOverlay(true);
+        }
+      }
+      // not_found means they need to submit the form
+    } catch (err) {
+      console.error('Status check failed:', err);
+    }
+  }, [showAccessOverlay]);
+
+  // Submit access request
+  const handleAccessSubmit = useCallback(async () => {
+    setAccessError('');
+
+    if (!accessEmail.trim()) {
+      setAccessError('Email required');
+      return;
+    }
+
+    setAccessState('submitting');
+
+    try {
+      const response = await fetch('/api/request-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: accessEmail.trim() })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+
+      // Save email locally
+      localStorage.setItem(LOCAL_STORAGE_KEY, accessEmail.trim().toLowerCase());
+
+      if (data.status === 'approved') {
+        setAccessState('approved');
+        localStorage.setItem('access_request_status', 'approved');
+      } else {
+        setAccessState('pending');
+      }
+    } catch (err) {
+      setAccessError(err.message);
+      setAccessState('error');
+    }
+  }, [accessEmail]);
+
+  // Cancel and start over
+  const handleAccessCancel = useCallback(() => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setAccessEmail('');
+    setAccessState('idle');
+    setAccessError('');
+  }, []);
+
+  // Proceed to Spotify auth after approved
+  const handleAccessProceed = useCallback(async () => {
     setAccessApproved(true);
-    setShowAccessRequest(false);
-    // Automatically open login modal after approval
-    setLoginModalOpen(true);
+    setShowAccessOverlay(false);
+    // The login button is now unblocked and will work
+  }, []);
+
+  // Dismiss overlay without connecting (explore mode)
+  const handleAccessDismiss = useCallback(() => {
+    setShowAccessOverlay(false);
   }, []);
 
   // -------------------------------------------------------------------------
@@ -733,11 +828,11 @@ function App() {
   }, [openWindow]);
 
   const handleOpenLogin = useCallback(() => {
-    // If user hasn't been approved yet, show access request form first
+    // Always open the login modal
+    setLoginModalOpen(true);
+    // If user hasn't been approved yet, also show access overlay on top
     if (!accessApproved) {
-      setShowAccessRequest(true);
-    } else {
-      setLoginModalOpen(true);
+      setShowAccessOverlay(true);
     }
   }, [accessApproved]);
 
@@ -876,22 +971,6 @@ function App() {
     <ThemeProvider theme={recordOSTheme}>
       <React95Reset />
       <GlobalStyles />
-
-      {/* Access Request Window - only shown when user tries to connect Spotify */}
-      {showAccessRequest && (
-        <AccessRequestWindow
-          isActive={true}
-          zIndex={9999}
-          position={{
-            x: typeof window !== 'undefined' ? Math.max(20, (window.innerWidth - 340) / 2) : 200,
-            y: typeof window !== 'undefined' ? Math.max(20, Math.min(100, (window.innerHeight - 400) / 3)) : 80,
-          }}
-          isMobile={isMobile}
-          onApproved={handleAccessApproved}
-          onClose={() => setShowAccessRequest(false)}
-          onOpenGame={handleOpenGame}
-        />
-      )}
 
       {/* Error Modals - Display scanError and authError to users */}
       {/* Previously these errors were set but never displayed - users saw frozen loading bar */}
@@ -1072,14 +1151,19 @@ function App() {
                     await localAudio.fadeOut(500);
                   }
                 }}
-                onAccessNeeded={() => {
-                  // If user hasn't been approved, show access request form
-                  if (!accessApproved) {
-                    setShowAccessRequest(true);
-                    return true; // Blocks the login flow
-                  }
-                  return false; // Allow login to proceed
-                }}
+                // Access overlay props (green CRT overlay for Spotify whitelist)
+                accessApproved={accessApproved}
+                showAccessOverlay={showAccessOverlay && !accessApproved}
+                accessState={accessState}
+                accessEmail={accessEmail}
+                accessError={accessError}
+                onAccessEmailChange={setAccessEmail}
+                onAccessSubmit={handleAccessSubmit}
+                onAccessCancel={handleAccessCancel}
+                onAccessProceed={handleAccessProceed}
+                onAccessDismiss={handleAccessDismiss}
+                onShowAccessOverlay={() => setShowAccessOverlay(true)}
+                onOpenGame={handleOpenGame}
               />
             );
 

@@ -234,7 +234,7 @@ function InfoModal({
         <Logo src="/logo.png" alt="Record OS" />
         <TitleSection>
           <Title>RECORD OS</Title>
-          <Version>BUILD 3.0.48 //STABLE</Version>
+          <Version>BUILD 3.0.48 // STABLE</Version>
         </TitleSection>
       </LogoSection>
 
@@ -287,7 +287,7 @@ function InfoModal({
         {/* SYSTEM MAINTENANCE moved up per user request */}
         <StyledFieldset label="SYSTEM MAINTENANCE">
           <Description style={{ margin: '0 0 8px 0', fontSize: '9px', color: 'rgba(0, 255, 65, 0.6)' }}>
-            //OPERATIONAL COSTS SUBSIDIZED BY USERS
+            // OPERATIONAL COSTS SUBSIDIZED BY USERS
           </Description>
           <DonateButton
             as="a"
@@ -345,24 +345,24 @@ function InfoModal({
             </CreditItem>
           </CreditsList>
           <Description style={{ margin: '8px 0 0 0', fontSize: '8px', color: 'rgba(0, 255, 65, 0.4)' }}>
-            //ALL LIBRARIES MIT LICENSED EXCEPT SOLITAIRE (UNLICENSE)
+            // ALL LIBRARIES MIT LICENSED EXCEPT SOLITAIRE (UNLICENSE)
           </Description>
         </StyledFieldset>
 
         <StyledFieldset label="DATA RETENTION PROTOCOL">
           <PrivacyText>
-            //SESSION ACTIVITY AND SYSTEM ERRORS MONITORED
+            // SESSION ACTIVITY AND SYSTEM ERRORS MONITORED
             <br />
-            //TELEMETRY ROUTED THROUGH EXTERNAL SUBSTRATES
+            // TELEMETRY ROUTED THROUGH EXTERNAL SUBSTRATES
             <br />
-            //NO PERSONAL AUDIO DATA TRANSMITTED
+            // NO PERSONAL AUDIO DATA TRANSMITTED
             <br />
-            //MUSICAL PREFERENCES REMAIN CLASSIFIED
+            // MUSICAL PREFERENCES REMAIN CLASSIFIED
             <br />
             <br />
-            //OVERSIGHT: POSTHOG, SENTRY
+            // OVERSIGHT: POSTHOG, SENTRY
             <br />
-            //INQUIRIES: hello@kevinhg.com
+            // INQUIRIES: hello@kevinhg.com
           </PrivacyText>
         </StyledFieldset>
       </ScrollableContent>

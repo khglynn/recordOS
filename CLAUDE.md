@@ -26,15 +26,22 @@ You're a senior dev at a creative agency who builds slick, badass sites. Care ab
 - Monospace font (Consolas, Courier New)
 - Self-referential about its purpose
 
+**// Comment Formatting:**
+| Context | Format | Example |
+|---------|--------|---------|
+| Inline comments/notes | `// TEXT` (space after //) | `// IDLE // NO TRACK` |
+| Centered headers | No `//` prefix | `SELECT DECADE TO VIEW ALBUMS` |
+| Footers/system notes | `// TEXT //` bookends | `// WEYLAND-YUTANI CORP //` |
+
 See `src/components/InfoModal.jsx` for copy examples.
 
 ## Current Status
 
-**Last updated:** 2025-12-15
+**Last updated:** 2025-12-21
 
-AccessRequestWindow refactored to use WindowFrame (was full-screen takeover). Added component rules to CLAUDE.md and components README.
+AccessRequestWindow converted to overlay on LoginModal (green CRT overlay with scanlines). Text styling standardized across app.
 
-**Recent work:** `claude-plans/2025-12-15-access-request-refactor.md`
+**Recent work:** `claude-plans/2025-12-21-access-overlay-text-polish.md`
 
 **Remaining:**
 - Sentry → Slack integration

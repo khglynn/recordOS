@@ -390,7 +390,7 @@ function SettingsModal({
                 <DecadeCountValue>{totalAlbums}</DecadeCountValue>
               </TotalRow>
               {totalAlbums >= TARGET_ALBUM_COUNT && (
-                <CapNote>//GRID CAPPED AT {TARGET_ALBUM_COUNT} ALBUMS</CapNote>
+                <CapNote>// GRID CAPPED AT {TARGET_ALBUM_COUNT} ALBUMS</CapNote>
               )}
             </DecadeCountsList>
           )}

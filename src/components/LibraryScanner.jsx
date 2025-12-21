@@ -283,6 +283,7 @@ const GameLinks = styled.div`
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 `;
 
 const GameLink = styled.button`
@@ -439,7 +440,7 @@ function LibraryScanner({
 
         {/* Instruction text */}
         <InstructionText>
-          //SELECT DECADE TO VIEW ALBUMS
+          SELECT DECADE TO VIEW ALBUMS
         </InstructionText>
 
         {/* Decade buttons - 3x3 grid + full-width ALL at bottom */}
@@ -475,14 +476,14 @@ function LibraryScanner({
         {/* Games while scanning */}
         {!isComplete && onOpenGame && (
           <IdleProcesses>
-            <IdleHeader>//IDLE PROCESSES AVAILABLE</IdleHeader>
+            <IdleHeader>IDLE PROCESSES AVAILABLE</IdleHeader>
             <GameLinks>
               <GameLink onClick={() => { onOpenGame('minesweeper'); onMinimize?.(); }}>
                 <PixelIcon name="flag" size={12} color="currentColor" />
                 MINESWEEPER
               </GameLink>
               <GameLink onClick={() => { onOpenGame('solitaire'); onMinimize?.(); }}>
-                <PixelIcon name="card" size={12} color="currentColor" />
+                <PixelIcon name="cards" size={12} color="currentColor" />
                 SOLITAIRE
               </GameLink>
               <GameLink onClick={() => { onOpenGame('snake'); onMinimize?.(); }}>

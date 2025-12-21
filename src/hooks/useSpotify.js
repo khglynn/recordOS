@@ -854,7 +854,7 @@ export function useSpotify(isMobile = false) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '//INITIALIZE SPOTIFY APPLICATION\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            detail: '// INITIALIZE SPOTIFY APPLICATION\n// AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
           });
           return;
         }
@@ -912,7 +912,7 @@ export function useSpotify(isMobile = false) {
           setPlaybackError({
             code: 'NO_DEVICE',
             message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '//INITIALIZE SPOTIFY APPLICATION\n//AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            detail: '// INITIALIZE SPOTIFY APPLICATION\n// AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
           });
           return;
         }

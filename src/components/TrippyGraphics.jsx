@@ -216,7 +216,7 @@ function TrippyGraphics({
       <StyledWindowContent>
         {isMobile && (
           <MobileWarning>
-            &gt; WEBGL SUBSTRATE: UNSTABLE ON PORTABLE DEVICES //PROCEED WITH CAUTION
+            &gt; WEBGL SUBSTRATE: UNSTABLE ON PORTABLE DEVICES // PROCEED WITH CAUTION
           </MobileWarning>
         )}
         <VisualizerIframe
