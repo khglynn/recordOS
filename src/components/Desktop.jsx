@@ -851,7 +851,7 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
 
   return (
     <DesktopContainer data-album-grid>
-      <AlbumGrid style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
+      <AlbumGrid data-album-grid-inner style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
         {albums.map((album, index) => (
           <AlbumCover
             key={album.id}

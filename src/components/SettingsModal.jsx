@@ -224,21 +224,41 @@ function SettingsModal({
   };
 
   // Export album grid as PNG
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportState, setExportState] = useState('idle'); // 'idle' | 'exporting' | 'success' | 'error'
   const handleExportGrid = async () => {
-    const gridElement = document.querySelector('[data-album-grid]');
-    if (!gridElement) return;
+    const container = document.querySelector('[data-album-grid]');
+    const grid = document.querySelector('[data-album-grid-inner]');
+    if (!container || !grid) return;
 
-    setIsExporting(true);
+    setExportState('exporting');
+
+    // Store original styles to restore later
+    const originalContainerStyle = {
+      overflow: container.style.overflow,
+      height: container.style.height,
+    };
+    const originalGridStyle = {
+      overflow: grid.style.overflow,
+      height: grid.style.height,
+      position: grid.style.position,
+    };
 
     try {
       // Hide UI elements during capture
       document.body.classList.add('export-mode');
 
-      // Wait a frame for CSS to apply
-      await new Promise(r => requestAnimationFrame(r));
+      // Expand container and grid to show all albums
+      container.style.overflow = 'visible';
+      container.style.height = 'auto';
+      grid.style.overflow = 'visible';
+      grid.style.height = 'auto';
+      grid.style.position = 'relative'; // Remove absolute positioning
 
-      const canvas = await html2canvas(gridElement, {
+      // Wait for layout to settle
+      await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r => setTimeout(r, 100)); // Extra time for images
+
+      const canvas = await html2canvas(grid, {
         backgroundColor: '#0a0a0a',
         scale: 2, // Good quality for sharing
         useCORS: true, // Allow cross-origin images (Spotify CDN)
@@ -250,11 +270,31 @@ function SettingsModal({
       link.download = `recordos-grid-${new Date().toISOString().split('T')[0]}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
+
+      setExportState('success');
+      setTimeout(() => setExportState('idle'), 2000);
     } catch (err) {
       console.error('Export failed:', err);
+      setExportState('error');
+      setTimeout(() => setExportState('idle'), 2000);
     } finally {
+      // Restore original styles
+      container.style.overflow = originalContainerStyle.overflow;
+      container.style.height = originalContainerStyle.height;
+      grid.style.overflow = originalGridStyle.overflow;
+      grid.style.height = originalGridStyle.height;
+      grid.style.position = originalGridStyle.position;
       document.body.classList.remove('export-mode');
-      setIsExporting(false);
+    }
+  };
+
+  // Get export button label based on state
+  const getExportLabel = () => {
+    switch (exportState) {
+      case 'exporting': return 'SAVING...';
+      case 'success': return 'SAVED!';
+      case 'error': return 'FAILED';
+      default: return 'PNG';
     }
   };
 
@@ -368,9 +408,13 @@ function SettingsModal({
         <StyledFieldset label="EXPORT">
           <SettingRow>
             <SettingLabel>Save grid as image</SettingLabel>
-            <ToggleButton onClick={handleExportGrid} disabled={isExporting}>
-              <PixelIcon name="download" size={12} />
-              {isExporting ? 'SAVING...' : 'PNG'}
+            <ToggleButton
+              onClick={handleExportGrid}
+              disabled={exportState === 'exporting'}
+              $active={exportState === 'success'}
+            >
+              <PixelIcon name={exportState === 'success' ? 'check' : 'download'} size={12} />
+              {getExportLabel()}
             </ToggleButton>
           </SettingRow>
         </StyledFieldset>

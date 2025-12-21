@@ -229,8 +229,8 @@ function StartMenu({
   };
 
   // Decade cycling for arrow navigation
-  // Skip 'all' in rotation - it requires full scan complete
-  const DECADES = ['2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
+  // 'all' shows everything when scan is complete
+  const DECADES = ['all', '2020s', '2010s', '2000s', '1990s', '1980s', 'classic'];
 
   // Track visual position (can be on any decade, ready or not)
   const [visualDecade, setVisualDecade] = useState(decade);
