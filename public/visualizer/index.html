@@ -188,6 +188,13 @@
     let presetNames = [];
     let currentPresetIndex = 0;
     let animationFrame = null;
+    let lastFrameTime = 0;
+
+    // Performance settings - prevents 300% CPU usage
+    const TARGET_FPS = 30;
+    const FRAME_TIME = 1000 / TARGET_FPS;
+    const MAX_RENDER_WIDTH = 800;
+    const MAX_RENDER_HEIGHT = 600;
 
     const canvas = document.getElementById('canvas');
     const startOverlay = document.getElementById('start-overlay');
@@ -226,11 +233,14 @@
         const source = audioContext.createMediaStreamSource(stream);
 
         // Create visualizer (handle both default export and direct export)
+        // Use capped resolution to prevent CPU spike (was causing 300% kernel_task)
         const createVis = butterchurn.default?.createVisualizer || butterchurn.createVisualizer;
+        const renderWidth = Math.min(canvas.width, MAX_RENDER_WIDTH);
+        const renderHeight = Math.min(canvas.height, MAX_RENDER_HEIGHT);
         visualizer = createVis(audioContext, canvas, {
-          width: canvas.width,
-          height: canvas.height,
-          pixelRatio: window.devicePixelRatio || 1,
+          width: renderWidth,
+          height: renderHeight,
+          pixelRatio: 1,  // Force 1x, not Retina 2x (4x fewer pixels)
         });
 
         // Connect audio
@@ -303,11 +313,25 @@
       loadPreset(randomName);
     }
 
-    function render() {
+    function render(timestamp) {
+      // 30 FPS throttle - prevents CPU spike (was unlimited = 60+ fps)
+      if (timestamp - lastFrameTime < FRAME_TIME) {
+        animationFrame = requestAnimationFrame(render);
+        return;
+      }
+      lastFrameTime = timestamp;
+
       if (visualizer) {
         visualizer.render();
       }
       animationFrame = requestAnimationFrame(render);
+    }
+
+    function cleanup() {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
     }
 
     // Event listeners
@@ -342,6 +366,17 @@
         nextPreset();
       } else if (e.data.type === 'random-preset') {
         randomPreset();
+      }
+    });
+
+    // Cleanup handlers - stop render loop when hidden/closed to save CPU
+    window.addEventListener('beforeunload', cleanup);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cleanup();
+      } else if (visualizer) {
+        // Resume when visible again
+        animationFrame = requestAnimationFrame(render);
       }
     });
   </script>

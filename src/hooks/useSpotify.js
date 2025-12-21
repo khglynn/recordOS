@@ -602,6 +602,17 @@ export function useSpotify(isMobile = false) {
       return;
     }
 
+    // Safari: Skip SDK, use Spotify Connect instead
+    // Safari's EME (DRM) implementation doesn't fully support Web Playback SDK
+    // Connect mode routes playback to Spotify app - more reliable
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isSafari) {
+      console.log('[SDK] Safari detected - using Spotify Connect mode for better compatibility');
+      setMobileMode(true);  // Reuse Connect logic
+      setDeviceReady(true);
+      return;
+    }
+
     // Load Spotify SDK script
     const script = document.createElement('script');
     script.src = 'https://sdk.scdn.co/spotify-player.js';

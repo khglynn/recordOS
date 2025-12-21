@@ -4,6 +4,36 @@ What's next, in order. When done, move to `COMPLETED.md`.
 
 ---
 
+## 0. Visualizer CPU Fix (URGENT)
+
+The visualizer iframe causes 300% CPU / kernel_task spike. Unthrottled render loop + full Retina resolution.
+
+**File:** `public/visualizer/index.html`
+
+**What:**
+- Add 30 FPS frame rate throttle (currently unlimited)
+- Cap resolution to 800×600 (currently full window × devicePixelRatio)
+- Add cleanup on tab close/minimize
+- **~25 min fix, massive CPU savings**
+
+**Details:** See plan file `~/.claude/plans/dreamy-popping-biscuit.md` → "Visualizer Performance"
+
+---
+
+## 0.5. Safari Playback Improvements
+
+Safari's EME (DRM) implementation doesn't fully support Spotify Web Playback SDK.
+
+**What:**
+- Detect Safari on desktop, show upfront warning
+- Add "Use Spotify App" mode (Spotify Connect for desktop, like mobile)
+- Better error messaging with actionable buttons
+- **~1 hour**
+
+**Details:** See plan file → "Safari Playback Issues"
+
+---
+
 ## 1. PostHog Integration
 
 Full PostHog setup with session recording, autocapture, Slack alerts.
