@@ -88,23 +88,19 @@ export default async function handler(req, res) {
             },
             {
               type: 'section',
-              fields: [
-                {
-                  type: 'mrkdwn',
-                  text: `*Email:*\n${normalizedEmail}`
-                },
-                {
-                  type: 'mrkdwn',
-                  text: `*Time:*\n${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}`
-                }
-              ]
-            },
-            {
-              type: 'section',
               text: {
                 type: 'mrkdwn',
-                text: '1. Add this email to Spotify Dashboard whitelist\n2. Click the button below to approve'
+                text: `\`${normalizedEmail}\``
               }
+            },
+            {
+              type: 'context',
+              elements: [
+                {
+                  type: 'mrkdwn',
+                  text: `${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}`
+                }
+              ]
             },
             {
               type: 'actions',
@@ -113,7 +109,7 @@ export default async function handler(req, res) {
                   type: 'button',
                   text: {
                     type: 'plain_text',
-                    text: '✓ Approve Access',
+                    text: 'Approve + Open Spotify',
                     emoji: true
                   },
                   style: 'primary',

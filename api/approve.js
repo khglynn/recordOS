@@ -49,28 +49,17 @@ export default async function handler(req, res) {
       return res.status(404).send(htmlResponse('NOT FOUND', `No access request found for ${normalizedEmail}`, false));
     }
 
-    if (existing[0].status === 'approved') {
-      return res.status(200).send(htmlResponse(
-        'ALREADY IN SYSTEM',
-        `${normalizedEmail} was already approved`,
-        true,
-        true // isAdmin
-      ));
+    // Update to approved (even if already approved, just update timestamp)
+    if (existing[0].status !== 'approved') {
+      await sql`
+        UPDATE access_requests
+        SET status = 'approved', approved_at = NOW()
+        WHERE email = ${normalizedEmail}
+      `;
     }
 
-    // Update to approved
-    await sql`
-      UPDATE access_requests
-      SET status = 'approved', approved_at = NOW()
-      WHERE email = ${normalizedEmail}
-    `;
-
-    return res.status(200).send(htmlResponse(
-      'USER ADDED',
-      `${normalizedEmail} added to whitelist`,
-      true,
-      true // isAdmin
-    ));
+    // Redirect straight to Spotify Dashboard - no intermediate screen
+    return res.redirect(302, SPOTIFY_DASHBOARD_USERS);
 
   } catch (error) {
     console.error('Approve error:', error);
