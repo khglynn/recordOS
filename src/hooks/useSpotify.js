@@ -116,6 +116,10 @@ export function useSpotify(isMobile = false) {
   const [decade, setDecade] = useState(
     () => localStorage.getItem(STORAGE_KEYS.DECADE) || DECADE_OPTIONS.ALL
   );
+  const [threshold, setThreshold] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
+    return saved ? parseInt(saved) : MIN_SAVED_TRACKS;
+  });
 
   // Refs for cleanup and album tracking
   const playerRef = useRef(null);
@@ -247,6 +251,29 @@ export function useSpotify(isMobile = false) {
             }));
             console.log(`Parsed ${albumsWithDefaults.length} albums from cache`);
             setAlbums(albumsWithDefaults);
+
+            // Populate albumsByDecade from cache (fixes missing export button)
+            const cachedByDecade = {};
+            for (const album of albumsWithDefaults) {
+              const dec = getDecadeFromDate(album.releaseDate);
+              if (dec) {
+                if (!cachedByDecade[dec]) cachedByDecade[dec] = [];
+                cachedByDecade[dec].push(album);
+              }
+            }
+            // Sort each decade by likedTracks
+            for (const dec of Object.keys(cachedByDecade)) {
+              cachedByDecade[dec].sort((a, b) => b.likedTracks - a.likedTracks);
+            }
+            setAlbumsByDecade(cachedByDecade);
+            // Mark all cached decades as ready
+            const cachedDecadeStatus = {};
+            for (const dec of Object.keys(cachedByDecade)) {
+              cachedDecadeStatus[dec] = 'ready';
+            }
+            setDecadeStatus(cachedDecadeStatus);
+            setScanPhase('complete');
+
             setIsInitializing(false); // Cache loaded successfully
             return;
           } catch (parseErr) {
@@ -429,8 +456,8 @@ export function useSpotify(isMobile = false) {
           totalTracks: album.totalTracks,
           uri: album.uri,
           likedTracks: album.likedTracks,
-          // Omit: tracks, likedTrackIds - too large for localStorage
-          // These will be fetched on demand when user opens album
+          likedTrackIds: album.likedTrackIds, // Needed to highlight liked tracks
+          // Omit: tracks - fetched on demand when user opens album
         }));
         const jsonData = JSON.stringify(cacheData);
         console.log(`Caching ${jsonData.length} bytes to localStorage (minimal data)...`);
@@ -511,7 +538,7 @@ export function useSpotify(isMobile = false) {
    * Album Selection Algorithm:
    * 1. Filter by decade (if selected)
    * 2. Sort by saved track count (most saved = most loved)
-   * 3. Take the top N albums, prioritizing those with MIN_SAVED_TRACKS
+   * 3. Take the top N albums, prioritizing those meeting threshold
    *    but filling up to TARGET_ALBUM_COUNT even with fewer liked tracks
    *
    * Memoized to prevent recalculation on every render
@@ -547,8 +574,8 @@ export function useSpotify(isMobile = false) {
     // Step 2: Sort all candidates by liked track count (highest first)
     const sorted = [...candidates].sort((a, b) => b.likedTracks - a.likedTracks);
 
-    // Step 3: Get albums with minimum saved track count first
-    const qualifyingAlbums = sorted.filter(a => a.likedTracks >= MIN_SAVED_TRACKS);
+    // Step 3: Get albums meeting the threshold first
+    const qualifyingAlbums = sorted.filter(a => a.likedTracks >= threshold);
 
     // Step 4: If we don't have enough qualifying albums, fill with remaining candidates
     let result;
@@ -556,12 +583,24 @@ export function useSpotify(isMobile = false) {
       result = qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT);
     } else {
       // Take all qualifying albums, then fill with next best candidates
-      const remaining = sorted.filter(a => a.likedTracks < MIN_SAVED_TRACKS);
+      const remaining = sorted.filter(a => a.likedTracks < threshold);
       result = [...qualifyingAlbums, ...remaining].slice(0, TARGET_ALBUM_COUNT);
     }
 
     return result;
-  }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade]);
+  }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade, threshold]);
+
+  // Compute decade counts filtered by threshold (for Settings slider preview)
+  const filteredAlbumsByDecade = useMemo(() => {
+    const filtered = {};
+    for (const [dec, decadeAlbums] of Object.entries(albumsByDecade)) {
+      const qualifying = decadeAlbums.filter(a => a.likedTracks >= threshold);
+      if (qualifying.length > 0) {
+        filtered[dec] = qualifying;
+      }
+    }
+    return filtered;
+  }, [albumsByDecade, threshold]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
@@ -570,6 +609,11 @@ export function useSpotify(isMobile = false) {
   const handleDecadeChange = useCallback((newDecade) => {
     setDecade(newDecade);
     localStorage.setItem(STORAGE_KEYS.DECADE, newDecade);
+  }, []);
+
+  const handleThresholdChange = useCallback((newThreshold) => {
+    setThreshold(newThreshold);
+    localStorage.setItem(STORAGE_KEYS.THRESHOLD, newThreshold.toString());
   }, []);
 
   // -------------------------------------------------------------------------
@@ -748,28 +792,11 @@ export function useSpotify(isMobile = false) {
         console.log(`[Album End Check] orig=${originalAlbumUri?.split(':')[2]}, curr=${currentTrackAlbumUri?.split(':')[2]}, left=${leftOriginalAlbum}, naturalEnd=${trackEndedNaturally}`);
 
         // Trigger album end if we left original album OR natural end occurred
+        // Album end detection - simplified, just log (no overlay/sound)
         if ((leftOriginalAlbum || trackEndedNaturally) && !albumEndTriggeredRef.current) {
-          console.log(`[Album End] Album finished! Reason: ${leftOriginalAlbum ? 'left album context' : 'natural end'}`);
+          console.log(`[Album End] Album finished - ${leftOriginalAlbum ? 'left album context' : 'natural end'}`);
           albumEndTriggeredRef.current = true;
-          setAlbumEnded(true);
-
-          // Play turntable end sound effect (licensed via Envato)
-          // Plays once, then again after a short delay for that authentic vinyl feel
-          const playTurntableSound = () => {
-            try {
-              const endSound = new Audio('/sounds/turntable.mp3');
-              endSound.volume = 0.4;
-              return endSound.play().catch(() => {
-                console.log('[Album End] Could not play end sound');
-              });
-            } catch (e) {
-              console.log('[Album End] Audio not available');
-            }
-          };
-
-          // Play once immediately, then once more after 2 seconds
-          playTurntableSound();
-          setTimeout(playTurntableSound, 2000);
+          // Note: Overlay/sound removed for simpler UX - let Spotify handle naturally
         }
       });
 
@@ -861,7 +888,7 @@ export function useSpotify(isMobile = false) {
           uri: track.uri,
         });
 
-        // Check for album end (track changed to different album context)
+        // Album end detection (Connect mode) - simplified, just log
         const currentTrackAlbumUri = track.album?.uri;
         const originalAlbumUri = originalAlbumUriRef.current;
 
@@ -870,7 +897,7 @@ export function useSpotify(isMobile = false) {
             !albumEndTriggeredRef.current) {
           console.log('[Connect] Album ended - context changed');
           albumEndTriggeredRef.current = true;
-          setAlbumEnded(true);
+          // Note: Overlay/sound removed for simpler UX - let Spotify handle naturally
         }
       } catch (err) {
         // Silently ignore polling errors (network hiccups, etc.)
@@ -1331,6 +1358,9 @@ export function useSpotify(isMobile = false) {
     // Settings
     decade,
     setDecade: handleDecadeChange,
+    threshold,
+    setThreshold: handleThresholdChange,
+    filteredAlbumsByDecade,
 
     // Playback
     deviceReady, // True only after SDK transfer completes - safe to play
@@ -1342,8 +1372,7 @@ export function useSpotify(isMobile = false) {
     isMuted,
     playbackError,
     clearPlaybackError: () => setPlaybackError(null),
-    albumEnded,
-    clearAlbumEnded: () => setAlbumEnded(false),
+    // albumEnded removed - simplified UX, let Spotify handle naturally
 
     // Mobile mode (Spotify Connect)
     mobileMode,

@@ -112,51 +112,7 @@ const StyledWindowContent = styled(WindowContent)`
   position: relative;
 `;
 
-/* Album Ended Overlay */
-const AlbumEndedOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  padding: 20px;
-  text-align: center;
-`;
-
-const AlbumEndedTitle = styled.div`
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 14px;
-  color: #00ff41;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-`;
-
-const AlbumEndedMessage = styled.div`
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
-  color: rgba(0, 255, 65, 0.7);
-  margin-bottom: 16px;
-`;
-
-const AlbumEndedButton = styled(Button)`
-  background: linear-gradient(180deg, #0a2a0a 0%, #0d3d0d 100%) !important;
-  color: #00ff41 !important;
-  border-color: #00ff41 !important;
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
-  padding: 8px 16px;
-
-  &:hover {
-    background: linear-gradient(180deg, #0d3d0d 0%, #1a4a1a 100%) !important;
-  }
-`;
+/* Album Ended Overlay - REMOVED (simplified UX, let Spotify handle naturally) */
 
 /* Now Playing Display - compact like Windows Media Player */
 const NowPlayingArea = styled.div`
@@ -418,7 +374,6 @@ function MediaPlayer({
   volume,
   isMuted,
   playbackError,
-  albumEnded,
   onClose,
   onMinimize,
   onFocus,
@@ -432,7 +387,6 @@ function MediaPlayer({
   onOpenVisualizer,
   onEnableDemoMode,
   onDismissError,
-  onDismissAlbumEnded,
   windowPosition,
   onDragStart,
   isMobile,
@@ -486,18 +440,6 @@ function MediaPlayer({
       </StyledWindowHeader>
 
       <StyledWindowContent>
-        {/* Album Ended Overlay */}
-        {albumEnded && (
-          <AlbumEndedOverlay>
-            <PixelIcon name="disc" size={32} color="#00ff41" style={{ marginBottom: 12 }} />
-            <AlbumEndedTitle>Record Complete</AlbumEndedTitle>
-            <AlbumEndedMessage>Select another album to continue</AlbumEndedMessage>
-            <AlbumEndedButton onClick={onDismissAlbumEnded}>
-              DISMISS
-            </AlbumEndedButton>
-          </AlbumEndedOverlay>
-        )}
-
         {/* Now Playing - compact display */}
         <NowPlayingArea>
           {currentTrack?.albumArt ? (

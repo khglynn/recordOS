@@ -156,16 +156,7 @@ function App() {
     document.body.classList.toggle('scanlines-disabled', !scanlinesEnabled);
   }, [scanlinesEnabled]);
 
-  // Album count setting - persisted to localStorage (default 48)
-  const [displayAlbumCount, setDisplayAlbumCount] = useState(() => {
-    const saved = localStorage.getItem('recordos_album_count');
-    return saved ? parseInt(saved) : 48;
-  });
-
-  // Persist album count setting
-  useEffect(() => {
-    localStorage.setItem('recordos_album_count', displayAlbumCount.toString());
-  }, [displayAlbumCount]);
+  // Note: Album threshold is now managed in useSpotify hook with localStorage persistence
 
   // -------------------------------------------------------------------------
   // LIBRARY SCANNER STATE
@@ -942,7 +933,7 @@ function App() {
 
       {/* Desktop Background (Album Grid) */}
       <Desktop
-        albums={spotify.albums.slice(0, displayAlbumCount)}
+        albums={spotify.albums}
         loadingAlbums={spotify.loadingAlbums}
         isLoggedIn={isLoggedIn && hasCompletedSetup}
         isLoading={
@@ -1001,7 +992,6 @@ function App() {
                 volume={audio.volume}
                 isMuted={audio.isMuted}
                 playbackError={!demoModeForced ? spotify.playbackError : null}
-                albumEnded={!demoModeForced && spotify.albumEnded}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -1012,7 +1002,6 @@ function App() {
                 onOpenVisualizer={handleOpenTrippyGraphics}
                 onEnableDemoMode={handleEnableDemoMode}
                 onDismissError={handleDismissPlaybackError}
-                onDismissAlbumEnded={spotify.clearAlbumEnded}
               />
             );
 
@@ -1052,14 +1041,14 @@ function App() {
                 {...commonProps}
                 scanlinesEnabled={scanlinesEnabled}
                 onToggleScanlines={() => setScanlinesEnabled(prev => !prev)}
-                albumCount={displayAlbumCount}
-                onAlbumCountChange={setDisplayAlbumCount}
+                threshold={spotify.threshold}
+                onThresholdChange={spotify.setThreshold}
                 isLoggedIn={isLoggedIn}
                 isLoading={spotify.isLoading}
                 onRescanLibrary={handleRescanLibrary}
                 onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}
-                albumsByDecade={spotify.albumsByDecade}
+                albumsByDecade={spotify.filteredAlbumsByDecade}
                 userName={spotify.user?.display_name || spotify.user?.id}
                 decade={spotify.decade}
               />

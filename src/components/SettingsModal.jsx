@@ -181,15 +181,15 @@ function SettingsModal({
   onDragStart,
   scanlinesEnabled,
   onToggleScanlines,
-  albumCount,
-  onAlbumCountChange,
+  threshold = 8,
+  onThresholdChange,
   isMobile,
   isLoggedIn,
   isLoading = false, // True during library scan - disables rescan button
   onRescanLibrary,
   onShowScanResults,
   unavailableAlbums = [],
-  albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... }
+  albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... } - filtered by threshold
   userName = '', // For export filename
   decade = 'all', // Current decade filter for export filename
 }) {
@@ -197,10 +197,10 @@ function SettingsModal({
   const totalAlbums = Object.values(albumsByDecade).reduce(
     (sum, albums) => sum + (albums?.length || 0), 0
   );
-  // Album count options: 24, 36, 48, 60, 72, 84, 96, 108, 120
+  // Threshold slider: minimum saved tracks (3-15)
   const handleSliderChange = (e) => {
     const value = parseInt(e.target.value);
-    onAlbumCountChange?.(value);
+    onThresholdChange?.(value);
   };
 
   // Download error log as JSON file
@@ -333,26 +333,26 @@ function SettingsModal({
         </SettingRow>
       </StyledFieldset>
 
-      <StyledFieldset label="ALBUM GRID">
+      <StyledFieldset label="ALBUM FILTER">
         <SliderContainer>
           <SettingRow>
-            <SettingLabel>Albums to display</SettingLabel>
-            <SliderValue>{albumCount}</SliderValue>
+            <SettingLabel>Minimum saved tracks</SettingLabel>
+            <SliderValue>{threshold}+</SliderValue>
           </SettingRow>
           <SliderRow>
             <SliderInput
               type="range"
-              min="24"
-              max="120"
-              step="12"
-              value={albumCount}
+              min="3"
+              max="15"
+              step="1"
+              value={threshold}
               onChange={handleSliderChange}
             />
           </SliderRow>
           <SliderLabels>
-            <span>24</span>
-            <span>72</span>
-            <span>120</span>
+            <span>3</span>
+            <span>9</span>
+            <span>15</span>
           </SliderLabels>
 
           {/* Live decade counts */}

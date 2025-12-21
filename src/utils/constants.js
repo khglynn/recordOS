@@ -163,6 +163,7 @@ export const STORAGE_KEYS = {
   DECADE: 'recordos_decade',
   VOLUME: 'recordos_volume',
   MUTED: 'recordos_muted',
+  THRESHOLD: 'recordos_threshold',
   ALBUMS_CACHE: 'recordos_albums_cache',
   ALBUMS_CACHE_TIME: 'recordos_albums_cache_time',
 };
