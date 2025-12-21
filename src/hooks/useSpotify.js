@@ -1008,10 +1008,6 @@ export function useSpotify(isMobile = false) {
 
     // Clear Sentry user context
     setSentryUser(null);
-
-    if (playerRef.current) {
-      playerRef.current.disconnect();
-    }
   }, []);
 
   // -------------------------------------------------------------------------
