@@ -641,17 +641,41 @@ export function useSpotify(isMobile = false) {
         volume: isMuted ? 0 : volume / 100,
       });
 
-      // Error handling
+      // Error handling - log details to help debug Safari issues
       spotifyPlayer.addListener('initialization_error', ({ message }) => {
-        console.error('Spotify init error:', message);
+        console.error('[SDK] Initialization error:', message);
+        addBreadcrumb(`SDK init error: ${message}`, 'spotify', 'error');
+        captureException(new Error(message), { context: 'sdk_initialization_error' });
+        // Show to user - this is likely a browser compatibility issue (Safari EME)
+        setPlaybackError({
+          code: 'SDK_INIT_FAILED',
+          message: 'PLAYBACK ENGINE INITIALIZATION FAILED',
+          detail: `${message}. This may be a browser compatibility issue. Try Chrome or Firefox.`,
+        });
       });
 
       spotifyPlayer.addListener('authentication_error', ({ message }) => {
-        console.error('Spotify auth error:', message);
+        console.error('[SDK] Authentication error:', message);
+        addBreadcrumb(`SDK auth error: ${message}`, 'spotify', 'error');
+        captureException(new Error(message), { context: 'sdk_authentication_error' });
+        // Show to user - token may have expired or been revoked
+        setAuthError({
+          code: 'SDK_AUTH_FAILED',
+          message: 'PLAYBACK AUTHENTICATION FAILED',
+          detail: `${message}. Try logging out and back in.`,
+        });
       });
 
       spotifyPlayer.addListener('account_error', ({ message }) => {
-        console.error('Spotify account error:', message);
+        console.error('[SDK] Account error:', message);
+        addBreadcrumb(`SDK account error: ${message}`, 'spotify', 'error');
+        captureException(new Error(message), { context: 'sdk_account_error' });
+        // Show to user - typically Premium requirement
+        setAuthError({
+          code: 'ACCOUNT_ERROR',
+          message: 'SPOTIFY ACCOUNT ERROR',
+          detail: `${message}. Web playback requires Spotify Premium.`,
+        });
       });
 
       spotifyPlayer.addListener('playback_error', ({ message }) => {
@@ -756,7 +780,18 @@ export function useSpotify(isMobile = false) {
         }
       });
 
-      await spotifyPlayer.connect();
+      const connected = await spotifyPlayer.connect();
+      if (!connected) {
+        console.error('[SDK] Failed to connect to Spotify');
+        addBreadcrumb('SDK connect failed', 'spotify', 'error');
+        setPlaybackError({
+          code: 'SDK_CONNECT_FAILED',
+          message: 'PLAYBACK ENGINE CONNECTION FAILED',
+          detail: 'Could not connect to Spotify. Check your network connection and try refreshing.',
+        });
+        return;
+      }
+      console.log('[SDK] Connected successfully');
       playerRef.current = spotifyPlayer;
       setPlayer(spotifyPlayer);
     };

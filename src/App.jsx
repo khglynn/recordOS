@@ -33,6 +33,7 @@ import InfoModal from './components/InfoModal';
 import SettingsModal from './components/SettingsModal';
 import LibraryScanner from './components/LibraryScanner';
 import AccessRequestWindow from './components/AccessRequestWindow';
+import ErrorModal from './components/ErrorModal';
 
 // Hooks
 import { useSpotify } from './hooks/useSpotify';
@@ -897,6 +898,45 @@ function App() {
           isMobile={isMobile}
           onApproved={handleAccessApproved}
           onClose={() => setShowAccessRequest(false)}
+        />
+      )}
+
+      {/* Error Modals - Display scanError and authError to users */}
+      {/* Previously these errors were set but never displayed - users saw frozen loading bar */}
+      {spotify.scanError && (
+        <ErrorModal
+          error={spotify.scanError}
+          errorType="scan"
+          isActive={true}
+          zIndex={9998}
+          position={{
+            x: typeof window !== 'undefined' ? Math.max(20, (window.innerWidth - 380) / 2) : 200,
+            y: typeof window !== 'undefined' ? Math.max(20, (window.innerHeight - 300) / 3) : 100,
+          }}
+          isMobile={isMobile}
+          onRetry={handleRescanLibrary}
+          onDismiss={spotify.clearScanError}
+          onClose={spotify.clearScanError}
+          onFocus={() => {}}
+          onDragStart={() => {}}
+        />
+      )}
+
+      {spotify.authError && (
+        <ErrorModal
+          error={spotify.authError}
+          errorType="auth"
+          isActive={true}
+          zIndex={9997}
+          position={{
+            x: typeof window !== 'undefined' ? Math.max(20, (window.innerWidth - 380) / 2) : 200,
+            y: typeof window !== 'undefined' ? Math.max(20, (window.innerHeight - 300) / 3) + 50 : 150,
+          }}
+          isMobile={isMobile}
+          onDismiss={spotify.clearAuthError}
+          onClose={spotify.clearAuthError}
+          onFocus={() => {}}
+          onDragStart={() => {}}
         />
       )}
 

@@ -311,6 +311,29 @@ export async function spotifyFetch(endpoint, options = {}) {
     }
   }
 
+  // 429 Rate Limited - wait and retry with exponential backoff
+  // This is likely the cause of scan failures at 150-250 tracks
+  if (response.status === 429) {
+    const retryCount = options._retryCount || 0;
+    const maxRetries = 3;
+
+    if (retryCount >= maxRetries) {
+      console.error('[Spotify API] Rate limit exceeded after', maxRetries, 'retries on', endpoint);
+      throw new Error('Rate limit exceeded - please try again in a few minutes');
+    }
+
+    // Get Retry-After header (seconds) or use exponential backoff
+    const retryAfter = response.headers.get('Retry-After');
+    const waitTime = retryAfter
+      ? parseInt(retryAfter) * 1000
+      : Math.min(1000 * Math.pow(2, retryCount), 30000); // 1s, 2s, 4s... max 30s
+
+    console.log(`[Spotify API] Rate limited on ${endpoint}, waiting ${waitTime}ms (retry ${retryCount + 1}/${maxRetries})`);
+
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    return spotifyFetch(endpoint, { ...options, _retryCount: retryCount + 1 });
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error?.message || `API error: ${response.status}`);
@@ -340,7 +363,10 @@ export async function getCurrentUser() {
  * Returns all tracks, paginated
  */
 export async function getSavedTracks(limit = 50, offset = 0) {
-  return spotifyFetch(`/me/tracks?limit=${limit}&offset=${offset}`);
+  console.log(`[Library] Fetching tracks batch ${offset}-${offset + limit}...`);
+  const response = await spotifyFetch(`/me/tracks?limit=${limit}&offset=${offset}`);
+  console.log(`[Library] Got ${response.items?.length || 0} tracks (total: ${response.total})`);
+  return response;
 }
 
 /**
