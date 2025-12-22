@@ -1,15 +1,16 @@
 /**
  * ============================================================================
- * SETTINGS MODAL COMPONENT
+ * DOWNLOAD MODAL COMPONENT
  * ============================================================================
  *
- * Windows 95-style settings window.
+ * Windows 95-style download/settings window.
  *
  * Contains:
  * - Scanlines toggle
- * - Album count slider (24-120 in increments of 12)
+ * - Library refresh controls
+ * - Export options (PNG grid, CSV, TXT)
  *
- * Updated: 2025-12-11 - Refactored to use WindowFrame
+ * Updated: 2025-12-22 - Renamed from SettingsModal, removed threshold slider
  */
 
 import { useState } from 'react';
@@ -18,7 +19,7 @@ import { Fieldset } from 'react95';
 import html2canvas from 'html2canvas';
 import PixelIcon from './PixelIcon';
 import WindowFrame from './WindowFrame';
-import { DECADE_LABELS, DECADE_ORDER, TARGET_ALBUM_COUNT } from '../utils/constants';
+import { DECADE_LABELS, DECADE_ORDER, DECADE_OPTIONS } from '../utils/constants';
 
 // ============================================================================
 // STYLED COMPONENTS (Content-specific only)
@@ -72,106 +73,37 @@ const ToggleButton = styled.button`
   }
 `;
 
-const SliderContainer = styled.div`
+const DecadeNav = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  width: 100%;
 `;
 
-const SliderRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const SliderInput = styled.input`
-  flex: 1;
-  height: 6px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #0a0a0a;
-  border: 1px solid #2a2a2a;
-  border-radius: 2px;
+const DecadeArrow = styled.button`
+  background: transparent;
+  border: none;
+  color: #00ff41;
   cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
 
-  &::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    background: #00ff41;
-    border-radius: 2px;
-    cursor: pointer;
-    box-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+  &:hover {
+    opacity: 1;
   }
 
-  &::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    background: #00ff41;
-    border-radius: 2px;
-    cursor: pointer;
-    border: none;
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 `;
 
-const SliderValue = styled.span`
-  font-size: 12px;
+const DecadeDisplay = styled.span`
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
   color: #00ff41;
-  font-family: 'Consolas', 'Courier New', monospace;
-  min-width: 30px;
-  text-align: right;
-`;
-
-const SliderLabels = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: rgba(0, 255, 65, 0.4);
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const DecadeCountsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #1a1a1a;
-`;
-
-const DecadeCountRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  font-family: 'Consolas', 'Courier New', monospace;
-`;
-
-const DecadeCountLabel = styled.span`
-  color: rgba(0, 255, 65, 0.6);
-`;
-
-const DecadeCountValue = styled.span`
-  color: #00ff41;
-`;
-
-const TotalRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed #1a1a1a;
-`;
-
-const CapNote = styled.div`
-  font-size: 9px;
-  color: rgba(0, 255, 65, 0.35);
-  font-family: 'Consolas', 'Courier New', monospace;
-  margin-top: 8px;
+  min-width: 60px;
   text-align: center;
 `;
 
@@ -179,7 +111,7 @@ const CapNote = styled.div`
 // COMPONENT
 // ============================================================================
 
-function SettingsModal({
+function DownloadModal({
   isActive,
   zIndex,
   onClose,
@@ -189,27 +121,65 @@ function SettingsModal({
   onDragStart,
   scanlinesEnabled,
   onToggleScanlines,
-  threshold = 8,
-  onThresholdChange,
   isMobile,
   isLoggedIn,
   isLoading = false, // True during library scan - disables rescan button
   onRescanLibrary,
   onShowScanResults,
   unavailableAlbums = [],
-  albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... } - filtered by threshold
+  albumsByDecade = {}, // { '2020s': [...], '2010s': [...], ... }
   userName = '', // For export filename
   decade = 'all', // Current decade filter for export filename
+  onChangeDecade, // Callback to change the decade filter
+  decadeStatus = {}, // { '2020s': 'ready', '2010s': 'loading', ... }
 }) {
+  // Decade options for cycling: 'all' first, then each decade (newest to oldest)
+  const DECADES = [DECADE_OPTIONS.ALL, ...DECADE_ORDER];
+
+  // Check if a decade is ready (has finished loading)
+  const isDecadeReady = (d) => {
+    if (d === 'all') return !isLoading; // 'all' ready when scan complete
+    return decadeStatus[d] === 'ready';
+  };
+
+  // Get ready decades for navigation
+  const readyDecades = DECADES.filter(d => isDecadeReady(d));
+  const hasReadyDecades = readyDecades.length > 0;
+
+  // Navigate to previous ready decade
+  const handlePrevDecade = () => {
+    if (!hasReadyDecades) return;
+    const currentIndex = readyDecades.indexOf(decade);
+    let newIndex;
+    if (currentIndex === -1) {
+      newIndex = 0;
+    } else {
+      newIndex = currentIndex <= 0 ? readyDecades.length - 1 : currentIndex - 1;
+    }
+    onChangeDecade?.(readyDecades[newIndex]);
+  };
+
+  // Navigate to next ready decade
+  const handleNextDecade = () => {
+    if (!hasReadyDecades) return;
+    const currentIndex = readyDecades.indexOf(decade);
+    let newIndex;
+    if (currentIndex === -1) {
+      newIndex = 0;
+    } else {
+      newIndex = currentIndex >= readyDecades.length - 1 ? 0 : currentIndex + 1;
+    }
+    onChangeDecade?.(readyDecades[newIndex]);
+  };
+
+  // Display label for current decade
+  const getDecadeDisplay = () => {
+    return DECADE_LABELS[decade] || decade;
+  };
   // Calculate total albums across all decades
   const totalAlbums = Object.values(albumsByDecade).reduce(
     (sum, albums) => sum + (albums?.length || 0), 0
   );
-  // Threshold slider: minimum saved tracks (3-15)
-  const handleSliderChange = (e) => {
-    const value = parseInt(e.target.value);
-    onThresholdChange?.(value);
-  };
 
   // Download error log as JSON file
   const handleDownloadErrorLog = () => {
@@ -296,13 +266,12 @@ function SettingsModal({
       await new Promise(r => setTimeout(r, 300));
 
       // Download with descriptive filename
-      // Format: [username]_albums_[x]+likes_circa[xx]s.png
+      // Format: [username]_albums_[decade].png
       const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      const decadeLabel = decade === 'all' ? '_all' : `circa${DECADE_LABELS[decade] || decade}`;
-      const thresholdLabel = `${threshold}+likes`;
+      const decadeLabel = decade === 'all' ? 'all-time' : `${DECADE_LABELS[decade] || decade}`;
 
       const link = document.createElement('a');
-      link.download = `${safeUserName}_albums_${thresholdLabel}_${decadeLabel}.png`;
+      link.download = `${safeUserName}_albums_${decadeLabel}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
@@ -335,21 +304,60 @@ function SettingsModal({
     }
   };
 
-  // Export album list as CSV
-  const handleExportCSV = () => {
-    // Get albums for selected decade (or all if 'all')
-    let albumsToExport = [];
+  // Get albums for export (selected decade or all)
+  const getExportAlbums = () => {
     if (decade === 'all') {
       // Flatten all decades
+      const albums = [];
       DECADE_ORDER.forEach(dec => {
         if (albumsByDecade[dec]) {
-          albumsToExport.push(...albumsByDecade[dec]);
+          albums.push(...albumsByDecade[dec]);
         }
       });
-    } else {
-      albumsToExport = albumsByDecade[decade] || [];
+      return albums;
     }
+    return albumsByDecade[decade] || [];
+  };
 
+  // Export album list as TXT (terminal style)
+  const handleExportTXT = () => {
+    const albumsToExport = getExportAlbums();
+    if (albumsToExport.length === 0) return;
+
+    const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+    const decadeLabel = decade === 'all' ? 'ALL TIME' : DECADE_LABELS[decade] || decade;
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    // Terminal-style header
+    let content = `RECORD OS // TOP ${albumsToExport.length} ALBUMS // ${decadeLabel}\n`;
+    content += `USER: ${safeUserName}\n`;
+    content += `GENERATED: ${dateStr}\n`;
+    content += `\n${'='.repeat(60)}\n\n`;
+
+    // Album list
+    albumsToExport.forEach((album, i) => {
+      const year = album.releaseDate?.split('-')[0] || '????';
+      content += `${String(i + 1).padStart(2, '0')}. ${album.name} - ${album.artist} (${year}) // ${album.likedTracks} saved\n`;
+    });
+
+    content += `\n${'='.repeat(60)}\n`;
+    content += `// END TRANSMISSION //\n`;
+
+    // Download
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeUserName.toLowerCase()}_albums_${decade === 'all' ? 'all-time' : DECADE_LABELS[decade] || decade}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export album list as CSV
+  const handleExportCSV = () => {
+    const albumsToExport = getExportAlbums();
     if (albumsToExport.length === 0) return;
 
     // CSV header and rows
@@ -366,7 +374,7 @@ function SettingsModal({
 
     // Download
     const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    const decadeLabel = decade === 'all' ? 'all-decades' : `circa${DECADE_LABELS[decade] || decade}`;
+    const decadeLabel = decade === 'all' ? 'all-time' : `${DECADE_LABELS[decade] || decade}`;
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -380,8 +388,8 @@ function SettingsModal({
 
   return (
     <WindowFrame
-      title="Settings"
-      icon="sliders"
+      title="Download Grid"
+      icon="download"
       isActive={isActive}
       zIndex={zIndex}
       position={position}
@@ -406,52 +414,31 @@ function SettingsModal({
         </SettingRow>
       </StyledFieldset>
 
-      <StyledFieldset label="ALBUM FILTER">
-        <SliderContainer>
+      {/* Decade selector - only when logged in */}
+      {isLoggedIn && (
+        <StyledFieldset label="DECADE">
           <SettingRow>
-            <SettingLabel>Minimum saved tracks</SettingLabel>
-            <SliderValue>{threshold}+</SliderValue>
+            <SettingLabel>Filter grid by era</SettingLabel>
+            <DecadeNav>
+              <DecadeArrow
+                onClick={handlePrevDecade}
+                disabled={!hasReadyDecades}
+                title="Previous era"
+              >
+                <PixelIcon name="chevronLeft" size={14} />
+              </DecadeArrow>
+              <DecadeDisplay>{getDecadeDisplay()}</DecadeDisplay>
+              <DecadeArrow
+                onClick={handleNextDecade}
+                disabled={!hasReadyDecades}
+                title="Next era"
+              >
+                <PixelIcon name="chevronRight" size={14} />
+              </DecadeArrow>
+            </DecadeNav>
           </SettingRow>
-          <SliderRow>
-            <SliderInput
-              type="range"
-              min="3"
-              max="15"
-              step="1"
-              value={threshold}
-              onChange={handleSliderChange}
-            />
-          </SliderRow>
-          <SliderLabels>
-            <span>3</span>
-            <span>9</span>
-            <span>15</span>
-          </SliderLabels>
-
-          {/* Live decade counts */}
-          {isLoggedIn && totalAlbums > 0 && (
-            <DecadeCountsList>
-              {DECADE_ORDER.map(dec => {
-                const count = albumsByDecade[dec]?.length || 0;
-                if (count === 0) return null;
-                return (
-                  <DecadeCountRow key={dec}>
-                    <DecadeCountLabel>{DECADE_LABELS[dec]} ▸</DecadeCountLabel>
-                    <DecadeCountValue>{count}</DecadeCountValue>
-                  </DecadeCountRow>
-                );
-              })}
-              <TotalRow>
-                <DecadeCountLabel>TOTAL</DecadeCountLabel>
-                <DecadeCountValue>{totalAlbums}</DecadeCountValue>
-              </TotalRow>
-              {totalAlbums >= TARGET_ALBUM_COUNT && (
-                <CapNote>// GRID CAPPED AT {TARGET_ALBUM_COUNT} ALBUMS</CapNote>
-              )}
-            </DecadeCountsList>
-          )}
-        </SliderContainer>
-      </StyledFieldset>
+        </StyledFieldset>
+      )}
 
       {/* Library section - only when logged in */}
       {isLoggedIn && (
@@ -486,34 +473,40 @@ function SettingsModal({
         </StyledFieldset>
       )}
 
-      {/* Export grid section - only when logged in with albums */}
+      {/* Export section - only when logged in with albums */}
       {isLoggedIn && totalAlbums > 0 && (
         <StyledFieldset label="EXPORT">
-          {isMobile ? (
+          {!isMobile && (
             <SettingRow>
-              <SettingLabel>Save album list (.csv)</SettingLabel>
-              <ToggleButton onClick={handleExportCSV}>
-                <PixelIcon name="file" size={12} />
-                CSV
-              </ToggleButton>
-            </SettingRow>
-          ) : (
-            <SettingRow>
-              <SettingLabel>Save grid as image</SettingLabel>
+              <SettingLabel>Grid image (.png)</SettingLabel>
               <ToggleButton
                 onClick={handleExportGrid}
                 disabled={['init', 'render', 'compress'].includes(exportState)}
                 $active={exportState === 'success'}
               >
-                <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'download'} size={12} />
+                <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'image'} size={12} />
                 {getExportLabel()}
               </ToggleButton>
             </SettingRow>
           )}
+          <SettingRow style={{ marginTop: isMobile ? 0 : '8px' }}>
+            <SettingLabel>Album list (.txt)</SettingLabel>
+            <ToggleButton onClick={handleExportTXT}>
+              <PixelIcon name="file" size={12} />
+              TXT
+            </ToggleButton>
+          </SettingRow>
+          <SettingRow style={{ marginTop: '8px' }}>
+            <SettingLabel>Album list (.csv)</SettingLabel>
+            <ToggleButton onClick={handleExportCSV}>
+              <PixelIcon name="file" size={12} />
+              CSV
+            </ToggleButton>
+          </SettingRow>
         </StyledFieldset>
       )}
     </WindowFrame>
   );
 }
 
-export default SettingsModal;
+export default DownloadModal;

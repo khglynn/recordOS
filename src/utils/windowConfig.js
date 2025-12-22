@@ -13,8 +13,8 @@
 // LAYOUT CONSTANTS
 // ============================================================================
 
-export const TASKBAR_HEIGHT = 44; // Mobile taskbar height (px)
-export const TASKBAR_HEIGHT_DESKTOP = 48; // Desktop taskbar height (px)
+export const TASKBAR_HEIGHT = 48; // Mobile taskbar height (44px + 2px border + 2px buffer)
+export const TASKBAR_HEIGHT_DESKTOP = 50; // Desktop taskbar height (48px + 2px border)
 export const MOBILE_PADDING = 8; // Padding around modals on mobile (px)
 export const MOBILE_BREAKPOINT = 767; // CSS media query breakpoint (px)
 

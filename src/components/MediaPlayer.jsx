@@ -395,7 +395,6 @@ function MediaPlayer({
   onVolumeChange,
   onMuteToggle,
   onOpenVisualizer,
-  onEnableDemoMode,
   onDismissError,
   windowPosition,
   onDragStart,
@@ -480,38 +479,23 @@ function MediaPlayer({
         {/* Playback Error Banner */}
         {playbackError && (
           <ErrorBanner>
-            <ErrorCode>⚠ {playbackError.code || 'PLAYBACK_FAILURE'}</ErrorCode>
+            <ErrorCode>⚠ {playbackError.code || 'CONNECTION_LOST'}</ErrorCode>
             <ErrorMessage>
-              {playbackError.message || 'External audio subsystem unavailable.'}
-              {playbackError.detail && (
-                <>
-                  <br />
-                  {playbackError.detail.split('\n').map((line, i) => (
-                    <span key={i}>{line}<br /></span>
-                  ))}
-                </>
-              )}
+              {playbackError.message || 'Spotify connection lost. Open Spotify, play a song, return here.'}
             </ErrorMessage>
-            {playbackError.action === 'OPEN_SPOTIFY' && (
-              <FallbackButton
-                as="a"
-                href="spotify://"
-                onClick={(e) => {
-                  // Fallback to web player if app doesn't open
-                  setTimeout(() => {
-                    window.location.href = 'https://open.spotify.com';
-                  }, 1500);
-                }}
-                style={{ marginBottom: '8px', display: 'inline-block', textDecoration: 'none' }}
-              >
-                OPEN SPOTIFY APP
-              </FallbackButton>
-            )}
-            {!playbackError.action && (
-              <FallbackButton onClick={onEnableDemoMode}>
-                INITIATE OFFLINE MODE
-              </FallbackButton>
-            )}
+            <FallbackButton
+              as="a"
+              href="spotify://"
+              onClick={(e) => {
+                // Fallback to web player if app doesn't open
+                setTimeout(() => {
+                  window.location.href = 'https://open.spotify.com';
+                }, 1500);
+              }}
+              style={{ marginBottom: '8px', display: 'inline-block', textDecoration: 'none' }}
+            >
+              OPEN SPOTIFY
+            </FallbackButton>
             <DismissLink onClick={onDismissError}>
               [DISMISS]
             </DismissLink>

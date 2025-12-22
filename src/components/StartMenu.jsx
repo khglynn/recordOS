@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { MenuList, MenuListItem, Separator } from 'react95';
+import { MenuList, MenuListItem } from 'react95';
 import { DECADE_LABELS } from '../utils/constants';
 import PixelIcon from './PixelIcon';
 import { useMobile } from '../hooks/useMobile';
@@ -122,9 +122,9 @@ const MenuIcon = styled.span.attrs({ className: 'menu-icon' })`
   flex-shrink: 0;
 `;
 
-const StyledSeparator = styled(Separator)`
-  background: #2a2a2a !important;
-  margin: 2px 8px;
+const StyledSeparator = styled.div`
+  background: #2a2a2a;
+  margin: 4px 8px;
   height: 1px;
 `;
 

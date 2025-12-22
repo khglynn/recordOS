@@ -38,10 +38,9 @@ const ErrorIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a0a0a;
-  border: 2px solid #ff4141;
-  color: #ff4141;
-  font-size: 24px;
+  color: #ffaa00;
+  font-size: 28px;
+  opacity: 0.9;
 `;
 
 const ErrorTitleBlock = styled.div`

@@ -572,7 +572,7 @@ function LoginModal({
           </StatusText>
 
           <SpotifyButton onClick={handleLogin} disabled={showAccessOverlay}>
-            <PixelIcon name="login" size={14} color="currentColor" /> CONNECT TO SPOTIFY
+            <PixelIcon name="login" size={14} color="currentColor" /> REQUEST SPOTIFY CONNECTION
           </SpotifyButton>
 
           <Footer>
@@ -597,7 +597,7 @@ function LoginModal({
                 </StatusBlock>
 
                 <FormSection>
-                  <InputLabel>SPOTIFY EMAIL FOR FLESH REVIEW</InputLabel>
+                  <InputLabel>SPOTIFY EMAIL FOR KEVIN'S MANUAL APPROVAL</InputLabel>
                   <StyledInput
                     type="email"
                     value={accessEmail || ''}
@@ -644,8 +644,9 @@ function LoginModal({
             {accessState === 'pending' && (
               <>
                 <StatusBlock>
-                  <StatusLine $highlight><span className="prompt">//</span>CHEAP HUMAN LABOR PINGED</StatusLine>
-                  <StatusLine><span className="prompt">//</span>EST TIME TO COMPLETE: {'<'}3 MIN</StatusLine>
+                  <StatusLine $highlight><span className="prompt">//</span>KEVIN MUST APPROVE YOU</StatusLine>
+                  <StatusLine><span className="prompt">//</span>THIS IS MANUAL. WE HATE SPOTIFY</StatusLine>
+                  <StatusLine><span className="prompt">//</span>GIVE HIM A MINUTE</StatusLine>
                 </StatusBlock>
 
                 <EmailDisplay>{accessEmail}</EmailDisplay>

@@ -34,6 +34,20 @@ Safari's EME (DRM) implementation doesn't fully support Spotify Web Playback SDK
 
 ---
 
+## 0.6. Spotify Connect UX Overhaul (IN PROGRESS)
+
+Fix Spotify Connect pain points with better onboarding, simplified player states, and cleaner album display.
+
+**Plan:** `claude-plans/2025-12-22-spotify-connect-ux-overhaul.md`
+
+**What:**
+1. **Spotify Connect Flow** - Post-auth connection overlay, auto-transfer if device exists, poll for connection
+2. **Onboarding Refinement** - "REQUEST SPOTIFY CONNECTION" button, clearer approval messaging
+3. **Album Display** - Top 50 per decade, name-based dedupe, full-row grids, remove threshold slider
+4. **Download Redesign** - Rename Settings → Download Grid, add TXT/CSV exports, JSZip for image bundles
+
+---
+
 ## 1. PostHog Integration
 
 Full PostHog setup with session recording, autocapture, Slack alerts.

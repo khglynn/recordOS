@@ -14,7 +14,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { GRID_ALBUM_MIN_SIZE, GRID_ALBUM_MAX_SIZE, GRID_GAP } from '../utils/constants';
+import { GRID_ALBUM_MIN_SIZE, GRID_ALBUM_MAX_SIZE, GRID_GAP, TARGET_ALBUM_COUNT } from '../utils/constants';
 
 // ============================================================================
 // BROWSER DETECTION
@@ -832,22 +832,27 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const isRefreshing = isLoading && albums.length > 0;
 
   // Get tile width for Safari flexbox layout
-  const { tileWidth } = gridGeometry;
+  const { tileWidth, numColumns } = gridGeometry;
+
+  // Row rounding: ensure we show complete rows for clean grid exports
+  // Round up to nearest full row based on current column count
+  // e.g., with 3 columns: Math.ceil(50/3) * 3 = 51 albums
+  const displayCount = Math.ceil(TARGET_ALBUM_COUNT / numColumns) * numColumns;
+  const displayAlbums = albums.slice(0, displayCount);
 
   return (
     <DesktopContainer data-album-grid>
       <AlbumGrid data-album-grid-inner style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
-        {albums.map((album, index) => (
+        {displayAlbums.map((album, index) => (
           <AlbumCover
             key={album.id}
             onClick={() => onAlbumClick(album)}
             className={!loadedImages.has(album.id) ? 'loading' : ''}
-            style={{
-              ...(seenAlbums.has(album.id)
+            style={
+              seenAlbums.has(album.id)
                 ? { animation: 'none' }
-                : { '--reveal-delay': `${getAnimationDelay(album)}ms` }),
-              ...(album.belowThreshold && { opacity: 0.85 }),
-            }}
+                : { '--reveal-delay': `${getAnimationDelay(album)}ms` }
+            }
           >
             <img
               src={album.image}

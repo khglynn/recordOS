@@ -52,19 +52,8 @@ export const LOCAL_TRACKS = [
 // ALBUM SELECTION CONFIG
 // ============================================================================
 
-// Target number of albums to show (Top N algorithm)
-// 120 divides cleanly by 2,3,4,5,6,8,10,12,15,20,24,30,40,60 - good for responsive grids
-export const TARGET_ALBUM_COUNT = 120;
-
-// Minimum albums to show per decade grid (fills with below-threshold albums if needed)
-export const MINIMUM_GRID_ALBUMS = 24;
-
-// Minimum saved tracks required to include album in Top N
-export const MIN_SAVED_TRACKS = 8;
-
-// Legacy threshold options (kept for backwards compatibility)
-export const THRESHOLD_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 'all'];
-export const DEFAULT_THRESHOLD = 'auto'; // 'auto' uses Top 50 algorithm
+// Target number of albums to show per decade (top 50 sorted by liked tracks)
+export const TARGET_ALBUM_COUNT = 50;
 
 // ============================================================================
 // DECADE FILTER OPTIONS
@@ -81,7 +70,7 @@ export const DECADE_OPTIONS = {
 };
 
 export const DECADE_LABELS = {
-  [DECADE_OPTIONS.ALL]: 'ALL',
+  [DECADE_OPTIONS.ALL]: 'ALL TIME',
   [DECADE_OPTIONS.D2020]: '20s',
   [DECADE_OPTIONS.D2010]: '10s',
   [DECADE_OPTIONS.D2000]: '00s',
@@ -166,7 +155,6 @@ export const STORAGE_KEYS = {
   DECADE: 'recordos_decade',
   VOLUME: 'recordos_volume',
   MUTED: 'recordos_muted',
-  THRESHOLD: 'recordos_threshold',
   ALBUMS_CACHE: 'recordos_albums_cache',
   ALBUMS_CACHE_TIME: 'recordos_albums_cache_time',
 };

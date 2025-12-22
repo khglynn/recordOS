@@ -47,10 +47,16 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: constrain to viewport but keep window behavior */
+  /* Mobile: centered fixed size (not full screen) */
   ${props => props.$isMobile && `
-    max-width: calc(100vw - 16px);
-    max-height: calc(100vh - 60px);
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 32px) !important;
+    max-width: 360px;
+    height: auto !important;
+    min-width: unset;
+    min-height: unset;
   `}
 `;
 
@@ -106,6 +112,7 @@ const StyledWindowContent = styled(WindowContent)`
 const VisualizerIframe = styled.iframe`
   flex: 1;
   width: 100%;
+  min-height: 0; /* Allow flexbox to shrink below intrinsic size */
   border: none;
   background: #000;
 `;

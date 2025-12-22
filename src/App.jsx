@@ -30,7 +30,7 @@ import MediaPlayer from './components/MediaPlayer';
 import TrippyGraphics from './components/TrippyGraphics';
 import GameWindow from './components/GameWindow';
 import InfoModal from './components/InfoModal';
-import SettingsModal from './components/SettingsModal';
+import DownloadModal from './components/DownloadModal';
 import LibraryScanner from './components/LibraryScanner';
 import ErrorModal from './components/ErrorModal';
 
@@ -95,11 +95,8 @@ function App() {
   // Use Spotify when logged in, local audio otherwise
   const isLoggedIn = spotify.loggedIn;
 
-  // Allow user to force demo mode if Spotify playback fails
-  const [demoModeForced, setDemoModeForced] = useState(false);
-
-  // Use Spotify when logged in and demo mode not forced, local audio otherwise
-  const audio = (isLoggedIn && !demoModeForced) ? spotify : localAudio;
+  // Use Spotify when logged in, local audio for pre-login demo
+  const audio = isLoggedIn ? spotify : localAudio;
 
   // -------------------------------------------------------------------------
   // ACCESS REQUEST OVERLAY STATE
@@ -865,18 +862,9 @@ function App() {
     setLoginModalOpen(true);
     setWindows([]);
     setSelectedAlbum(null);
-    setDemoModeForced(false);
   }, [spotify]);
 
-  // Enable demo mode fallback when Spotify playback fails
-  const handleEnableDemoMode = useCallback(() => {
-    setDemoModeForced(true);
-    spotify.clearPlaybackError?.();
-    // Start playing local audio demo tracks
-    localAudio.play?.();
-  }, [spotify, localAudio]);
-
-  // Dismiss playback error without switching to demo mode
+  // Dismiss playback error
   const handleDismissPlaybackError = useCallback(() => {
     spotify.clearPlaybackError?.();
   }, [spotify]);
@@ -1094,7 +1082,7 @@ function App() {
                 duration={audio.duration}
                 volume={audio.volume}
                 isMuted={audio.isMuted}
-                playbackError={!demoModeForced ? spotify.playbackError : null}
+                playbackError={spotify.playbackError}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -1103,7 +1091,6 @@ function App() {
                 onVolumeChange={audio.setVolume}
                 onMuteToggle={audio.toggleMute}
                 onOpenVisualizer={handleOpenTrippyGraphics}
-                onEnableDemoMode={handleEnableDemoMode}
                 onDismissError={handleDismissPlaybackError}
                 spotifyLoggedIn={spotify.loggedIn}
                 activeDeviceName={spotify.activeDeviceName}
@@ -1142,20 +1129,20 @@ function App() {
 
           case 'settings':
             return (
-              <SettingsModal
+              <DownloadModal
                 {...commonProps}
                 scanlinesEnabled={scanlinesEnabled}
                 onToggleScanlines={() => setScanlinesEnabled(prev => !prev)}
-                threshold={spotify.threshold}
-                onThresholdChange={spotify.setThreshold}
                 isLoggedIn={isLoggedIn}
                 isLoading={spotify.isLoading}
                 onRescanLibrary={handleRescanLibrary}
                 onShowScanResults={handleShowScanResults}
                 unavailableAlbums={spotify.unavailableAlbums}
-                albumsByDecade={spotify.filteredAlbumsByDecade}
+                albumsByDecade={spotify.albumsByDecade}
                 userName={spotify.user?.display_name || spotify.user?.id}
                 decade={spotify.decade}
+                onChangeDecade={spotify.setDecade}
+                decadeStatus={spotify.decadeStatus}
               />
             );
 

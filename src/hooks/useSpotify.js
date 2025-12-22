@@ -8,7 +8,7 @@
  * Responsibilities:
  * - Handle OAuth callback
  * - Fetch user's saved tracks
- * - Process albums (filter by threshold, sort)
+ * - Process albums (top 50 per decade, sorted by liked tracks, name-based dedupe)
  * - Playback controls via Spotify Connect (controls external Spotify device)
  */
 
@@ -37,10 +37,7 @@ import {
   DECADE_LABELS,
   getDecadeFromDate,
   getDecadeCompletionThreshold,
-  DEFAULT_THRESHOLD,
   TARGET_ALBUM_COUNT,
-  MINIMUM_GRID_ALBUMS,
-  MIN_SAVED_TRACKS,
   STORAGE_KEYS,
   ALBUMS_CACHE_DURATION,
 } from '../utils/constants';
@@ -114,10 +111,6 @@ export function useSpotify(isMobile = false) {
   const [decade, setDecade] = useState(
     () => localStorage.getItem(STORAGE_KEYS.DECADE) || DECADE_OPTIONS.ALL
   );
-  const [threshold, setThreshold] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.THRESHOLD);
-    return saved ? parseInt(saved) : MIN_SAVED_TRACKS;
-  });
 
   // Refs for cleanup and album tracking
   const connectPollIntervalRef = useRef(null); // Polling for playback state
@@ -528,15 +521,15 @@ export function useSpotify(isMobile = false) {
   }, [fetchLibrary]);
 
   // -------------------------------------------------------------------------
-  // FILTER ALBUMS - TOP 48 BY LIKED TRACKS, OPTIONALLY BY DECADE
+  // FILTER ALBUMS - TOP 50 BY LIKED TRACKS, OPTIONALLY BY DECADE
   // -------------------------------------------------------------------------
 
   /**
    * Album Selection Algorithm:
    * 1. Filter by decade (if selected)
-   * 2. Sort by saved track count (most saved = most loved)
-   * 3. Take the top N albums, prioritizing those meeting threshold
-   *    but filling up to TARGET_ALBUM_COUNT even with fewer liked tracks
+   * 2. Deduplicate by album name + artist (keeps version with most liked tracks)
+   * 3. Sort by saved track count (most saved = most loved)
+   * 4. Take top 50 albums
    *
    * Memoized to prevent recalculation on every render
    */
@@ -568,44 +561,31 @@ export function useSpotify(isMobile = false) {
       }
     }
 
-    // Step 2: Sort all candidates by liked track count (highest first)
-    const sorted = [...candidates].sort((a, b) => b.likedTracks - a.likedTracks);
-
-    // Step 3: Filter to albums meeting threshold
-    const qualifyingAlbums = sorted.filter(a => a.likedTracks >= threshold);
-
-    // Step 4: Mark albums and fill to minimum if needed
-    // When viewing a specific decade, ensure at least MINIMUM_GRID_ALBUMS (24) are shown
-    const isDecadeView = decade !== DECADE_OPTIONS.ALL;
-    const needsFilling = isDecadeView && qualifyingAlbums.length < MINIMUM_GRID_ALBUMS && sorted.length > qualifyingAlbums.length;
-
-    if (needsFilling) {
-      // Mark qualifying albums as meeting threshold
-      const result = qualifyingAlbums.map(a => ({ ...a, belowThreshold: false }));
-
-      // Add below-threshold albums to fill up to MINIMUM_GRID_ALBUMS
-      const belowThreshold = sorted.filter(a => a.likedTracks < threshold);
-      const needed = MINIMUM_GRID_ALBUMS - result.length;
-      const fillers = belowThreshold.slice(0, needed).map(a => ({ ...a, belowThreshold: true }));
-
-      return [...result, ...fillers].slice(0, TARGET_ALBUM_COUNT);
-    }
-
-    // Normal case: just return qualifying albums with belowThreshold: false
-    return qualifyingAlbums.slice(0, TARGET_ALBUM_COUNT).map(a => ({ ...a, belowThreshold: false }));
-  }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade, threshold]);
-
-  // Compute decade counts filtered by threshold (for Settings slider preview)
-  const filteredAlbumsByDecade = useMemo(() => {
-    const filtered = {};
-    for (const [dec, decadeAlbums] of Object.entries(albumsByDecade)) {
-      const qualifying = decadeAlbums.filter(a => a.likedTracks >= threshold);
-      if (qualifying.length > 0) {
-        filtered[dec] = qualifying;
+    // Step 2: Deduplicate by album name + artist (Spotify sometimes has multiple IDs for same album)
+    // Keep the version with most liked tracks
+    const deduped = [];
+    const seen = new Map(); // key: `${name.toLowerCase()}|${artist.toLowerCase()}`
+    for (const album of candidates) {
+      const key = `${album.name.toLowerCase()}|${album.artist.toLowerCase()}`;
+      if (seen.has(key)) {
+        const existingIdx = seen.get(key);
+        // Replace if this version has more liked tracks
+        if (album.likedTracks > deduped[existingIdx].likedTracks) {
+          deduped[existingIdx] = album;
+        }
+      } else {
+        seen.set(key, deduped.length);
+        deduped.push(album);
       }
     }
-    return filtered;
-  }, [albumsByDecade, threshold]);
+
+    // Step 3: Sort by liked track count (highest first)
+    const sorted = deduped.sort((a, b) => b.likedTracks - a.likedTracks);
+
+    // Step 4: Take top albums (slightly more than 50 to allow row rounding in Desktop)
+    // Desktop.jsx will slice to complete rows based on viewport columns
+    return sorted.slice(0, TARGET_ALBUM_COUNT + 10);
+  }, [albums, decade, unavailableAlbums, isLoading, decadeStatus, albumsByDecade]);
 
   // -------------------------------------------------------------------------
   // SETTINGS HANDLERS
@@ -614,11 +594,6 @@ export function useSpotify(isMobile = false) {
   const handleDecadeChange = useCallback((newDecade) => {
     setDecade(newDecade);
     localStorage.setItem(STORAGE_KEYS.DECADE, newDecade);
-  }, []);
-
-  const handleThresholdChange = useCallback((newThreshold) => {
-    setThreshold(newThreshold);
-    localStorage.setItem(STORAGE_KEYS.THRESHOLD, newThreshold.toString());
   }, []);
 
   // -------------------------------------------------------------------------
@@ -1221,7 +1196,11 @@ export function useSpotify(isMobile = false) {
 
     // Library
     albums: displayAlbums,
-    allAlbumsCount: albums.length,
+    // During scan: compute live count from progressive albumsByDecade
+    // After scan: use final albums.length
+    allAlbumsCount: isLoading
+      ? Object.values(albumsByDecade).reduce((sum, decadeAlbums) => sum + (decadeAlbums?.length || 0), 0)
+      : albums.length,
     totalSavedTracks: albums.reduce((sum, a) => sum + (a.likedTracks || 0), 0),
     unavailableAlbums, // Albums hidden due to 403 errors
     isLoading,
@@ -1242,9 +1221,6 @@ export function useSpotify(isMobile = false) {
     // Settings
     decade,
     setDecade: handleDecadeChange,
-    threshold,
-    setThreshold: handleThresholdChange,
-    filteredAlbumsByDecade,
 
     // Playback
     deviceReady, // True only after SDK transfer completes - safe to play

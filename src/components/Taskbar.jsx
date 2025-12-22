@@ -54,6 +54,9 @@ const StartButton = styled(Button)`
   gap: 10px;
   padding: 4px 20px 4px 12px;
   height: 40px;
+  min-width: 140px;
+  white-space: nowrap;
+  flex-shrink: 0;
   font-weight: bold;
   font-size: 12px;
   font-family: 'Consolas', 'Courier New', monospace;

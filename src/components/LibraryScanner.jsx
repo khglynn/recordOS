@@ -440,7 +440,7 @@ function LibraryScanner({
 
         {/* Instruction text */}
         <InstructionText>
-          SELECT DECADE TO VIEW ALBUMS
+          SELECT DECADE // TOP 50 BY SAVED TRACKS
         </InstructionText>
 
         {/* Decade buttons - 3x3 grid + full-width ALL at bottom */}
@@ -462,13 +462,13 @@ function LibraryScanner({
             );
           })}
 
-          {/* ALL button - full width at bottom, highlighted in complete state */}
+          {/* ALL TIME button - full width at bottom, highlighted in complete state */}
           <AllButton
             $isAll={isComplete}
             disabled={!isComplete && albumCount === 0}
             onClick={() => handleDecadeClick('all')}
           >
-            ALL
+            ALL TIME
             <DecadeButtonCount>{albumCount} albums</DecadeButtonCount>
           </AllButton>
         </DecadeButtonGrid>
