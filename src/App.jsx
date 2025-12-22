@@ -1105,6 +1105,7 @@ function App() {
                 onOpenVisualizer={handleOpenTrippyGraphics}
                 onEnableDemoMode={handleEnableDemoMode}
                 onDismissError={handleDismissPlaybackError}
+                spotifyLoggedIn={spotify.loggedIn}
               />
             );
 

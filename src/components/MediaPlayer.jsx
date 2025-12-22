@@ -391,6 +391,7 @@ function MediaPlayer({
   windowPosition,
   onDragStart,
   isMobile,
+  spotifyLoggedIn,
 }) {
   const headerRef = useRef(null);
 
@@ -540,6 +541,21 @@ function MediaPlayer({
                   <PixelIcon name="sparkles" size={14} />
                 </TransportButton>
               </Tooltip>
+              {spotifyLoggedIn && (
+                <Tooltip text="Open Spotify" position="above">
+                  <TransportButton
+                    onClick={() => {
+                      window.location.href = 'spotify://';
+                      // Fallback to web player if app doesn't open
+                      setTimeout(() => {
+                        window.open('https://open.spotify.com', '_blank');
+                      }, 1500);
+                    }}
+                  >
+                    <PixelIcon name="music" size={14} />
+                  </TransportButton>
+                </Tooltip>
+              )}
             </TransportButtons>
 
             <VolumeControl>
