@@ -123,6 +123,7 @@ export function useSpotify(isMobile = false) {
   const connectPollIntervalRef = useRef(null); // Polling for playback state
   const originalAlbumUriRef = useRef(null);  // Track album we started playing
   const albumEndTriggeredRef = useRef(false); // Prevent multiple triggers
+  const lastDeviceCheckRef = useRef(0); // Track last device check for idle polling
 
   // -------------------------------------------------------------------------
   // HANDLE OAUTH CALLBACK
@@ -664,9 +665,20 @@ export function useSpotify(isMobile = false) {
       try {
         const state = await getPlaybackState();
 
-        // No active playback
+        // No active playback - check for new devices periodically
         if (!state || !state.item) {
-          // Don't clear state - might just be between tracks
+          // Poll for new devices every 10s when idle (user may have opened Spotify)
+          const now = Date.now();
+          if (now - lastDeviceCheckRef.current > 10000) {
+            lastDeviceCheckRef.current = now;
+            const devices = await getDevices();
+            const activeDevice = devices.find(d => d.is_active);
+            if (activeDevice && activeDevice.id !== deviceId) {
+              console.log('[Connect] New active device detected while idle:', activeDevice.name);
+              setDeviceId(activeDevice.id);
+              setActiveDeviceName(activeDevice.name);
+            }
+          }
           return;
         }
 
@@ -718,6 +730,40 @@ export function useSpotify(isMobile = false) {
       clearInterval(connectPollIntervalRef.current);
     };
   }, [loggedIn, deviceReady, deviceId]);
+
+  // -------------------------------------------------------------------------
+  // VISIBILITY-BASED DEVICE REFRESH
+  // -------------------------------------------------------------------------
+  // When user returns from Spotify app (switches back to browser),
+  // immediately check for new active devices.
+
+  useEffect(() => {
+    if (!loggedIn || !deviceReady) return;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Connect] Page visible - refreshing devices');
+        try {
+          const devices = await getDevices();
+          const activeDevice = devices.find(d => d.is_active);
+          if (activeDevice) {
+            console.log('[Connect] Found active device on return:', activeDevice.name);
+            setDeviceId(activeDevice.id);
+            setActiveDeviceName(activeDevice.name);
+            // Clear any previous NO_DEVICE error since we found one
+            if (playbackError?.code === 'NO_DEVICE') {
+              setPlaybackError(null);
+            }
+          }
+        } catch (err) {
+          console.log('[Connect] Visibility refresh error:', err.message);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [loggedIn, deviceReady, playbackError]);
 
   // -------------------------------------------------------------------------
   // MEDIA SESSION API - System media keys (play/pause/next/prev)
@@ -850,7 +896,15 @@ export function useSpotify(isMobile = false) {
       let needsTransfer = false;
 
       if (!targetDeviceId) {
-        const devices = await getDevices();
+        let devices = await getDevices();
+
+        // On mobile, retry device discovery if no devices found
+        // User may have just opened Spotify app and devices take a moment to register
+        if (devices.length === 0 && isMobile) {
+          console.log('[Connect] No devices found on mobile - retrying in 1s...');
+          await new Promise(r => setTimeout(r, 1000));
+          devices = await getDevices();
+        }
 
         // On mobile, prefer smartphone devices (play on user's phone)
         // On desktop, prefer active device or first available
@@ -869,8 +923,11 @@ export function useSpotify(isMobile = false) {
         if (!targetDevice) {
           setPlaybackError({
             code: 'NO_DEVICE',
-            message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '// INITIALIZE SPOTIFY APPLICATION\n// AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            message: 'NO ACTIVE SPOTIFY CLIENT DETECTED',
+            detail: isMobile
+              ? '// OPEN SPOTIFY APP ON THIS DEVICE\n// THEN RETURN HERE TO PLAY'
+              : '// LAUNCH SPOTIFY ON ANY DEVICE\n// DESKTOP APP, MOBILE, OR WEB PLAYER',
+            action: isMobile ? 'OPEN_SPOTIFY' : null,
           });
           return;
         }
@@ -892,8 +949,8 @@ export function useSpotify(isMobile = false) {
       if (needsTransfer) {
         console.log('[Connect] Transferring playback to device...');
         await transferPlayback(targetDeviceId, false);
-        // Small delay to let device wake up
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Delay to let device wake up - 500ms for reliability
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       await play(targetDeviceId, {
@@ -911,12 +968,43 @@ export function useSpotify(isMobile = false) {
         authInvalidRef.current = true;
       }
 
+      // Check for "Restriction violated" - device is controlled by another app
+      // or has Premium restrictions (is_restricted: true on device)
+      const isRestricted = err.message?.includes('Restriction violated') ||
+                           err.message?.includes('restricted');
+
+      // Clear stale device ID on device-related errors
+      // Next play attempt will fetch fresh device list
+      const isDeviceError = err.message?.includes('Device not found') ||
+                            err.message?.includes('No active device') ||
+                            isRestricted;
+      if (isDeviceError) {
+        console.log('[Connect] Clearing stale device ID due to error');
+        setDeviceId(null);
+        setActiveDeviceName(null);
+      }
+
       captureException(err, { context: 'playTrack', trackId: track.id });
-      setPlaybackError({
-        code: isAuthError ? 'AUTH_EXPIRED' : 'PLAYBACK_FAILURE',
-        message: isAuthError ? 'SESSION EXPIRED' : 'TRACK INITIALIZATION FAILED',
-        detail: isAuthError ? 'Please log in again' : err.message,
-      });
+
+      if (isAuthError) {
+        setPlaybackError({
+          code: 'AUTH_EXPIRED',
+          message: 'SESSION EXPIRED',
+          detail: 'Please log in again',
+        });
+      } else if (isRestricted) {
+        setPlaybackError({
+          code: 'DEVICE_RESTRICTED',
+          message: 'DEVICE LOCKED BY EXTERNAL PROCESS',
+          detail: '// ANOTHER APP CONTROLS THIS DEVICE\n// CLOSE OTHER SPOTIFY CLIENTS AND RETRY',
+        });
+      } else {
+        setPlaybackError({
+          code: 'PLAYBACK_FAILURE',
+          message: 'TRACK INITIALIZATION FAILED',
+          detail: err.message,
+        });
+      }
     }
   }, [deviceId, isMobile]);
 
@@ -934,7 +1022,15 @@ export function useSpotify(isMobile = false) {
       let needsTransfer = false;
 
       if (!targetDeviceId) {
-        const devices = await getDevices();
+        let devices = await getDevices();
+
+        // On mobile, retry device discovery if no devices found
+        // User may have just opened Spotify app and devices take a moment to register
+        if (devices.length === 0 && isMobile) {
+          console.log('[Connect] No devices found on mobile - retrying in 1s...');
+          await new Promise(r => setTimeout(r, 1000));
+          devices = await getDevices();
+        }
 
         // On mobile, prefer smartphone devices (play on user's phone)
         // On desktop, prefer active device or first available
@@ -953,8 +1049,11 @@ export function useSpotify(isMobile = false) {
         if (!targetDevice) {
           setPlaybackError({
             code: 'NO_DEVICE',
-            message: 'EXTERNAL PLAYBACK SUBSTRATE REQUIRED',
-            detail: '// INITIALIZE SPOTIFY APPLICATION\n// AUDIO ROUTING WILL TRANSFER TO ACTIVE CLIENT',
+            message: 'NO ACTIVE SPOTIFY CLIENT DETECTED',
+            detail: isMobile
+              ? '// OPEN SPOTIFY APP ON THIS DEVICE\n// THEN RETURN HERE TO PLAY'
+              : '// LAUNCH SPOTIFY ON ANY DEVICE\n// DESKTOP APP, MOBILE, OR WEB PLAYER',
+            action: isMobile ? 'OPEN_SPOTIFY' : null,
           });
           return;
         }
@@ -976,8 +1075,8 @@ export function useSpotify(isMobile = false) {
       if (needsTransfer) {
         console.log('[Connect] Transferring playback to device...');
         await transferPlayback(targetDeviceId, false);
-        // Small delay to let device wake up
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Delay to let device wake up - 500ms for reliability
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       await play(targetDeviceId, {
@@ -1001,10 +1100,35 @@ export function useSpotify(isMobile = false) {
         return;
       }
 
-      // Check if this is a 403 error (album unavailable/restricted)
+      // Check for "Restriction violated" - device is controlled by another app
+      // or has Premium restrictions (is_restricted: true on device)
+      // Must check BEFORE 403 check since both contain "restricted"
+      const isDeviceRestricted = err.message?.includes('Restriction violated');
+
+      // Clear stale device ID on device-related errors
+      // Next play attempt will fetch fresh device list
+      const isDeviceError = err.message?.includes('Device not found') ||
+                            err.message?.includes('No active device') ||
+                            isDeviceRestricted;
+      if (isDeviceError) {
+        console.log('[Connect] Clearing stale device ID due to error');
+        setDeviceId(null);
+        setActiveDeviceName(null);
+      }
+
+      if (isDeviceRestricted) {
+        captureException(err, { context: 'playAlbum_restricted', albumId: album.id });
+        setPlaybackError({
+          code: 'DEVICE_RESTRICTED',
+          message: 'DEVICE LOCKED BY EXTERNAL PROCESS',
+          detail: '// ANOTHER APP CONTROLS THIS DEVICE\n// CLOSE OTHER SPOTIFY CLIENTS AND RETRY',
+        });
+        return;
+      }
+
+      // Check if this is a 403 error (album unavailable/region restricted)
       const is403Error = err.message?.includes('403') ||
                          err.message?.includes('Forbidden') ||
-                         err.message?.includes('restricted') ||
                          err.status === 403;
 
       if (is403Error) {

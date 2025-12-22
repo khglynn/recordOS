@@ -26,6 +26,7 @@ import {
 } from 'react95';
 import PixelIcon from './PixelIcon';
 import Tooltip from './Tooltip';
+import { TASKBAR_HEIGHT } from '../utils/windowConfig';
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -57,7 +58,7 @@ const StyledWindow = styled(Window)`
     width: 100vw !important;
     max-width: 100vw !important;
     left: 0 !important;
-    bottom: 44px !important;
+    bottom: ${TASKBAR_HEIGHT}px !important;
     top: auto !important;
     border-radius: 0;
     display: flex;
@@ -468,12 +469,35 @@ function MediaPlayer({
             <ErrorCode>⚠ {playbackError.code || 'PLAYBACK_FAILURE'}</ErrorCode>
             <ErrorMessage>
               {playbackError.message || 'External audio subsystem unavailable.'}
-              <br />
-              Local audio protocol standing by.
+              {playbackError.detail && (
+                <>
+                  <br />
+                  {playbackError.detail.split('\n').map((line, i) => (
+                    <span key={i}>{line}<br /></span>
+                  ))}
+                </>
+              )}
             </ErrorMessage>
-            <FallbackButton onClick={onEnableDemoMode}>
-              INITIATE OFFLINE MODE
-            </FallbackButton>
+            {playbackError.action === 'OPEN_SPOTIFY' && (
+              <FallbackButton
+                as="a"
+                href="spotify://"
+                onClick={(e) => {
+                  // Fallback to web player if app doesn't open
+                  setTimeout(() => {
+                    window.location.href = 'https://open.spotify.com';
+                  }, 1500);
+                }}
+                style={{ marginBottom: '8px', display: 'inline-block', textDecoration: 'none' }}
+              >
+                OPEN SPOTIFY APP
+              </FallbackButton>
+            )}
+            {!playbackError.action && (
+              <FallbackButton onClick={onEnableDemoMode}>
+                INITIATE OFFLINE MODE
+              </FallbackButton>
+            )}
             <DismissLink onClick={onDismissError}>
               [DISMISS]
             </DismissLink>
