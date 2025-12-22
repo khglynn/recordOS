@@ -256,10 +256,11 @@ function SettingsModal({
       position: grid.style.position,
     };
 
-    // Detect Safari - needs lower scale to avoid hanging on large grids
+    // Detect Safari or mobile - needs lower scale to avoid hanging/memory issues
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    // Use scale 1 for Safari or large grids (>60 albums), scale 2 otherwise
-    const exportScale = (isSafari || totalAlbums > 60) ? 1 : 2;
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Use scale 1 for Safari, mobile, or large grids (>60 albums), scale 2 otherwise
+    const exportScale = (isSafari || isMobileDevice || totalAlbums > 60) ? 1 : 2;
 
     try {
       // Hide UI elements during capture
@@ -332,6 +333,49 @@ function SettingsModal({
       case 'error': return 'FAILED';
       default: return 'EXPORT';
     }
+  };
+
+  // Export album list as CSV
+  const handleExportCSV = () => {
+    // Get albums for selected decade (or all if 'all')
+    let albumsToExport = [];
+    if (decade === 'all') {
+      // Flatten all decades
+      DECADE_ORDER.forEach(dec => {
+        if (albumsByDecade[dec]) {
+          albumsToExport.push(...albumsByDecade[dec]);
+        }
+      });
+    } else {
+      albumsToExport = albumsByDecade[decade] || [];
+    }
+
+    if (albumsToExport.length === 0) return;
+
+    // CSV header and rows
+    const headers = ['Album', 'Artist', 'Year', 'Liked Tracks', 'Total Tracks'];
+    const rows = albumsToExport.map(album => [
+      `"${(album.name || '').replace(/"/g, '""')}"`,
+      `"${(album.artist || '').replace(/"/g, '""')}"`,
+      album.releaseDate?.split('-')[0] || '',
+      album.likedTracks || 0,
+      album.totalTracks || 0,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    // Download
+    const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const decadeLabel = decade === 'all' ? 'all-decades' : `circa${DECADE_LABELS[decade] || decade}`;
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeUserName}_albums_${decadeLabel}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -445,17 +489,27 @@ function SettingsModal({
       {/* Export grid section - only when logged in with albums */}
       {isLoggedIn && totalAlbums > 0 && (
         <StyledFieldset label="EXPORT">
-          <SettingRow>
-            <SettingLabel>Save grid as image</SettingLabel>
-            <ToggleButton
-              onClick={handleExportGrid}
-              disabled={['init', 'render', 'compress'].includes(exportState)}
-              $active={exportState === 'success'}
-            >
-              <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'download'} size={12} />
-              {getExportLabel()}
-            </ToggleButton>
-          </SettingRow>
+          {isMobile ? (
+            <SettingRow>
+              <SettingLabel>Save album list (.csv)</SettingLabel>
+              <ToggleButton onClick={handleExportCSV}>
+                <PixelIcon name="file" size={12} />
+                CSV
+              </ToggleButton>
+            </SettingRow>
+          ) : (
+            <SettingRow>
+              <SettingLabel>Save grid as image</SettingLabel>
+              <ToggleButton
+                onClick={handleExportGrid}
+                disabled={['init', 'render', 'compress'].includes(exportState)}
+                $active={exportState === 'success'}
+              >
+                <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'download'} size={12} />
+                {getExportLabel()}
+              </ToggleButton>
+            </SettingRow>
+          )}
         </StyledFieldset>
       )}
     </WindowFrame>
