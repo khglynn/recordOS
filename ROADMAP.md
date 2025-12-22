@@ -34,17 +34,22 @@ Safari's EME (DRM) implementation doesn't fully support Spotify Web Playback SDK
 
 ---
 
-## 0.6. Spotify Connect UX Overhaul (IN PROGRESS)
+## 0.6. Spotify Connect UX Overhaul (PARTIAL - Phase 3 done)
 
 Fix Spotify Connect pain points with better onboarding, simplified player states, and cleaner album display.
 
 **Plan:** `claude-plans/2025-12-22-spotify-connect-ux-overhaul.md`
 
-**What:**
-1. **Spotify Connect Flow** - Post-auth connection overlay, auto-transfer if device exists, poll for connection
-2. **Onboarding Refinement** - "REQUEST SPOTIFY CONNECTION" button, clearer approval messaging
-3. **Album Display** - Top 50 per decade, name-based dedupe, full-row grids, remove threshold slider
-4. **Download Redesign** - Rename Settings → Download Grid, add TXT/CSV exports, JSZip for image bundles
+**Done:**
+- ✅ Green "AWAITING PLAYBACK" banner in MediaPlayer (idle state instructions)
+- ✅ Removed red error banner - single UI for connection guidance
+- ✅ Auto-open MediaPlayer on mobile after auth
+- ✅ Connection overlay infrastructure (post-OAuth device detection)
+
+**Remaining:**
+- Album Display changes (top 50, dedupe, threshold removal)
+- Download modal redesign (TXT/CSV exports, JSZip)
+- Copy polish across app
 
 ---
 

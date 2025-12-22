@@ -6,6 +6,28 @@ Work that's done. Newest at top.
 
 ## December 2024
 
+### Spotify Connect UX (Phase 3)
+**Completed:** Dec 22, 2024
+**Plan:** `claude-plans/2025-12-22-spotify-connect-ux-overhaul.md`
+
+- ✅ Green "AWAITING PLAYBACK" banner for idle MediaPlayer
+- ✅ Removed red error banner - single green UI for connection guidance
+- ✅ Auto-open MediaPlayer on mobile after auth (appears on top of scanner)
+- ✅ Connection overlay infrastructure (post-OAuth device polling)
+- ✅ Scanner starts minimized when waiting for device connection
+
+---
+
+### Access Overlay & Text Polish
+**Completed:** Dec 22, 2024
+**Plan:** `claude-plans/2025-12-21-access-overlay-text-polish.md`
+
+- ✅ AccessRequestWindow → green CRT overlay on LoginModal
+- ✅ Text styling standardized across app
+- ✅ Copy refresh (deadpan corporate tone)
+
+---
+
 ### Link Preview & README Refresh
 **Completed:** Dec 13, 2024
 **Plan:** `claude-plans/2025-12-13-link-preview-readme.md`
