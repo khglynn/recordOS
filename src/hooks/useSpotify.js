@@ -563,10 +563,20 @@ export function useSpotify(isMobile = false) {
 
     // Step 2: Deduplicate by album name + artist (Spotify sometimes has multiple IDs for same album)
     // Keep the version with most liked tracks
+    // Normalize names: strip parentheticals like "(Deluxe)", "(Remastered)", "(Original Broadway Cast Recording)"
+    const normalizeName = (name) => {
+      return name
+        .toLowerCase()
+        .replace(/\s*\([^)]*\)\s*/g, '') // Remove (...) parentheticals
+        .replace(/\s*\[[^\]]*\]\s*/g, '') // Remove [...] brackets
+        .replace(/\s+-\s+.*(deluxe|remaster|edition|version|expanded|anniversary).*/i, '') // Remove " - Deluxe Edition" suffixes
+        .trim();
+    };
+
     const deduped = [];
-    const seen = new Map(); // key: `${name.toLowerCase()}|${artist.toLowerCase()}`
+    const seen = new Map(); // key: normalized name (artist excluded - too unreliable for cast recordings)
     for (const album of candidates) {
-      const key = `${album.name.toLowerCase()}|${album.artist.toLowerCase()}`;
+      const key = normalizeName(album.name);
       if (seen.has(key)) {
         const existingIdx = seen.get(key);
         // Replace if this version has more liked tracks
@@ -592,6 +602,7 @@ export function useSpotify(isMobile = false) {
   // -------------------------------------------------------------------------
 
   const handleDecadeChange = useCallback((newDecade) => {
+    console.log('[useSpotify] handleDecadeChange called:', newDecade);
     setDecade(newDecade);
     localStorage.setItem(STORAGE_KEYS.DECADE, newDecade);
   }, []);

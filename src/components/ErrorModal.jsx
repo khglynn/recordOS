@@ -7,9 +7,14 @@
  * Previously these errors were set but never rendered - users saw a frozen
  * loading bar with no feedback.
  *
+ * Common trigger: Cached login failed to re-authenticate on page load.
+ * Copy reflects this - "session expired" rather than generic "not authenticated".
+ *
  * Created: 2025-12-21
+ * Updated: 2025-12-22 - Added internal drag state, updated copy
  */
 
+import { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { Button } from 'react95';
 import PixelIcon from './PixelIcon';
@@ -24,23 +29,6 @@ const ErrorContent = styled.div`
   flex-direction: column;
   gap: 16px;
   padding: 8px 0;
-`;
-
-const ErrorHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ErrorIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffaa00;
-  font-size: 28px;
-  opacity: 0.9;
 `;
 
 const ErrorTitleBlock = styled.div`
@@ -58,9 +46,9 @@ const ErrorCode = styled.div`
 const ErrorTitle = styled.h2`
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 14px;
-  color: #ff4141;
+  color: #00ff41;
   margin: 0;
-  text-shadow: 0 0 8px rgba(255, 65, 65, 0.4);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
 `;
 
 const ErrorDetail = styled.div`
@@ -127,11 +115,10 @@ const SystemNote = styled.div`
  * @param {function} onDismiss - Called when user clicks dismiss
  * @param {boolean} isActive - Window focus state
  * @param {number} zIndex - Window z-index
- * @param {Object} position - { x, y } position
+ * @param {Object} position - { x, y } initial position
  * @param {boolean} isMobile - Mobile mode
  * @param {function} onClose - Close handler
  * @param {function} onFocus - Focus handler
- * @param {function} onDragStart - Drag handler
  */
 function ErrorModal({
   error,
@@ -144,8 +131,50 @@ function ErrorModal({
   isMobile,
   onClose,
   onFocus,
-  onDragStart,
 }) {
+  // Internal position state for dragging (since ErrorModal isn't in windows array)
+  const [windowPosition, setWindowPosition] = useState(position);
+  const dragRef = useRef({ isDragging: false, startX: 0, startY: 0 });
+
+  // Drag handler - manages its own position since not in windows array
+  const handleDragStart = useCallback((e) => {
+    if (isMobile) return;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    dragRef.current = {
+      isDragging: true,
+      startX: clientX - (windowPosition?.x || 0),
+      startY: clientY - (windowPosition?.y || 0),
+    };
+
+    const handleMove = (moveEvent) => {
+      if (!dragRef.current.isDragging) return;
+
+      const moveX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const moveY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      setWindowPosition({
+        x: Math.max(0, Math.min(window.innerWidth - 380, moveX - dragRef.current.startX)),
+        y: Math.max(0, Math.min(window.innerHeight - 200, moveY - dragRef.current.startY)),
+      });
+    };
+
+    const handleEnd = () => {
+      dragRef.current.isDragging = false;
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleMove);
+    document.addEventListener('touchend', handleEnd);
+  }, [isMobile, windowPosition]);
+
   if (!error) return null;
 
   // Normalize error to object format
@@ -153,9 +182,44 @@ function ErrorModal({
     ? { code: 'ERROR', message: error, detail: null }
     : error;
 
+  // Improve error copy for common scenarios
+  const getImprovedDetail = () => {
+    const detail = errorObj.detail || '';
+    const lowerDetail = detail.toLowerCase();
+
+    // Cached login / session expired scenarios
+    if (lowerDetail.includes('not authenticated') ||
+        lowerDetail.includes('401') ||
+        lowerDetail.includes('unauthorized') ||
+        lowerDetail.includes('token')) {
+      return 'Session expired or login cache invalid';
+    }
+
+    // Network errors
+    if (lowerDetail.includes('network') || lowerDetail.includes('fetch')) {
+      return 'Network connection interrupted';
+    }
+
+    return detail;
+  };
+
+  const getImprovedMessage = () => {
+    const message = errorObj.message || 'UNKNOWN ERROR';
+    const lowerMessage = message.toLowerCase();
+
+    // Auth-related scan failures
+    if (lowerMessage.includes('scan') &&
+        (errorObj.detail?.toLowerCase().includes('authenticated') ||
+         errorObj.detail?.toLowerCase().includes('401'))) {
+      return 'SESSION EXPIRED';
+    }
+
+    return message;
+  };
+
   const isScanError = errorType === 'scan';
   const title = isScanError ? 'SYSTEM ERROR' : 'AUTH ERROR';
-  const icon = isScanError ? 'alert-triangle' : 'lock';
+  const icon = 'alert'; // Use existing icon
 
   // Handle close - dismisses the error
   const handleClose = () => {
@@ -165,35 +229,29 @@ function ErrorModal({
 
   return (
     <WindowFrame
-      title={`⚠ ${title}`}
+      title={title}
       icon={icon}
       isActive={isActive}
       zIndex={zIndex}
-      position={position}
+      position={windowPosition}
       width={380}
       isMobile={isMobile}
       showMinimize={false}
       onClose={handleClose}
       onFocus={onFocus}
-      onDragStart={onDragStart}
+      onDragStart={handleDragStart}
     >
       <ErrorContent>
-        <ErrorHeader>
-          <ErrorIcon>
-            <PixelIcon name="alert-triangle" size={24} />
-          </ErrorIcon>
-          <ErrorTitleBlock>
-            {errorObj.code && (
-              <ErrorCode>ERR_{errorObj.code}</ErrorCode>
-            )}
-            <ErrorTitle>{errorObj.message || 'UNKNOWN ERROR'}</ErrorTitle>
-          </ErrorTitleBlock>
-        </ErrorHeader>
+        <ErrorTitleBlock>
+          {errorObj.code && (
+            <ErrorCode>ERR_{errorObj.code}</ErrorCode>
+          )}
+          <ErrorTitle>{getImprovedMessage()}</ErrorTitle>
+        </ErrorTitleBlock>
 
-        {errorObj.detail && (
+        {(errorObj.detail || getImprovedDetail()) && (
           <ErrorDetail>
-            <span style={{ color: '#ff4141', marginRight: '6px' }}>&gt;</span>
-            {errorObj.detail}
+            {getImprovedDetail()}
           </ErrorDetail>
         )}
 
@@ -203,13 +261,13 @@ function ErrorModal({
           </ActionButton>
           {isScanError && onRetry && (
             <ActionButton $primary onClick={() => { onDismiss?.(); onRetry(); }}>
-              [RETRY SCAN]
+              [RETRY]
             </ActionButton>
           )}
         </ButtonRow>
 
         <SystemNote>
-          // RECORD_OS DIAGNOSTIC // ERROR HANDLER v1.0 //
+          // RECORD_OS DIAGNOSTIC // SESSION RECOVERY //
         </SystemNote>
       </ErrorContent>
     </WindowFrame>

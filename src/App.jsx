@@ -999,8 +999,6 @@ function App() {
           onRetry={handleRescanLibrary}
           onDismiss={spotify.clearScanError}
           onClose={spotify.clearScanError}
-          onFocus={() => {}}
-          onDragStart={() => {}}
         />
       )}
 
@@ -1017,8 +1015,6 @@ function App() {
           isMobile={isMobile}
           onDismiss={spotify.clearAuthError}
           onClose={spotify.clearAuthError}
-          onFocus={() => {}}
-          onDragStart={() => {}}
         />
       )}
 

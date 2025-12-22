@@ -17,6 +17,7 @@ import { useState } from 'react';
 import styled from 'styled-components';
 import { Fieldset } from 'react95';
 import html2canvas from 'html2canvas';
+import JSZip from 'jszip';
 import PixelIcon from './PixelIcon';
 import WindowFrame from './WindowFrame';
 import { DECADE_LABELS, DECADE_ORDER, DECADE_OPTIONS } from '../utils/constants';
@@ -81,16 +82,27 @@ const DecadeNav = styled.div`
 
 const DecadeArrow = styled.button`
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #00ff41;
   cursor: pointer;
-  padding: 2px;
+  padding: 4px 8px;
   display: flex;
   align-items: center;
+  justify-content: center;
   opacity: 0.7;
+  position: relative;
+  z-index: 1;
+  min-width: 28px;
+  min-height: 24px;
 
   &:hover {
     opacity: 1;
+    border-color: rgba(0, 255, 65, 0.3);
+    background: rgba(0, 255, 65, 0.05);
+  }
+
+  &:active {
+    background: rgba(0, 255, 65, 0.1);
   }
 
   &:disabled {
@@ -133,43 +145,57 @@ function DownloadModal({
   onChangeDecade, // Callback to change the decade filter
   decadeStatus = {}, // { '2020s': 'ready', '2010s': 'loading', ... }
 }) {
-  // Decade options for cycling: 'all' first, then each decade (newest to oldest)
-  const DECADES = [DECADE_OPTIONS.ALL, ...DECADE_ORDER];
+  // Build navigable decades: 'all' first, then decades that have albums
+  const navigableDecades = [
+    DECADE_OPTIONS.ALL,
+    ...DECADE_ORDER.filter(d => albumsByDecade[d]?.length > 0)
+  ];
+  const hasNavigableDecades = navigableDecades.length > 1; // More than just 'all'
 
-  // Check if a decade is ready (has finished loading)
+  // Check if a decade is ready for export (finished loading)
   const isDecadeReady = (d) => {
     if (d === 'all') return !isLoading; // 'all' ready when scan complete
     return decadeStatus[d] === 'ready';
   };
 
-  // Get ready decades for navigation
-  const readyDecades = DECADES.filter(d => isDecadeReady(d));
-  const hasReadyDecades = readyDecades.length > 0;
-
-  // Navigate to previous ready decade
-  const handlePrevDecade = () => {
-    if (!hasReadyDecades) return;
-    const currentIndex = readyDecades.indexOf(decade);
-    let newIndex;
-    if (currentIndex === -1) {
-      newIndex = 0;
-    } else {
-      newIndex = currentIndex <= 0 ? readyDecades.length - 1 : currentIndex - 1;
+  // Navigate to previous decade
+  const handlePrevDecade = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[DECADE ◀] clicked', { from: decade, options: navigableDecades, hasNav: hasNavigableDecades });
+    if (!hasNavigableDecades) {
+      console.log('[DECADE ◀] No navigable decades, aborting');
+      return;
     }
-    onChangeDecade?.(readyDecades[newIndex]);
+    const currentIndex = navigableDecades.indexOf(decade);
+    const newIndex = currentIndex <= 0 ? navigableDecades.length - 1 : currentIndex - 1;
+    const newDecade = navigableDecades[newIndex];
+    console.log('[DECADE ◀] Changing:', decade, '→', newDecade);
+    if (onChangeDecade) {
+      onChangeDecade(newDecade);
+    } else {
+      console.error('[DECADE ◀] onChangeDecade is undefined!');
+    }
   };
 
-  // Navigate to next ready decade
-  const handleNextDecade = () => {
-    if (!hasReadyDecades) return;
-    const currentIndex = readyDecades.indexOf(decade);
-    let newIndex;
-    if (currentIndex === -1) {
-      newIndex = 0;
-    } else {
-      newIndex = currentIndex >= readyDecades.length - 1 ? 0 : currentIndex + 1;
+  // Navigate to next decade
+  const handleNextDecade = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[DECADE ▶] clicked', { from: decade, options: navigableDecades, hasNav: hasNavigableDecades });
+    if (!hasNavigableDecades) {
+      console.log('[DECADE ▶] No navigable decades, aborting');
+      return;
     }
-    onChangeDecade?.(readyDecades[newIndex]);
+    const currentIndex = navigableDecades.indexOf(decade);
+    const newIndex = currentIndex >= navigableDecades.length - 1 ? 0 : currentIndex + 1;
+    const newDecade = navigableDecades[newIndex];
+    console.log('[DECADE ▶] Changing:', decade, '→', newDecade);
+    if (onChangeDecade) {
+      onChangeDecade(newDecade);
+    } else {
+      console.error('[DECADE ▶] onChangeDecade is undefined!');
+    }
   };
 
   // Display label for current decade
@@ -205,17 +231,17 @@ function DownloadModal({
 
   // Export album grid as PNG with terminal flair
   // States: idle → init → render → compress → success | error
+  // For ALL TIME: loops through decades and creates a zip
   const [exportState, setExportState] = useState('idle');
-  const handleExportGrid = async () => {
+  const [exportingDecade, setExportingDecade] = useState(null); // Which decade is being exported
+
+  // Helper to capture a single grid screenshot
+  const captureGrid = async (exportScale) => {
     const container = document.querySelector('[data-album-grid]');
     const grid = document.querySelector('[data-album-grid-inner]');
-    if (!container || !grid) return;
+    if (!container || !grid) return null;
 
-    // Terminal-style staged export
-    setExportState('init');
-    await new Promise(r => setTimeout(r, 400));
-
-    // Store original styles to restore later
+    // Store original styles
     const originalContainerStyle = {
       overflow: container.style.overflow,
       height: container.style.height,
@@ -226,35 +252,25 @@ function DownloadModal({
       position: grid.style.position,
     };
 
-    // Detect Safari or mobile - needs lower scale to avoid hanging/memory issues
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    // Use scale 1 for Safari, mobile, or large grids (>60 albums), scale 2 otherwise
-    const exportScale = (isSafari || isMobileDevice || totalAlbums > 60) ? 1 : 2;
-
     try {
-      // Hide UI elements during capture
-      document.body.classList.add('export-mode');
-
       // Expand container and grid to show all albums
       container.style.overflow = 'visible';
       container.style.height = 'auto';
       grid.style.overflow = 'visible';
       grid.style.height = 'auto';
-      grid.style.position = 'relative'; // Remove absolute positioning
+      grid.style.position = 'relative';
 
-      setExportState('render');
       // Wait for layout to settle
       await new Promise(r => requestAnimationFrame(r));
-      await new Promise(r => setTimeout(r, 300)); // Extra time for images
+      await new Promise(r => setTimeout(r, 500)); // Extra time for images
 
-      // Race html2canvas against a timeout (Safari can hang on large grids)
+      // Capture with timeout
       const timeoutMs = 30000;
       const canvas = await Promise.race([
         html2canvas(grid, {
           backgroundColor: '#0a0a0a',
           scale: exportScale,
-          useCORS: true, // Allow cross-origin images (Spotify CDN)
+          useCORS: true,
           logging: false,
         }),
         new Promise((_, reject) =>
@@ -262,14 +278,109 @@ function DownloadModal({
         ),
       ]);
 
+      return canvas;
+    } finally {
+      // Restore original styles
+      container.style.overflow = originalContainerStyle.overflow;
+      container.style.height = originalContainerStyle.height;
+      grid.style.overflow = originalGridStyle.overflow;
+      grid.style.height = originalGridStyle.height;
+      grid.style.position = originalGridStyle.position;
+    }
+  };
+
+  const handleExportGrid = async () => {
+    const container = document.querySelector('[data-album-grid]');
+    const grid = document.querySelector('[data-album-grid-inner]');
+    if (!container || !grid) return;
+
+    // Detect Safari or mobile - needs lower scale
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const exportScale = (isSafari || isMobileDevice || totalAlbums > 60) ? 1 : 2;
+
+    const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+    // ALL TIME: Export zip of each decade
+    if (decade === 'all') {
+      setExportState('init');
+      await new Promise(r => setTimeout(r, 400));
+
+      try {
+        document.body.classList.add('export-mode');
+
+        const zip = new JSZip();
+        const decadesWithAlbums = DECADE_ORDER.filter(d => albumsByDecade[d]?.length > 0);
+
+        for (const dec of decadesWithAlbums) {
+          // Update UI to show which decade we're processing
+          setExportingDecade(dec);
+          setExportState('render');
+
+          // Change decade and wait for grid to update
+          onChangeDecade?.(dec);
+          await new Promise(r => setTimeout(r, 800)); // Wait for re-render
+
+          // Capture screenshot
+          const canvas = await captureGrid(exportScale);
+          if (canvas) {
+            // Convert to blob and add to zip
+            const dataUrl = canvas.toDataURL('image/png');
+            const base64Data = dataUrl.split(',')[1];
+            const decLabel = DECADE_LABELS[dec] || dec;
+            zip.file(`${safeUserName}_albums_${decLabel}.png`, base64Data, { base64: true });
+          }
+        }
+
+        setExportingDecade(null);
+        setExportState('compress');
+        await new Promise(r => setTimeout(r, 300));
+
+        // Generate and download zip
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `${safeUserName}_albums_all-decades.zip`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        // Restore original decade
+        onChangeDecade?.('all');
+
+        setExportState('success');
+        setTimeout(() => setExportState('idle'), 2000);
+      } catch (err) {
+        console.error('Export failed:', err);
+        onChangeDecade?.('all'); // Restore decade on error
+        setExportingDecade(null);
+        setExportState('error');
+        setTimeout(() => setExportState('idle'), 2000);
+      } finally {
+        document.body.classList.remove('export-mode');
+      }
+      return;
+    }
+
+    // Single decade export (original behavior)
+    setExportState('init');
+    await new Promise(r => setTimeout(r, 400));
+
+    try {
+      document.body.classList.add('export-mode');
+
+      setExportState('render');
+      const canvas = await captureGrid(exportScale);
+
+      if (!canvas) {
+        throw new Error('Failed to capture grid');
+      }
+
       setExportState('compress');
       await new Promise(r => setTimeout(r, 300));
 
       // Download with descriptive filename
-      // Format: [username]_albums_[decade].png
-      const safeUserName = (userName || 'user').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      const decadeLabel = decade === 'all' ? 'all-time' : `${DECADE_LABELS[decade] || decade}`;
-
+      const decadeLabel = DECADE_LABELS[decade] || decade;
       const link = document.createElement('a');
       link.download = `${safeUserName}_albums_${decadeLabel}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -282,22 +393,21 @@ function DownloadModal({
       setExportState('error');
       setTimeout(() => setExportState('idle'), 2000);
     } finally {
-      // Restore original styles
-      container.style.overflow = originalContainerStyle.overflow;
-      container.style.height = originalContainerStyle.height;
-      grid.style.overflow = originalGridStyle.overflow;
-      grid.style.height = originalGridStyle.height;
-      grid.style.position = originalGridStyle.position;
       document.body.classList.remove('export-mode');
     }
   };
 
   // Get export button label based on state (terminal flair)
   const getExportLabel = () => {
+    // Show which decade is being rendered during zip export
+    if (exportingDecade && exportState === 'render') {
+      const label = DECADE_LABELS[exportingDecade] || exportingDecade;
+      return `${label}...`;
+    }
     switch (exportState) {
       case 'init': return 'INIT...';
       case 'render': return 'RENDER...';
-      case 'compress': return 'COMPRESS...';
+      case 'compress': return 'ZIP...';
       case 'success': return 'COMPLETE';
       case 'error': return 'FAILED';
       default: return 'EXPORT';
@@ -414,31 +524,6 @@ function DownloadModal({
         </SettingRow>
       </StyledFieldset>
 
-      {/* Decade selector - only when logged in */}
-      {isLoggedIn && (
-        <StyledFieldset label="DECADE">
-          <SettingRow>
-            <SettingLabel>Filter grid by era</SettingLabel>
-            <DecadeNav>
-              <DecadeArrow
-                onClick={handlePrevDecade}
-                disabled={!hasReadyDecades}
-                title="Previous era"
-              >
-                <PixelIcon name="chevronLeft" size={14} />
-              </DecadeArrow>
-              <DecadeDisplay>{getDecadeDisplay()}</DecadeDisplay>
-              <DecadeArrow
-                onClick={handleNextDecade}
-                disabled={!hasReadyDecades}
-                title="Next era"
-              >
-                <PixelIcon name="chevronRight" size={14} />
-              </DecadeArrow>
-            </DecadeNav>
-          </SettingRow>
-        </StyledFieldset>
-      )}
 
       {/* Library section - only when logged in */}
       {isLoggedIn && (
@@ -476,12 +561,35 @@ function DownloadModal({
       {/* Export section - only when logged in with albums */}
       {isLoggedIn && totalAlbums > 0 && (
         <StyledFieldset label="EXPORT">
+          {/* Decade selector - determines what gets exported */}
+          <SettingRow>
+            <SettingLabel>Export era</SettingLabel>
+            <DecadeNav>
+              <DecadeArrow
+                onClick={handlePrevDecade}
+                onMouseDown={(e) => e.stopPropagation()}
+                disabled={!hasNavigableDecades}
+                title="Previous era"
+              >
+                <PixelIcon name="chevronLeft" size={14} />
+              </DecadeArrow>
+              <DecadeDisplay>{getDecadeDisplay()}</DecadeDisplay>
+              <DecadeArrow
+                onClick={handleNextDecade}
+                onMouseDown={(e) => e.stopPropagation()}
+                disabled={!hasNavigableDecades}
+                title="Next era"
+              >
+                <PixelIcon name="chevronRight" size={14} />
+              </DecadeArrow>
+            </DecadeNav>
+          </SettingRow>
           {!isMobile && (
-            <SettingRow>
-              <SettingLabel>Grid image (.png)</SettingLabel>
+            <SettingRow style={{ marginTop: '8px' }}>
+              <SettingLabel>Grid IMG (.png)</SettingLabel>
               <ToggleButton
                 onClick={handleExportGrid}
-                disabled={['init', 'render', 'compress'].includes(exportState)}
+                disabled={!isDecadeReady(decade) || ['init', 'render', 'compress'].includes(exportState)}
                 $active={exportState === 'success'}
               >
                 <PixelIcon name={exportState === 'success' ? 'check' : exportState === 'error' ? 'close' : 'image'} size={12} />
@@ -489,17 +597,17 @@ function DownloadModal({
               </ToggleButton>
             </SettingRow>
           )}
-          <SettingRow style={{ marginTop: isMobile ? 0 : '8px' }}>
+          <SettingRow style={{ marginTop: '8px' }}>
             <SettingLabel>Album list (.txt)</SettingLabel>
-            <ToggleButton onClick={handleExportTXT}>
+            <ToggleButton onClick={handleExportTXT} disabled={!isDecadeReady(decade)}>
               <PixelIcon name="file" size={12} />
               TXT
             </ToggleButton>
           </SettingRow>
           <SettingRow style={{ marginTop: '8px' }}>
-            <SettingLabel>Album list (.csv)</SettingLabel>
-            <ToggleButton onClick={handleExportCSV}>
-              <PixelIcon name="file" size={12} />
+            <SettingLabel>Album table (.csv)</SettingLabel>
+            <ToggleButton onClick={handleExportCSV} disabled={!isDecadeReady(decade)}>
+              <PixelIcon name="chart" size={12} />
               CSV
             </ToggleButton>
           </SettingRow>

@@ -51,6 +51,10 @@ const ICON_MAP = {
   disc: 'notes-multiple', // Album/record icon
   folder: 'folder',
   file: 'file',
+  grid: 'grid', // For grid/table exports
+  chart: 'chart', // For chart/data exports
+  download: 'download', // Download icon
+  image: 'image', // For image export
 
   // Misc
   shuffle: 'shuffle',

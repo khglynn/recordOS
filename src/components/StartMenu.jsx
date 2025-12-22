@@ -342,10 +342,10 @@ function StartMenu({
             Info
           </StyledMenuItem>
 
-          {/* Settings */}
+          {/* Download Grid */}
           <StyledMenuItem onClick={() => handleMenuItemClick(onOpenSettings)}>
-            <MenuIcon><PixelIcon name="sliders" size={14} /></MenuIcon>
-            Settings
+            <MenuIcon><PixelIcon name="download" size={14} /></MenuIcon>
+            Download Grid
           </StyledMenuItem>
 
           <StyledSeparator />
@@ -436,10 +436,10 @@ function StartMenu({
           Info
         </StyledMenuItem>
 
-        {/* Settings */}
+        {/* Download Grid */}
         <StyledMenuItem onClick={() => handleMenuItemClick(onOpenSettings)}>
-          <MenuIcon><PixelIcon name="sliders" size={14} /></MenuIcon>
-          Settings
+          <MenuIcon><PixelIcon name="download" size={14} /></MenuIcon>
+          Download Grid
         </StyledMenuItem>
 
         <StyledSeparator />

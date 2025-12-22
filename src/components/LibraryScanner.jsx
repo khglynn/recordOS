@@ -462,10 +462,10 @@ function LibraryScanner({
             );
           })}
 
-          {/* ALL TIME button - full width at bottom, highlighted in complete state */}
+          {/* ALL TIME button - full width at bottom, only enabled when scan complete */}
           <AllButton
             $isAll={isComplete}
-            disabled={!isComplete && albumCount === 0}
+            disabled={!isComplete}
             onClick={() => handleDecadeClick('all')}
           >
             ALL TIME
