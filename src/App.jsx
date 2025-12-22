@@ -1106,6 +1106,7 @@ function App() {
                 onEnableDemoMode={handleEnableDemoMode}
                 onDismissError={handleDismissPlaybackError}
                 spotifyLoggedIn={spotify.loggedIn}
+                activeDeviceName={spotify.activeDeviceName}
               />
             );
 

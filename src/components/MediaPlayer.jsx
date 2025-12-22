@@ -178,6 +178,15 @@ const TrackAlbum = styled.div`
   white-space: nowrap;
 `;
 
+const DeviceName = styled.div`
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+`;
+
 const IdleMessage = styled.div`
   font-size: 11px;
   color: rgba(0, 255, 65, 0.5);
@@ -392,6 +401,7 @@ function MediaPlayer({
   onDragStart,
   isMobile,
   spotifyLoggedIn,
+  activeDeviceName,
 }) {
   const headerRef = useRef(null);
 
@@ -457,6 +467,9 @@ function MediaPlayer({
                 <TrackTitle>{currentTrack.name}</TrackTitle>
                 <TrackArtist>{currentTrack.artist}</TrackArtist>
                 <TrackAlbum>{currentTrack.album}</TrackAlbum>
+                {activeDeviceName && (
+                  <DeviceName>// {activeDeviceName.toUpperCase()} //</DeviceName>
+                )}
               </>
             ) : (
               <IdleMessage>IDLE // NO TRACK</IdleMessage>

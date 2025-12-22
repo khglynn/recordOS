@@ -21,6 +21,7 @@ import {
 } from 'react95';
 import PixelIcon from './PixelIcon';
 import Tooltip from './Tooltip';
+import { TASKBAR_HEIGHT } from '../utils/windowConfig';
 
 // ============================================================================
 // GAME SOURCES
@@ -37,7 +38,7 @@ const GAME_CONFIG = {
   solitaire: {
     title: 'Solitaire',
     iconName: 'gamepad',
-    url: 'https://retro-solitare-4recordos.vercel.app',
+    url: 'https://wy-solo.vercel.app',
     width: 700,
     height: 520,
   },
@@ -77,7 +78,7 @@ const StyledWindow = styled(Window)`
   /* Mobile: Solitaire = full viewport, others = centered */
   ${props => props.$isMobile && props.$isSolitaire && `
     width: 100vw !important;
-    height: calc(100vh - 44px) !important;
+    height: calc(100vh - ${TASKBAR_HEIGHT}px) !important;
     left: 0 !important;
     top: 0 !important;
     border-radius: 0;
@@ -91,7 +92,7 @@ const StyledWindow = styled(Window)`
     top: calc(50% - 80px) !important;
     transform: translate(-50%, -50%);
     border-radius: 0;
-    max-height: calc(100vh - 44px - 160px) !important;
+    max-height: calc(100vh - ${TASKBAR_HEIGHT}px - 160px) !important;
   `}
 `;
 
@@ -190,7 +191,7 @@ function GameWindow({
 
     const calculateScale = () => {
       const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight - 44 - 30 - 20; // -44 taskbar, -30 header, -20 padding
+      const viewportHeight = window.innerHeight - TASKBAR_HEIGHT - 30 - 20; // taskbar, header, padding
 
       const scaleX = (viewportWidth - 20) / config.width; // 20px total horizontal padding
       const scaleY = viewportHeight / config.height;
