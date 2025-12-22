@@ -1,7 +1,23 @@
 # recordOS: Spotify Connect UX Overhaul
 
 **Created:** 2025-12-22
-**Status:** Ready for implementation
+**Status:** Partially complete (deployed 2025-12-22)
+
+## What Was Done
+
+- ✅ Green "AWAITING PLAYBACK" banner in MediaPlayer (idle state instructions)
+- ✅ Removed red error banner entirely - single UI for connection guidance
+- ✅ Auto-open MediaPlayer on mobile after auth
+- ✅ Connection overlay infrastructure (shows post-OAuth when no device)
+- ✅ Scanner starts minimized when waiting for device connection
+- ✅ Device polling with auto-dismiss when connected
+
+## What Was Deferred
+
+- ⏸️ Connection overlay flow still buggy (user said "doesn't work but whatever")
+- ⏸️ Album display/sorting changes (threshold removal, top 50, deduplication)
+- ⏸️ Settings → Download modal redesign
+- ⏸️ Copy polish across app
 
 ## Overview
 
