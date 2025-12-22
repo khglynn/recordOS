@@ -489,6 +489,11 @@ function LoginModal({
   onOpenGame,             // (game) => void - open a game while waiting
   onShowAccessOverlay,    // () => void - show overlay when user needs to request access
   accessApproved,         // boolean - whether user is already approved
+  // Connection overlay props (post-OAuth - guides user to establish Spotify Connect)
+  showConnectionOverlay,  // boolean - show connection instructions
+  connectionChecking,     // boolean - currently checking for device
+  onConnectionCheck,      // () => void - manually check for device
+  onOpenSpotify,          // () => void - open Spotify app
 }) {
   const headerRef = useRef(null);
 
@@ -558,7 +563,7 @@ function LoginModal({
           flexDirection: 'column',
           alignItems: 'center',
           padding: '24px',
-          opacity: showAccessOverlay ? 0.15 : 1,
+          opacity: (showAccessOverlay || showConnectionOverlay) ? 0.15 : 1,
           transition: 'opacity 0.3s ease',
         }}>
           <Logo src="/logo.png" alt="Record OS" />
@@ -571,8 +576,8 @@ function LoginModal({
             IDENTITY VERIFICATION: PENDING
           </StatusText>
 
-          <SpotifyButton onClick={handleLogin} disabled={showAccessOverlay}>
-            <PixelIcon name="login" size={14} color="currentColor" /> REQUEST SPOTIFY CONNECTION
+          <SpotifyButton onClick={handleLogin} disabled={showAccessOverlay || showConnectionOverlay}>
+            <PixelIcon name="login" size={14} color="currentColor" /> REQUEST SPOTIFY AUTH
           </SpotifyButton>
 
           <Footer>
@@ -593,7 +598,6 @@ function LoginModal({
                 <StatusBlock>
                   <StatusLine>CORPORATE DIRECTIVE: MAX 25 USERS</StatusLine>
                   <StatusLine>INDIE DEVELOPERS: EXPENDABLE</StatusLine>
-                  <StatusLine>THE COMPANY PRIORITIZES THE COMPANY</StatusLine>
                 </StatusBlock>
 
                 <FormSection>
@@ -644,9 +648,8 @@ function LoginModal({
             {accessState === 'pending' && (
               <>
                 <StatusBlock>
-                  <StatusLine $highlight><span className="prompt">//</span>KEVIN MUST APPROVE YOU</StatusLine>
-                  <StatusLine><span className="prompt">//</span>THIS IS MANUAL. WE HATE SPOTIFY</StatusLine>
-                  <StatusLine><span className="prompt">//</span>GIVE HIM A MINUTE</StatusLine>
+                  <StatusLine $highlight><span className="prompt">//</span>KEVIN HAS BEEN PINGED</StatusLine>
+                  <StatusLine><span className="prompt">//</span>GIVE HIM &lt;3 MIN</StatusLine>
                 </StatusBlock>
 
                 <EmailDisplay>{accessEmail}</EmailDisplay>
@@ -699,6 +702,63 @@ function LoginModal({
                 </FinePrint>
               </>
             )}
+          </AccessOverlay>
+        )}
+
+        {/* CONNECTION OVERLAY - Post-OAuth instructions for Spotify Connect */}
+        {showConnectionOverlay && (
+          <AccessOverlay>
+            <OverlayTitle>SPOTIFY WON'T TALK TO US</OverlayTitle>
+
+            <StatusBlock>
+              <StatusLine>THEIR API REQUIRES AN ACTIVE SESSION</StatusLine>
+              <StatusLine>ON YOUR END. YES, REALLY</StatusLine>
+            </StatusBlock>
+
+            <StatusBlock style={{ textAlign: 'center' }}>
+              <StatusLine $highlight><span className="prompt">1.</span> OPEN SPOTIFY</StatusLine>
+              <StatusLine $highlight><span className="prompt">2.</span> PLAY ANY TRACK</StatusLine>
+              <StatusLine $highlight><span className="prompt">3.</span> RETURN HERE</StatusLine>
+            </StatusBlock>
+
+            <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '280px', position: 'relative', zIndex: 2 }}>
+              <ActionButton onClick={onOpenSpotify} style={{ flex: 1 }}>
+                <PixelIcon name="external-link" size={12} color="currentColor" />
+                OPEN SPOTIFY
+              </ActionButton>
+              <ActionButton
+                onClick={onConnectionCheck}
+                disabled={connectionChecking}
+                style={{ flex: 1 }}
+              >
+                <PixelIcon name="reload" size={12} color="currentColor" />
+                {connectionChecking ? 'CHECKING...' : 'VERIFY'}
+              </ActionButton>
+            </div>
+
+            <FinePrint>
+              // SYSTEM WILL AUTO-DETECT CONNECTION //
+              <br />
+              // POLLING EVERY 3 SECONDS //
+            </FinePrint>
+
+            <IdleSection>
+              <IdleHeader>ENTERTAINMENT REQUIRES NO APPROVAL</IdleHeader>
+              <GameButtons>
+                <GameButton onClick={() => { onOpenGame?.('minesweeper'); onAccessDismiss?.(); }}>
+                  <PixelIcon name="flag" size={12} color="currentColor" />
+                  MINES
+                </GameButton>
+                <GameButton onClick={() => { onOpenGame?.('solitaire'); onAccessDismiss?.(); }}>
+                  <PixelIcon name="cards" size={12} color="currentColor" />
+                  SOLITAIRE
+                </GameButton>
+                <GameButton onClick={() => { onOpenGame?.('snake'); onAccessDismiss?.(); }}>
+                  <PixelIcon name="gamepad" size={12} color="currentColor" />
+                  SNAKE
+                </GameButton>
+              </GameButtons>
+            </IdleSection>
           </AccessOverlay>
         )}
       </StyledWindowContent>

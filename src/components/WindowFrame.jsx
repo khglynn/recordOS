@@ -130,6 +130,7 @@ const HeaderButton = styled(Button)`
 const StyledWindowContent = styled(WindowContent)`
   background: ${props => props.$darkBg ? '#0a0a0a' : '#1a1a1a'} !important;
   padding: ${props => props.$noPadding ? '0' : '12px'} !important;
+  ${props => props.$mobileBottomPadding && `padding-bottom: ${12 + props.$mobileBottomPadding}px !important;`}
   overflow: ${props => props.$overflow || 'hidden'};
   display: flex;
   flex-direction: column;
@@ -172,6 +173,7 @@ const StyledWindowContent = styled(WindowContent)`
  * @param {boolean} noPadding - Remove content padding
  * @param {boolean} darkBg - Use darker background (#0a0a0a)
  * @param {string} overflow - Content overflow setting
+ * @param {number} mobileBottomPadding - Extra bottom padding on mobile (px)
  * @param {function} onClose - Close handler
  * @param {function} onMinimize - Minimize handler
  * @param {function} onFocus - Focus handler
@@ -192,6 +194,7 @@ const WindowFrame = forwardRef(function WindowFrame({
   noPadding = false,
   darkBg = false,
   overflow = 'hidden',
+  mobileBottomPadding = 0,
   onClose,
   onMinimize,
   onFocus,
@@ -262,6 +265,7 @@ const WindowFrame = forwardRef(function WindowFrame({
         $noPadding={noPadding}
         $darkBg={darkBg}
         $overflow={overflow}
+        $mobileBottomPadding={isMobile ? mobileBottomPadding : 0}
         style={contentStyle}
       >
         {children}

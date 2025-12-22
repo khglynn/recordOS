@@ -265,6 +265,7 @@ function TrackListModal({
       isMobile={isMobile}
       showMinimize={true}
       noPadding={true}
+      mobileBottomPadding={8}
       onClose={onClose}
       onMinimize={onMinimize}
       onFocus={onFocus}

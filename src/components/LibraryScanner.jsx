@@ -440,7 +440,7 @@ function LibraryScanner({
 
         {/* Instruction text */}
         <InstructionText>
-          SELECT DECADE // TOP 50 BY SAVED TRACKS
+          SELECT DECADE TO VIEW TOP 50 ALBUMS
         </InstructionText>
 
         {/* Decade buttons - 3x3 grid + full-width ALL at bottom */}

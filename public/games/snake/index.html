@@ -120,6 +120,18 @@
         color: rgba(0, 255, 65, 0.6);
       }
 
+      /* Prevent buttons from staying highlighted after touch */
+      .dpad-btn:focus {
+        outline: none;
+        background: rgba(0, 0, 0, 0.4);
+        color: rgba(0, 255, 65, 0.25);
+      }
+
+      .dpad-btn:focus:active {
+        background: rgba(0, 255, 65, 0.15);
+        color: rgba(0, 255, 65, 0.6);
+      }
+
       .dpad-btn.empty {
         visibility: hidden;
         pointer-events: none;
@@ -282,8 +294,10 @@
         e.preventDefault();
         startScreen.style.display = 'none';
         view.start();
+        gameStarted = true;
         pauseBtn.textContent = 'PAUSE';
         pauseBtn.classList.remove('paused');
+        updatePauseButtonState();
       });
 
       // D-pad controls - tap and drag support
@@ -301,9 +315,14 @@
           e.preventDefault();
           handleDirection(this.getAttribute('data-dir'));
         });
+        // Blur on touch end to prevent stuck active state
+        btn.addEventListener('touchend', function(e) {
+          this.blur();
+        });
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           handleDirection(this.getAttribute('data-dir'));
+          this.blur(); // Remove focus after click too
         });
       });
 
@@ -347,10 +366,26 @@
         }
       }, { passive: true });
 
+      // Track if game has started (for disabling pause button)
+      var gameStarted = false;
+
+      // Helper to update pause button disabled state
+      function updatePauseButtonState() {
+        var splash = document.querySelector('.snake-splash');
+        var splashVisible = splash && splash.style.display !== 'none';
+        var startVisible = startScreen.style.display !== 'none';
+        var gameOver = view.board && view.board.isOver();
+
+        // Disable if: not started, start screen showing, game over, or splash visible
+        pauseBtn.disabled = !gameStarted || startVisible || gameOver || splashVisible;
+        pauseBtn.style.opacity = pauseBtn.disabled ? '0.4' : '1';
+        pauseBtn.style.cursor = pauseBtn.disabled ? 'not-allowed' : 'pointer';
+      }
+
       // Pause button
       pauseBtn.addEventListener('click', function(e) {
         e.preventDefault();
-        if (!view.board || view.board.isOver()) return;
+        if (pauseBtn.disabled) return;
 
         if (view.paused) {
           view.resume();
@@ -381,7 +416,18 @@
           pauseBtn.textContent = 'PAUSE';
           pauseBtn.classList.remove('paused');
         }
+        updatePauseButtonState();
       };
+
+      // Hook into game over to update button state
+      var originalGameOver = view.gameOver ? view.gameOver.bind(view) : null;
+      view.gameOver = function() {
+        if (originalGameOver) originalGameOver();
+        updatePauseButtonState();
+      };
+
+      // Initial state - disabled until game starts
+      updatePauseButtonState();
     </script>
   </body>
 </html>

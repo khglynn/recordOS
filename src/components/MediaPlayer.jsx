@@ -113,8 +113,6 @@ const StyledWindowContent = styled(WindowContent)`
   position: relative;
 `;
 
-/* Album Ended Overlay - REMOVED (simplified UX, let Spotify handle naturally) */
-
 /* Now Playing Display - compact like Windows Media Player */
 const NowPlayingArea = styled.div`
   display: flex;
@@ -307,32 +305,33 @@ const VolumeSlider = styled.input`
   }
 `;
 
-/* Playback Error Banner - Weyland-Yutani aesthetic */
-const ErrorBanner = styled.div`
-  background: linear-gradient(180deg, #1a0a0a 0%, #0d0505 100%);
-  border: 1px solid rgba(255, 65, 65, 0.3);
-  border-left: 3px solid #ff4141;
+/* Connection Instructions Banner - Green version for all connection states */
+const IdleBanner = styled.div`
+  background: linear-gradient(180deg, #0a1a0a 0%, #050d05 100%);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-left: 3px solid #00ff41;
   padding: 12px;
   margin: 8px;
   font-size: 10px;
   font-family: 'Consolas', monospace;
 `;
 
-const ErrorCode = styled.div`
-  color: rgba(255, 65, 65, 0.9);
+const IdleCode = styled.div`
+  color: rgba(0, 255, 65, 0.9);
   font-weight: bold;
   margin-bottom: 4px;
   letter-spacing: 1px;
 `;
 
-const ErrorMessage = styled.div`
-  color: rgba(255, 200, 200, 0.7);
+const IdleInstructions = styled.div`
+  color: rgba(200, 255, 200, 0.7);
   margin-bottom: 8px;
   line-height: 1.4;
+  white-space: pre-line;
 `;
 
-const FallbackButton = styled(Button)`
-  background: linear-gradient(180deg, #2a1a1a 0%, #1a0a0a 100%) !important;
+const IdleButton = styled(Button)`
+  background: linear-gradient(180deg, #1a2a1a 0%, #0a1a0a 100%) !important;
   color: #00ff41 !important;
   border-color: rgba(0, 255, 65, 0.4) !important;
   font-size: 10px;
@@ -341,22 +340,10 @@ const FallbackButton = styled(Button)`
   letter-spacing: 0.5px;
 
   &:hover {
-    background: linear-gradient(180deg, #3a2a2a 0%, #2a1a1a 100%) !important;
+    background: linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%) !important;
     border-color: #00ff41 !important;
   }
 `;
-
-const DismissLink = styled.span`
-  color: rgba(255, 200, 200, 0.5);
-  font-size: 9px;
-  cursor: pointer;
-  margin-left: 12px;
-
-  &:hover {
-    color: rgba(255, 200, 200, 0.8);
-  }
-`;
-
 
 // ============================================================================
 // HELPERS
@@ -383,7 +370,6 @@ function MediaPlayer({
   duration,
   volume,
   isMuted,
-  playbackError,
   onClose,
   onMinimize,
   onFocus,
@@ -395,7 +381,6 @@ function MediaPlayer({
   onVolumeChange,
   onMuteToggle,
   onOpenVisualizer,
-  onDismissError,
   windowPosition,
   onDragStart,
   isMobile,
@@ -471,35 +456,33 @@ function MediaPlayer({
                 )}
               </>
             ) : (
-              <IdleMessage>IDLE // NO TRACK</IdleMessage>
+              <IdleMessage>// {spotifyLoggedIn ? 'IDLE' : 'AWAITING SIGNAL'} //</IdleMessage>
             )}
           </TrackInfo>
         </NowPlayingArea>
 
-        {/* Playback Error Banner */}
-        {playbackError && (
-          <ErrorBanner>
-            <ErrorCode>⚠ {playbackError.code || 'CONNECTION_LOST'}</ErrorCode>
-            <ErrorMessage>
-              {playbackError.message || 'Spotify connection lost. Open Spotify, play a song, return here.'}
-            </ErrorMessage>
-            <FallbackButton
-              as="a"
-              href="spotify://"
+        {/* Green Connection Instructions - when logged in but no track playing */}
+        {spotifyLoggedIn && !currentTrack && (
+          <IdleBanner>
+            <IdleCode>// AWAITING PLAYBACK //</IdleCode>
+            <IdleInstructions>
+              {`Open Spotify and play any track
+to establish handshake`}
+            </IdleInstructions>
+            <IdleButton
               onClick={(e) => {
-                // Fallback to web player if app doesn't open
+                e.preventDefault();
+                const link = document.createElement('a');
+                link.href = 'spotify://';
+                link.click();
                 setTimeout(() => {
-                  window.location.href = 'https://open.spotify.com';
+                  window.open('https://open.spotify.com', '_blank');
                 }, 1500);
               }}
-              style={{ marginBottom: '8px', display: 'inline-block', textDecoration: 'none' }}
             >
               OPEN SPOTIFY
-            </FallbackButton>
-            <DismissLink onClick={onDismissError}>
-              [DISMISS]
-            </DismissLink>
-          </ErrorBanner>
+            </IdleButton>
+          </IdleBanner>
         )}
 
         <TransportArea>
@@ -542,8 +525,11 @@ function MediaPlayer({
                 <Tooltip text="Open Spotify" position="above">
                   <TransportButton
                     onClick={() => {
-                      window.location.href = 'spotify://';
-                      // Fallback to web player if app doesn't open
+                      // Try spotify:// URI (opens app without navigating)
+                      const link = document.createElement('a');
+                      link.href = 'spotify://';
+                      link.click();
+                      // Fallback to web player in new tab if app doesn't open
                       setTimeout(() => {
                         window.open('https://open.spotify.com', '_blank');
                       }, 1500);

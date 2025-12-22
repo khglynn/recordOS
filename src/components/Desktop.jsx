@@ -33,6 +33,17 @@ const scanLine = keyframes`
   100% { top: 110%; }
 `;
 
+// Row cascade animations for decade transitions
+const rowExitAnimation = keyframes`
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+`;
+
+const rowEnterAnimation = keyframes`
+  0% { opacity: 0; transform: translateY(12px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+`;
+
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
@@ -203,6 +214,18 @@ const AlbumCover = styled.div`
       opacity: 1;
       transform: scale(1);
     }
+  }
+
+  /* Row cascade exit animation - !important overrides default animation */
+  &.row-exit {
+    animation: ${rowExitAnimation} 180ms ease-in forwards !important;
+    animation-delay: var(--row-delay, 0ms) !important;
+  }
+
+  /* Row cascade enter animation - !important overrides default animation */
+  &.row-enter {
+    animation: ${rowEnterAnimation} 220ms ease-out backwards !important;
+    animation-delay: var(--row-delay, 0ms) !important;
   }
 
   /* Album art - absolutely positioned inside padded container */
@@ -620,10 +643,57 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const containerRef = useRef(null);
   const loadingAlbumsLengthRef = useRef(loadingAlbums.length);
 
+  // Decade transition state - row cascade effect
+  // Phases: 'idle' | 'exiting' | 'entering'
+  const [transitionPhase, setTransitionPhase] = useState('idle');
+  const [exitingAlbums, setExitingAlbums] = useState([]); // Albums to show during exit
+  const prevAlbumsRef = useRef(albums);
+
+  // Calculate grid geometry - stable (doesn't change with slots)
+  // Moved up so it's available for transition effect
+  const gridGeometry = useMemo(() => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight - 48;
+    const minTileSize = GRID_ALBUM_MIN_SIZE;
+    const gap = GRID_GAP;
+
+    const numColumns = Math.max(1, Math.floor((viewportWidth + gap) / (minTileSize + gap)));
+    const totalGaps = (numColumns - 1) * gap;
+    const tileWidth = (viewportWidth - totalGaps) / numColumns;
+    const cellSize = tileWidth + gap;
+    const rowHeight = tileWidth + gap;
+    const numRows = Math.max(1, Math.floor(viewportHeight / rowHeight));
+
+    return { numColumns, numRows, tileWidth, cellSize };
+  }, []);
+
   // Keep ref in sync with prop (so interval closure always has current value)
   useEffect(() => {
     loadingAlbumsLengthRef.current = loadingAlbums.length;
   }, [loadingAlbums.length]);
+
+  // Detect decade changes and trigger row cascade transition
+  // A "decade change" is when album content changes significantly (not just loading more)
+  useEffect(() => {
+    const prev = prevAlbumsRef.current;
+    const curr = albums;
+
+    // Skip if loading, empty, or already transitioning
+    if (isLoading || curr.length === 0 || prev.length === 0 || transitionPhase !== 'idle') {
+      prevAlbumsRef.current = curr;
+      return;
+    }
+
+    // Check if this is a significant change (different first album = decade switch)
+    const firstChanged = prev[0]?.id !== curr[0]?.id;
+    const significantChange = firstChanged && curr.length > 5;
+
+    // Row cascade animation disabled for now - was causing black screen issues
+    // TODO: Revisit row cascade implementation
+    // if (significantChange) { ... }
+
+    prevAlbumsRef.current = curr;
+  }, [albums, isLoading, transitionPhase, gridGeometry]);
 
   // Rotate ONE slot every 4 seconds (slower, calmer animation)
   useEffect(() => {
@@ -650,23 +720,6 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const handleImageLoad = (albumId) => {
     setLoadedImages(prev => new Set([...prev, albumId]));
   };
-
-  // Calculate grid geometry - stable (doesn't change with slots)
-  const gridGeometry = useMemo(() => {
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight - 48;
-    const minTileSize = GRID_ALBUM_MIN_SIZE;
-    const gap = GRID_GAP;
-
-    const numColumns = Math.max(1, Math.floor((viewportWidth + gap) / (minTileSize + gap)));
-    const totalGaps = (numColumns - 1) * gap;
-    const tileWidth = (viewportWidth - totalGaps) / numColumns;
-    const cellSize = tileWidth + gap;
-    const rowHeight = tileWidth + gap;
-    const numRows = Math.max(1, Math.floor(viewportHeight / rowHeight));
-
-    return { numColumns, numRows, tileWidth, cellSize };
-  }, []);
 
   // Generate position for a slot - ensures 2 slots never overlap
   // Slot 0: top-left area, Slot 1: bottom-right area
@@ -840,33 +893,71 @@ function Desktop({ albums, loadingAlbums = [], isLoggedIn, isLoading, isInitiali
   const displayCount = Math.ceil(TARGET_ALBUM_COUNT / numColumns) * numColumns;
   const displayAlbums = albums.slice(0, displayCount);
 
+  // Calculate row-based delay for cascade animations
+  // Used during 'exiting' and 'entering' phases
+  const getRowDelay = (index, totalItems) => {
+    const row = Math.floor(index / numColumns);
+    // 25ms stagger per row (top → bottom)
+    return row * 25;
+  };
+
+  // Determine which albums to render based on transition phase
+  // During exit: show old albums fading out
+  // During enter/idle: show new albums
+  // Safety: never render empty - fall back to displayAlbums to prevent black screen
+  const exitAlbums = exitingAlbums.slice(0, displayCount);
+  const albumsToRender = (transitionPhase === 'exiting' && exitAlbums.length > 0)
+    ? exitAlbums
+    : displayAlbums;
+
   return (
     <DesktopContainer data-album-grid>
-      <AlbumGrid data-album-grid-inner style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}>
-        {displayAlbums.map((album, index) => (
-          <AlbumCover
-            key={album.id}
-            onClick={() => onAlbumClick(album)}
-            className={!loadedImages.has(album.id) ? 'loading' : ''}
-            style={
-              seenAlbums.has(album.id)
-                ? { animation: 'none' }
-                : { '--reveal-delay': `${getAnimationDelay(album)}ms` }
-            }
-          >
-            <img
-              src={album.image}
-              alt={album.name}
-              loading="lazy"
-              onLoad={() => handleImageLoad(album.id)}
-            />
-            <AlbumInfo>
-              <AlbumTitle>{album.name}</AlbumTitle>
-              <AlbumArtist>{album.artist}</AlbumArtist>
-              <AlbumStats>{album.likedTracks} / {album.totalTracks} saved</AlbumStats>
-            </AlbumInfo>
-          </AlbumCover>
-        ))}
+      <AlbumGrid
+        data-album-grid-inner
+        style={isSafari ? { '--tile-width': `${tileWidth}px` } : undefined}
+      >
+        {albumsToRender.map((album, index) => {
+          // Determine CSS class and delay based on transition phase
+          let className = !loadedImages.has(album.id) ? 'loading' : '';
+          let style = {};
+
+          if (transitionPhase === 'exiting') {
+            // Exit animation: row-by-row fade out (top → bottom)
+            className += ' row-exit';
+            style = { '--row-delay': `${getRowDelay(index, albumsToRender.length)}ms` };
+          } else if (transitionPhase === 'entering') {
+            // Enter animation: row-by-row cascade in (top → bottom)
+            className += ' row-enter';
+            style = { '--row-delay': `${getRowDelay(index, albumsToRender.length)}ms` };
+          } else if (!seenAlbums.has(album.id)) {
+            // Normal entrance animation for newly loaded albums
+            style = { '--reveal-delay': `${getAnimationDelay(album)}ms` };
+          } else {
+            // Already seen, no animation
+            style = { animation: 'none' };
+          }
+
+          return (
+            <AlbumCover
+              key={album.id}
+              onClick={() => onAlbumClick(album)}
+              className={className.trim()}
+              style={style}
+            >
+              <img
+                src={album.image}
+                alt={album.name}
+                loading="lazy"
+                onLoad={() => handleImageLoad(album.id)}
+              />
+              <AlbumInfo>
+                <AlbumTitle>{album.name}</AlbumTitle>
+                <AlbumArtist>{album.artist}</AlbumArtist>
+                <AlbumStats>{album.likedTracks} / {album.totalTracks} saved</AlbumStats>
+              </AlbumInfo>
+            </AlbumCover>
+          );
+        })}
       </AlbumGrid>
 
       {/* Glitch overlay when rescanning library */}

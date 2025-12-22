@@ -123,6 +123,12 @@ function App() {
   const [accessEmail, setAccessEmail] = useState('');
   const [accessError, setAccessError] = useState('');
 
+  // Connection overlay state (post-OAuth - guides user to establish Spotify Connect)
+  const [showConnectionOverlay, setShowConnectionOverlay] = useState(false);
+  const [connectionChecking, setConnectionChecking] = useState(false);
+  const connectionPollRef = useRef(null);
+  const scannerStartMinimized = useRef(false); // Start scanner minimized when waiting for device
+
   // Check for existing pending request on mount
   useEffect(() => {
     const savedEmail = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -240,7 +246,86 @@ function App() {
   // Dismiss overlay without connecting (explore mode)
   const handleAccessDismiss = useCallback(() => {
     setShowAccessOverlay(false);
+    setShowConnectionOverlay(false);
   }, []);
+
+  // -------------------------------------------------------------------------
+  // CONNECTION OVERLAY HANDLERS (Post-OAuth Spotify Connect flow)
+  // -------------------------------------------------------------------------
+
+  // Check for Spotify device - if found, dismiss overlay and un-minimize scanner
+  const handleConnectionCheck = useCallback(async () => {
+    setConnectionChecking(true);
+    try {
+      const result = await spotify.checkAndConnectDevice();
+      console.log('[Connection] Device check result:', result);
+
+      if (result.connected) {
+        // Device found - dismiss overlays and close login modal
+        setShowConnectionOverlay(false);
+        setConnectionChecking(false);
+        setLoginModalOpen(false);
+        setHasCompletedSetup(true);
+
+        if (connectionPollRef.current) {
+          clearInterval(connectionPollRef.current);
+          connectionPollRef.current = null;
+        }
+
+        // Un-minimize the scanner (it was started minimized while waiting for device)
+        console.log('[Connection] Device connected, un-minimizing scanner');
+        if (scannerWindowId.current) {
+          setWindows(prev => prev.map(w =>
+            w.id === scannerWindowId.current
+              ? { ...w, minimized: false }
+              : w
+          ));
+          setActiveWindowId(scannerWindowId.current);
+        }
+      } else {
+        setConnectionChecking(false);
+      }
+      return result.connected;
+    } catch (err) {
+      console.error('[Connection] Check failed:', err);
+      setConnectionChecking(false);
+      return false;
+    }
+  }, [spotify]);
+
+  // Open Spotify app with deep link
+  const handleOpenSpotify = useCallback(() => {
+    // Use spotify: URI to open app
+    window.open('spotify:', '_blank');
+  }, []);
+
+  // Poll for device when connection overlay is shown
+  useEffect(() => {
+    if (!showConnectionOverlay) {
+      // Clean up polling when overlay closes
+      if (connectionPollRef.current) {
+        clearInterval(connectionPollRef.current);
+        connectionPollRef.current = null;
+      }
+      return;
+    }
+
+    // Poll every 3 seconds for device
+    connectionPollRef.current = setInterval(async () => {
+      const connected = await handleConnectionCheck();
+      if (connected) {
+        clearInterval(connectionPollRef.current);
+        connectionPollRef.current = null;
+      }
+    }, 3000);
+
+    return () => {
+      if (connectionPollRef.current) {
+        clearInterval(connectionPollRef.current);
+        connectionPollRef.current = null;
+      }
+    };
+  }, [showConnectionOverlay, handleConnectionCheck]);
 
   // -------------------------------------------------------------------------
   // WINDOW STATE
@@ -336,15 +421,33 @@ function App() {
     // The URL gets cleared by useSpotify before isLoggedIn becomes true.
 
     if (isOAuthReturn && isLoggedIn && !hasCompletedSetup && !oauthHandled.current) {
-      // OAuth just completed - close login modal and start library scan
-      // Use ref to prevent this from running multiple times before state updates
+      // OAuth just completed - check for device FIRST before starting scan
       oauthHandled.current = true;
-      setLoginModalOpen(false);
-      setHasCompletedSetup(true);
-      // Reset scanner closed flag so it opens fresh
-      scannerManuallyClosed.current = false;
-      // Auto-start library scan (this will open LibraryScanner window)
-      spotify.refreshLibrary();
+
+      (async () => {
+        const result = await spotify.checkAndConnectDevice();
+        console.log('[OAuth] Post-auth device check:', result);
+
+        if (result.connected) {
+          // Device found - close login modal, start scan immediately (visible)
+          console.log('[OAuth] Device connected, starting scan');
+          setLoginModalOpen(false);
+          setHasCompletedSetup(true);
+          scannerManuallyClosed.current = false;
+          scannerStartMinimized.current = false;
+          spotify.refreshLibrary();
+        } else {
+          // No device - show connection overlay, start scan in background (minimized)
+          // Scanner will un-minimize when device connects
+          console.log('[OAuth] No device found, showing connection overlay (scan starts minimized)');
+          setShowConnectionOverlay(true);
+          // Start scan in background (minimized)
+          scannerManuallyClosed.current = false;
+          scannerStartMinimized.current = true;
+          spotify.refreshLibrary();
+          // Keep login modal open - connection overlay appears on top
+        }
+      })();
     } else if (isLoggedIn) {
       // Logged in (returning user or scan in progress) - close modal
       if (spotify.allAlbumsCount > 0 || hasCompletedSetup) {
@@ -367,23 +470,27 @@ function App() {
   useEffect(() => {
     if (loginModalOpen) {
       // Add login window if not already present
-      const existingLogin = windows.find(w => w.type === 'login');
-      if (!existingLogin) {
-        const id = generateWindowId();
-        loginWindowId.current = id;
-        const centerX = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - 340) / 2) : 200;
-        const centerY = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - 500) / 2) : 100;
+      // Use functional update to avoid stale closure (React Strict Mode runs effects twice)
+      const id = generateWindowId();
+      const centerX = typeof window !== 'undefined' ? Math.max(0, (window.innerWidth - 340) / 2) : 200;
+      const centerY = typeof window !== 'undefined' ? Math.max(0, (window.innerHeight - 500) / 2) : 100;
 
-        setWindows(prev => [...prev, {
+      setWindows(prev => {
+        // Check inside functional update to get latest state
+        const existingLogin = prev.find(w => w.type === 'login');
+        if (existingLogin) return prev; // Already exists, don't add duplicate
+
+        loginWindowId.current = id;
+        return [...prev, {
           id,
           type: 'login',
           title: 'Record OS // Initialize',
           data: {},
           position: { x: centerX, y: centerY },
           minimized: false,
-        }]);
-        setActiveWindowId(id);
-      }
+        }];
+      });
+      setActiveWindowId(id);
     } else {
       // Remove login window - filter by type to catch any edge cases
       setWindows(prev => prev.filter(w => w.type !== 'login'));
@@ -399,24 +506,36 @@ function App() {
 
   useEffect(() => {
     // Open scanner when loading starts (but not if user manually closed it)
-    if (spotify.isLoading) {
-      const existingScanner = windows.find(w => w.type === 'libraryScanner');
-      if (!existingScanner && !scannerManuallyClosed.current) {
-        const id = generateWindowId();
-        scannerWindowId.current = id;
-        const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 190) : 300;
-        const centerY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 150) : 200;
+    if (spotify.isLoading && !scannerManuallyClosed.current) {
+      // Use functional update to avoid stale closure (React Strict Mode runs effects twice)
+      const id = generateWindowId();
+      const centerX = typeof window !== 'undefined' ? (window.innerWidth / 2 - 190) : 300;
+      const centerY = typeof window !== 'undefined' ? (window.innerHeight / 2 - 150) : 200;
+      const startMinimized = scannerStartMinimized.current;
 
-        setWindows(prev => [...prev, {
+      setWindows(prev => {
+        // Check inside functional update to get latest state
+        const existingScanner = prev.find(w => w.type === 'libraryScanner');
+        if (existingScanner) return prev; // Already exists, don't add duplicate
+
+        scannerWindowId.current = id;
+        return [...prev, {
           id,
           type: 'libraryScanner',
           title: 'Scanning Library...',
           data: {},
           position: { x: centerX, y: centerY },
-          minimized: false,
-        }]);
+          minimized: startMinimized, // Start minimized if waiting for device
+        }];
+      });
+
+      // Only focus if not starting minimized
+      if (!startMinimized) {
         setActiveWindowId(id);
       }
+
+      // Reset flag after use
+      scannerStartMinimized.current = false;
     }
 
     // Auto-expand scanner if it was minimized when scan completes
@@ -490,6 +609,7 @@ function App() {
       const mediaPlayerX = window.innerWidth - 320 - 24;
       const mediaPlayerY = window.innerHeight - 48 - 200 - 24; // 48px taskbar, ~200px player height, 24px inset
 
+      // Use functional update to prevent duplicates (React Strict Mode runs effects twice)
       const minesweeperWindow = {
         id: generateWindowId(),
         type: 'minesweeper',
@@ -508,8 +628,19 @@ function App() {
         minimized: false,
       };
 
-      // Use functional update to preserve any existing windows (like login modal)
-      setWindows(prev => [...prev, minesweeperWindow, mediaPlayerWindow]);
+      setWindows(prev => {
+        // Check inside functional update to get latest state
+        const hasMinesweeper = prev.find(w => w.type === 'minesweeper');
+        const hasMediaPlayer = prev.find(w => w.type === 'mediaPlayer');
+
+        // Only add windows that don't already exist
+        const toAdd = [];
+        if (!hasMinesweeper) toAdd.push(minesweeperWindow);
+        if (!hasMediaPlayer) toAdd.push(mediaPlayerWindow);
+
+        if (toAdd.length === 0) return prev; // No new windows to add
+        return [...prev, ...toAdd];
+      });
       setActiveWindowId(mediaPlayerWindow.id);
       setHasOpenedInitialWindows(true);
 
@@ -659,6 +790,11 @@ function App() {
     // Track if user manually closes scanner (prevents auto-reopen)
     if (windowToClose?.type === 'libraryScanner') {
       scannerManuallyClosed.current = true;
+    }
+
+    // Reset loginModalOpen when closing login window (fixes reopening via menu)
+    if (windowToClose?.type === 'login') {
+      setLoginModalOpen(false);
     }
 
     setWindows(prev => prev.filter(w => w.id !== windowId));
@@ -823,6 +959,19 @@ function App() {
     openWindow('mediaPlayer');
   }, [openWindow]);
 
+  // Auto-open player on mobile after auth completes (always on mobile)
+  // Player opens AFTER scanner so it appears on top (last in windows array = highest z-index when active)
+  const mobilePlayerOpened = useRef(false);
+  useEffect(() => {
+    if (isMobile && hasCompletedSetup && spotify.loggedIn && !mobilePlayerOpened.current) {
+      mobilePlayerOpened.current = true;
+      // Longer delay so player opens after scanner and appears on top
+      setTimeout(() => {
+        handleOpenMediaPlayer();
+      }, 800);
+    }
+  }, [isMobile, handleOpenMediaPlayer, hasCompletedSetup, spotify.loggedIn]);
+
   const handleOpenGame = useCallback((gameType) => {
     // Games work before login - minimize modal if open
     if (loginModalOpen && !isLoggedIn) {
@@ -862,11 +1011,6 @@ function App() {
     setLoginModalOpen(true);
     setWindows([]);
     setSelectedAlbum(null);
-  }, [spotify]);
-
-  // Dismiss playback error
-  const handleDismissPlaybackError = useCallback(() => {
-    spotify.clearPlaybackError?.();
   }, [spotify]);
 
   const handleStartClick = useCallback(() => {
@@ -1078,7 +1222,6 @@ function App() {
                 duration={audio.duration}
                 volume={audio.volume}
                 isMuted={audio.isMuted}
-                playbackError={spotify.playbackError}
                 onPlay={audio.play}
                 onPause={audio.pause}
                 onPrevious={audio.previous}
@@ -1087,7 +1230,6 @@ function App() {
                 onVolumeChange={audio.setVolume}
                 onMuteToggle={audio.toggleMute}
                 onOpenVisualizer={handleOpenTrippyGraphics}
-                onDismissError={handleDismissPlaybackError}
                 spotifyLoggedIn={spotify.loggedIn}
                 activeDeviceName={spotify.activeDeviceName}
               />
@@ -1172,6 +1314,11 @@ function App() {
                 onAccessDismiss={handleAccessDismiss}
                 onShowAccessOverlay={() => setShowAccessOverlay(true)}
                 onOpenGame={handleOpenGame}
+                // Connection overlay props (post-OAuth Spotify Connect flow)
+                showConnectionOverlay={showConnectionOverlay}
+                connectionChecking={connectionChecking}
+                onConnectionCheck={handleConnectionCheck}
+                onOpenSpotify={handleOpenSpotify}
               />
             );
 

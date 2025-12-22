@@ -47,16 +47,17 @@ const StyledWindow = styled(Window)`
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Mobile: centered fixed size (not full screen) */
+  /* Mobile: centered with proper sizing (match WindowFrame pattern) */
   ${props => props.$isMobile && `
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%);
-    width: calc(100vw - 32px) !important;
-    max-width: 360px;
+    left: 8px !important;
+    top: calc((100vh - 48px) / 2) !important;
+    transform: translateY(-50%);
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
     height: auto !important;
+    max-height: calc(100vh - 48px - 16px) !important;
     min-width: unset;
-    min-height: unset;
+    min-height: 320px;
   `}
 `;
 
@@ -112,7 +113,7 @@ const StyledWindowContent = styled(WindowContent)`
 const VisualizerIframe = styled.iframe`
   flex: 1;
   width: 100%;
-  min-height: 0; /* Allow flexbox to shrink below intrinsic size */
+  min-height: 200px; /* Ensure visualizer has room to render */
   border: none;
   background: #000;
 `;
@@ -218,7 +219,7 @@ function TrippyGraphics({
       <StyledWindowContent>
         {isMobile && (
           <MobileWarning>
-            &gt; WEBGL SUBSTRATE: UNSTABLE ON PORTABLE DEVICES // PROCEED WITH CAUTION
+            &gt; UNSTABLE ON MOBILE // PROCEED WITH CAUTION
           </MobileWarning>
         )}
         <VisualizerIframe

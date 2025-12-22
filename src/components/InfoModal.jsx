@@ -227,6 +227,7 @@ function InfoModal({
       isMobile={isMobile}
       showMinimize={false}
       overflow="auto"
+      mobileBottomPadding={8}
       onClose={onClose}
       onFocus={onFocus}
       onDragStart={onDragStart}

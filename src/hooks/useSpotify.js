@@ -809,7 +809,17 @@ export function useSpotify(isMobile = false) {
   // -------------------------------------------------------------------------
 
   const handlePlay = useCallback(async () => {
-    if (!deviceId) return;
+    if (!deviceId) {
+      // No active device - open Spotify app/web to establish connection
+      const link = document.createElement('a');
+      link.href = 'spotify://';
+      link.click();
+      // Fallback to web player in new tab
+      setTimeout(() => {
+        window.open('https://open.spotify.com', '_blank');
+      }, 1500);
+      return;
+    }
     await play(deviceId, {});
   }, [deviceId]);
 
@@ -1194,6 +1204,57 @@ export function useSpotify(isMobile = false) {
   }, []);
 
   // -------------------------------------------------------------------------
+  // DEVICE CHECK & TRANSFER (for post-auth connection flow)
+  // -------------------------------------------------------------------------
+  // Exposed for App.jsx to check if Spotify is ready before starting scan
+
+  const checkAndConnectDevice = useCallback(async () => {
+    try {
+      const devices = await getDevices();
+      console.log('[Connect] Device check:', devices.length, 'devices found');
+
+      if (devices.length === 0) {
+        console.log('[Connect] No devices found - show connection overlay');
+        return { connected: false, devices: [] };
+      }
+
+      // Find best device (active > smartphone > first)
+      const activeDevice = devices.find(d => d.is_active);
+      const smartphoneDevice = devices.find(d => d.type === 'Smartphone');
+      const targetDevice = activeDevice || smartphoneDevice || devices[0];
+
+      // If device exists but not active, try to activate it
+      if (!activeDevice && targetDevice) {
+        console.log('[Connect] Activating device:', targetDevice.name);
+        try {
+          await transferPlayback(targetDevice.id, false);
+          setDeviceId(targetDevice.id);
+          setActiveDeviceName(targetDevice.name);
+          return { connected: true, devices, activeDevice: targetDevice };
+        } catch (err) {
+          // Transfer failed - user needs to manually open Spotify and play something
+          // This is the common case after OAuth: user has Spotify but isn't playing
+          console.log('[Connect] Failed to activate device:', err.message);
+          console.log('[Connect] Transfer failed - show connection overlay');
+          return { connected: false, devices, error: 'Device exists but could not be activated' };
+        }
+      } else if (activeDevice) {
+        // Device is already active and playing - we're good
+        setDeviceId(activeDevice.id);
+        setActiveDeviceName(activeDevice.name);
+        return { connected: true, devices, activeDevice };
+      }
+
+      // Fallback: device exists but couldn't determine status
+      console.log('[Connect] Could not determine device status');
+      return { connected: false, devices };
+    } catch (err) {
+      console.error('[Connect] Device check failed:', err);
+      return { connected: false, devices: [], error: err.message };
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
   // RETURN
   // -------------------------------------------------------------------------
 
@@ -1265,6 +1326,9 @@ export function useSpotify(isMobile = false) {
     // Scan errors (403 whitelist issues)
     scanError,
     clearScanError: () => setScanError(null),
+
+    // Device connection (for post-auth flow)
+    checkAndConnectDevice,
   };
 }
 
