@@ -55,7 +55,7 @@ AccessRequestWindow converted to overlay on LoginModal (green CRT overlay with s
 |--------|--------------|
 | `claude-plans/` | Archived plans - history of what was attempted |
 | `~/.claude/plans/` | Active Claude Code plans (sort by date: `ls -lt ~/.claude/plans/*.md`) |
-| `~/MuxDocs/2025/Q4/Record OS/` | Session summaries, starter prompts |
+| `~/MuxDocs/2025/Q4/Record OS/` | Session summaries from mux era (historical) |
 | Recent git commits | What just changed |
 
 ## Tech Stack
@@ -149,4 +149,4 @@ git checkout dev  # back to working
 ## Future: Analytics Integration
 
 In a future session, add PostHog alongside Sentry and link both to Slack notifications.
-See skill: `~/.mux/src/HG-Skills-Private/hg-skills/workflow/` for setup pattern.
+See skill: `~/DevKev/helper/skills-private/workflow/` for setup pattern.
