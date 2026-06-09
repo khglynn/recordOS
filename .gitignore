@@ -32,3 +32,6 @@ dist-ssr
 # Per-machine Claude Code state — never sync via git
 .claude/settings.local.json
 .claude/worktrees/
+
+# Claude Code project memory — keep out of this public repo
+.claude-memory/
