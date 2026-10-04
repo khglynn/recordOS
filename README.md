@@ -43,7 +43,7 @@ A sentient cataloging system that monitors your Spotify library and ranks albums
 ## OPERATIONAL REQUIREMENTS
 
 ```
-NODE.JS        v18+
+NODE.JS        v22.12+ (Vercel builds on 24.x)
 SPOTIFY        Premium account required for playback
 SPOTIFY APP    Client ID from developer.spotify.com
 ```
