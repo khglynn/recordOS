@@ -361,6 +361,8 @@ function InfoModal({
             <br />
             // MUSICAL PREFERENCES REMAIN CLASSIFIED
             <br />
+            // VISITS COUNTED VIA VERCEL // NO COOKIES // NO IP RETAINED
+            <br />
             <br />
             // OVERSIGHT: POSTHOG, SENTRY
             <br />
