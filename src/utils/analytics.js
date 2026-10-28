@@ -12,12 +12,12 @@
  * counted.
  *
  * Three guards:
- * 1. Only on the live sites (kevinhg.com and its subdomains, *.vercel.app),
- *    so `npm run dev`, `vite preview` and screenshots never load it or hit a
- *    404 for /_vercel/insights/script.js.
+ * 1. Only in a production build, and only on the live sites (kevinhg.com and
+ *    its subdomains, *.vercel.app), so `npm run dev`, tests and screenshots
+ *    never load it or hit a 404 for /_vercel/insights/script.js.
  * 2. Only once the browser is idle, so it never competes with first paint.
  * 3. Every URL loses its query string and hash before it is sent. Spotify
- *    sign-in lands on /?code=...&state=..., and none of that leaves the browser.
+ *    sign-in lands on /callback?code=...&state=..., and none of that leaves the browser.
  */
 
 const LIVE_HOST = /(^|\.)kevinhg\.com$|\.vercel\.app$/;
@@ -31,6 +31,7 @@ function stripUrl(event) {
  * Load Vercel Web Analytics once the page is idle, on live hosts only
  */
 export function initAnalytics() {
+  if (!import.meta.env.PROD) return;
   if (!LIVE_HOST.test(window.location.hostname)) return;
 
   const load = () =>
