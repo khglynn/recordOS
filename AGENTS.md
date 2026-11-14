@@ -7,7 +7,7 @@
 A Windows 95-style music visualization app for Spotify. Shows your most-loved albums ranked by liked track count. Dark Matrix/terminal aesthetic. Nostalgic, grungy, cool.
 
 **Live:** https://record-os.kevinhg.com (also: ros.kevinhg.com)
-**Dev:** https://dev.record-os.kevinhg.com
+**Dev:** https://dev.record-os.kevinhg.com still serves the old `dev` branch (last commit 2026-05-05, behind `main`); changes no longer ship through it (Git Workflow, below)
 
 ## The Vibe
 
@@ -37,15 +37,11 @@ See `src/components/InfoModal.jsx` for copy examples.
 
 ## Current Status
 
-**Last updated:** 2025-12-21
+**Last verified:** 2026-11-13. The last feature work was 2025-12-22 (the access overlay on the login window, the download grid, the decade selector; plans in `claude-plans/`). Since then: a security baseline (#7, 2026-10-04) and page views counted with Vercel Web Analytics (#10, 2026-10-28). `git log` is the record.
 
-AccessRequestWindow converted to overlay on LoginModal (green CRT overlay with scanlines). Text styling standardized across app.
-
-**Recent work:** `claude-plans/2025-12-21-access-overlay-text-polish.md`
-
-**Remaining:**
+**Ideas banked on 2025-12-21, not checked since:**
 - Sentry → Slack integration
-- PostHog session recording
+- PostHog session recording (page views now go to Vercel Web Analytics; there is no PostHog in the code)
 - Live track counts during scan
 - Solitaire card icon in taskbar
 
@@ -55,15 +51,16 @@ AccessRequestWindow converted to overlay on LoginModal (green CRT overlay with s
 |--------|--------------|
 | `claude-plans/` | Archived plans - history of what was attempted |
 | `~/.claude/plans/` | Active Claude Code plans (sort by date: `ls -lt ~/.claude/plans/*.md`) |
-| `~/MuxDocs/2025/Q4/Record OS/` | Session summaries, starter prompts |
+| `~/MuxDocs/2025/Q4/Record OS/` | Session summaries, starter prompts from the mux era (Nov-Dec 2025); not on every Mac (absent on the Work Mac, 2026-11-13) |
 | Recent git commits | What just changed |
 
 ## Tech Stack
 - React 19, Vite, styled-components
 - React95 (Windows 95 UI components)
-- Spotify Web API + Web Playback SDK (PKCE auth, no server)
+- Spotify Web API + Web Playback SDK (PKCE auth, so Spotify sign-in needs no server)
+- Three Vercel functions in `api/` for the access-request flow (request, approve, check status), backed by Neon and a Slack approve link
 - Pixelarticons for icons
-- Butterchurn for visualizations (planned)
+- Butterchurn for visualizations (`src/hooks/useButterchurn.js`)
 
 ## Dev Commands
 ```bash
@@ -73,9 +70,7 @@ npm run build
 
 ## Playwright for Visual Testing
 
-Use `playwright-recordos` MCP for this project (not generic playwright).
-
-This keeps browser sessions/logins isolated from other projects. Profile stored at `~/.playwright-recordos/`.
+Use one of the Playwright MCP slots (`playwright-1`, `-2` or `-3`; each keeps its own browser profile and logins, `~/DevKev/helper/MCP-SERVERS.md`). The project-only `playwright-recordos` server and its `~/.playwright-recordos/` profile no longer exist.
 
 ## Key Files
 
@@ -88,6 +83,8 @@ This keeps browser sessions/logins isolated from other projects. Profile stored 
 | `src/components/Taskbar.jsx` | Bottom bar |
 | `src/components/GameWindow.jsx` | Game iframe container (dimensions, centering) |
 | `src/utils/constants.js` | Config values (grid sizes, counts, etc.) |
+| `src/utils/spotify.js` | Spotify PKCE sign-in; the app's client id (public by design) |
+| `src/utils/analytics.js` | Vercel page views: production build on the live hosts only, query and hash stripped (Spotify's sign-in code rides the callback URL) |
 
 ## Component Patterns
 
@@ -122,31 +119,14 @@ Safari has CSS Grid rendering issues. The codebase has browser detection that se
 
 ## Git Workflow
 
-Solo project - no PRs needed. Work on `dev`, merge to `main` when ready:
-
-```bash
-# Day-to-day work
-git checkout dev
-# ... make changes, commit, push ...
-# → deploys to dev.record-os.kevinhg.com
-
-# Deploy to production
-git checkout main && git merge dev && git push
-# → deploys to record-os.kevinhg.com
-git checkout dev  # back to working
-```
+`main` deploys to production (https://record-os.kevinhg.com), and GitHub refuses a direct push to it: the `protect-main` ruleset requires a pull request. So work on a branch, open a pull request, and merge it yourself (squash) once an independent review is clean, then check the live site. Nothing runs CI on a pull request here yet, so run `npm run build` before you push.
 
 ## Always-Allowed
 - Running `npm run dev`, `npm run build`
-- Pushing to `dev` branch (testing)
-- Merging `dev` → `main` (production deploy)
+- Opening and merging your own pull requests, as above
 - Reading/modifying src/, public/
 
 ## Environment Variables
-- `VITE_SPOTIFY_CLIENT_ID` - Spotify app client ID
 - `VITE_SENTRY_DSN` - (optional) Error tracking
-
-## Future: Analytics Integration
-
-In a future session, add PostHog alongside Sentry and link both to Slack notifications.
-See skill: `~/.mux/src/HG-Skills-Private/hg-skills/workflow/` for setup pattern.
+- `NEON_DATABASE_URL`, `SLACK_WEBHOOK_URL`, `APPROVE_SECRET` - the `api/` functions (Vercel project settings)
+- The Spotify client id is not an env var: it is a constant in `src/utils/spotify.js`
