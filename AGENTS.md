@@ -60,7 +60,7 @@ See `src/components/InfoModal.jsx` for copy examples.
 - Spotify Web API + Web Playback SDK (PKCE auth, so Spotify sign-in needs no server)
 - Three Vercel functions in `api/` for the access-request flow (request, approve, check status), backed by Neon and a Slack approve link
 - Pixelarticons for icons
-- Butterchurn for visualizations (`src/hooks/useButterchurn.js`)
+- Butterchurn for visualizations: `public/visualizer/index.html`, embedded by `src/components/TrippyGraphics.jsx` (`src/hooks/useButterchurn.js` is an unused earlier version)
 
 ## Dev Commands
 ```bash
